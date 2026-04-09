@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "moneytracker",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.alex.moneytracker"
@@ -50,6 +50,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5b8fb733-d859-4124-bd7f-4f1fe0d08ef1"
+      }
     }
   }
 }
