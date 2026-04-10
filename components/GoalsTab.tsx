@@ -1,7 +1,6 @@
-import { addDoc, collection, deleteDoc, doc, onSnapshot, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { Calendar, TrendingDown, TrendingUp, Trophy } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import { useAlert } from '../context/AlertContext';
 import { useCurrency } from '../context/CurrencyContext';
@@ -9,7 +8,6 @@ import { auth, db } from '../firebaseConfig';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 import { DatePicker } from './DatePicker';
 import { TargetInputModal } from './TargetInputModal';
-import { Platform } from 'react-native';
 interface GoalsTabProps {
   localColors: {
     primary: string;
@@ -53,7 +51,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
   const now = new Date();
   const todayAtMidnight = new Date();
   todayAtMidnight.setHours(0, 0, 0, 0);
-  
+
   const isUpcoming = currentGoal && currentGoal.startDate > todayAtMidnight;
   const daysUntilStart = isUpcoming && currentGoal ? Math.ceil((new Date(currentGoal.startDate).getTime() - todayAtMidnight.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
@@ -63,12 +61,12 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
   const remainingAmount = currentGoal ? targetForCalc - totalProfit : 0;
   const { showAlert } = useAlert();
   const daysUntilTarget = currentPace > 0 ? Math.ceil(remainingAmount / currentPace) : Infinity;
-  
+
   const totalGoalDays = currentGoal ? Math.max(1, Math.ceil((new Date(currentGoal.deadline).getTime() - new Date(currentGoal.startDate).getTime()) / (1000 * 60 * 60 * 24))) : 1;
-  const dailyTarget = currentGoal 
-    ? (isUpcoming 
-        ? targetForCalc / totalGoalDays 
-        : (daysLeft > 0 ? Math.max(0, remainingAmount / daysLeft) : 0)) 
+  const dailyTarget = currentGoal
+    ? (isUpcoming
+      ? targetForCalc / totalGoalDays
+      : (daysLeft > 0 ? Math.max(0, remainingAmount / daysLeft) : 0))
     : 0;
 
   const isGoalReached = currentGoal && totalProfit >= targetForCalc;

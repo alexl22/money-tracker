@@ -1,16 +1,14 @@
 import { DatePicker } from '@/components/DatePicker';
 import MonthYearPicker, { LUNI } from '@/components/MonthYearPicker';
-import { collection, onSnapshot, query, Timestamp, where } from 'firebase/firestore';
 import { Calendar, ChevronDown, Receipt, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
 import { auth, db } from '../../firebaseConfig';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
-import { Platform } from 'react-native';
 
 export default function DashboardScreen() {
   const { width: SCREEN_WIDTH } = useWindowDimensions();

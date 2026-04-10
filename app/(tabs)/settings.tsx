@@ -1,22 +1,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { updatePassword } from 'firebase/auth';
-import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore';
 import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeOff, Lock, Mail, RefreshCcw, Search, Shield, Trash2, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Platform, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { TimePickerModal } from '../../components/TimePickerModal';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
-import { auth, db, updateUserPassword as helperUpdatePassword, deleteUserAccount as helperDeleteAccount } from '../../firebaseConfig';
+import { auth, db, deleteUserAccount as helperDeleteAccount, updateUserPassword as helperUpdatePassword } from '../../firebaseConfig';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { updateNotification } from '../../utils/notifications';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
 import styles from './_styles/settings.styles';
-import { Platform } from 'react-native';
 
 export default function SettingsScreen() {
   const { currency, setCurrency, availableCurrencies, format } = useCurrency();

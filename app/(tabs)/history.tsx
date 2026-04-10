@@ -1,15 +1,13 @@
 import MonthYearPicker, { LUNI } from '@/components/MonthYearPicker';
-import { collection, deleteDoc, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { Calendar, ChevronDown, ShoppingBag, Trash2, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
 import { auth, db } from '../../firebaseConfig';
 import styles from './_styles/historystyles';
-import { Platform } from 'react-native';
 
 interface TransactionItem {
   id: string;

@@ -1,16 +1,13 @@
-import { View, Text, TextInput, TouchableOpacity } from "react-native";
+import { AlignLeft, TrendingUp, Type, Wallet } from "lucide-react-native";
 import { useState } from "react";
-import { TrendingUp, Wallet, Type, AlignLeft } from "lucide-react-native";
-import { Timestamp } from "firebase/firestore";
-import { addDoc, collection } from "firebase/firestore";
-import { auth, db } from "../../firebaseConfig";
+import { Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { FinanceModalBase, styles as baseStyles } from "../../components/FinanceModalBase";
 import { useAlert } from "../../context/AlertContext";
 import { useCurrency } from "../../context/CurrencyContext";
-import { Platform } from "react-native";
+import { auth, db } from "../../firebaseConfig";
 interface TransactionModalProps {
-  isVisible: boolean;
-  onClose: () => void;
+    isVisible: boolean;
+    onClose: () => void;
 }
 
 export function TransactionModal({ isVisible, onClose }: TransactionModalProps) {
@@ -27,25 +24,25 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
             return;
         }
 
-        if (!transactionType){
+        if (!transactionType) {
             showAlert("Selection Required", "Please select whether this is an Income or an Expense.", "alert");
             return;
         }
-        if (amount === '0' || !amount){
+        if (amount === '0' || !amount) {
             showAlert("Invalid Amount", "Please enter a valid amount for this transaction.", "alert");
             return;
-        }   
-        setIsSaving(true);   
-        try{
+        }
+        setIsSaving(true);
+        try {
             const transactionData = {
-                userId : user.uid,
-                amount : parseFloat(amount),
+                userId: user.uid,
+                amount: parseFloat(amount),
                 amountUSD: convertToBase(parseFloat(amount)),
                 currency: currency,
-                type : transactionType,
-                title : title,
+                type: transactionType,
+                title: title,
                 notes: notes,
-                date: new Date(), 
+                date: new Date(),
                 createdAt: new Date()
             };
 
@@ -55,7 +52,7 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
             } else {
                 // For native, we trust the local cache and don't await the promise
                 // to ensure the UI feels instant even when offline.
-                db.collection('transactions').add(transactionData).catch(e => console.error(e));
+                db.collection('transactions').add(transactionData).catch((e: any) => console.error(e));
             }
 
             // Success cleanup
@@ -65,11 +62,11 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
             resetModal();
             showAlert("Transaction Saved", `Your ${transactionType} of ${format(parseFloat(amount), { isConverted: true })} has been recorded.`, "success");
         }
-        catch(error: any){
+        catch (error: any) {
             console.error("Eroare la salvare!", error);
             showAlert("Save Error", "We couldn't save your transaction. Please check your connection and try again.", "alert");
         }
-        finally{
+        finally {
             setIsSaving(false);
         }
     };
