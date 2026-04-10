@@ -10,6 +10,7 @@ import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
 import { auth, db } from '../../firebaseConfig';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
+import { Platform } from 'react-native';
 
 export default function DashboardScreen() {
   const { width: SCREEN_WIDTH } = useWindowDimensions();
@@ -78,31 +79,49 @@ export default function DashboardScreen() {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, 'transactions'),
-      where('userId', '==', user.uid)
-    );
+    let unsubscribe: () => void;
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    if (Platform.OS === 'web') {
+      // JS SDK for Web
+      const { query, collection, where, onSnapshot } = require('firebase/firestore');
+      const q = query(
+        collection(db, 'transactions'),
+        where('userId', '==', user.uid)
+      );
+      unsubscribe = onSnapshot(q, (snapshot: any) => {
+        handleSnapshot(snapshot);
+      });
+    } else {
+      // Native SDK for Mobile
+      unsubscribe = db.collection('transactions')
+        .where('userId', '==', user.uid)
+        .onSnapshot((snapshot: any) => {
+          handleSnapshot(snapshot);
+        }, (error: any) => {
+          console.error("Firestore Error:", error);
+        });
+    }
+
+    function handleSnapshot(snapshot: any) {
       let currentTotalIncome = 0;
       let currentTotalExpenses = 0;
       let earliestDate = new Date();
       let hasTransactions = false;
 
-      snapshot.forEach((doc) => {
+      snapshot.forEach((doc: any) => {
         const data = doc.data();
         let transactionDate: Date;
 
-        if (data.date instanceof Timestamp) {
-          transactionDate = data.date.toDate();
-        } else if (data.date && typeof data.date.toDate === 'function') {
-          transactionDate = data.date.toDate();
-        } else if (data.date) {
-          transactionDate = new Date(data.date);
-        } else if (data.createdAt) { // fallback
-          transactionDate = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+        // Unified date handling for both SDKs
+        const rawDate = data.date || data.createdAt;
+        if (rawDate && typeof rawDate.toDate === 'function') {
+          transactionDate = rawDate.toDate();
+        } else if (rawDate instanceof Date) {
+          transactionDate = rawDate;
+        } else if (rawDate) {
+          transactionDate = new Date(rawDate);
         } else {
-          transactionDate = new Date(); // fallback to now
+          transactionDate = new Date();
         }
 
         if (!hasTransactions || transactionDate < earliestDate) {
@@ -144,10 +163,10 @@ export default function DashboardScreen() {
         setAverageIncome(currentTotalIncome / monthsDiff);
         setAverageExpenses(currentTotalExpenses / monthsDiff);
       }
-    });
+    }
 
-    return () => unsubscribe();
-  }, [viewMode, selectedMonth, selectedYear, rangeStart, rangeEnd, currency]);
+    return () => unsubscribe && unsubscribe();
+  }, [viewMode, selectedMonth, selectedYear, rangeStart, rangeEnd, currency, user]);
 
 
   return (

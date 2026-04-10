@@ -7,6 +7,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { auth, db } from '../firebaseConfig';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 import { styles as baseStyles, FinanceModalBase } from './FinanceModalBase';
+import { Platform } from 'react-native';
 
 interface LoansTabProps {
   localColors: {
@@ -47,24 +48,27 @@ export function LoansTab({ localColors }: LoansTabProps) {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, 'loans'),
-      and(
-        where('status', '==', activeTab),
-        or(
-          where('userId', '==', user.uid),
-          where('personEmail', '==', user.email)
-        )
-      )
-    );
+    let unsubscribe: () => void;
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const loansData = snapshot.docs.map(doc => {
+    const handleSnapshot = (snapshot: any) => {
+      const loansData = snapshot.docs.map((doc: any) => {
         const data = doc.data();
+        const rawDate = data.date;
+        let date: Date;
+        if (rawDate && typeof rawDate.toDate === 'function') {
+          date = rawDate.toDate();
+        } else if (rawDate instanceof Date) {
+          date = rawDate;
+        } else if (rawDate) {
+          date = new Date(rawDate);
+        } else {
+          date = new Date();
+        }
+
         return {
           id: doc.id,
           ...data,
-          date: data.date?.toDate ? data.date.toDate() : data.date
+          date: date
         };
       }) as Loan[];
       setLoans(loansData);
@@ -89,20 +93,64 @@ export function LoansTab({ localColors }: LoansTabProps) {
 
       setTotalLent(sumLent);
       setTotalBorrowed(sumBorrowed);
+    };
 
-    });
+    if (Platform.OS === 'web') {
+      const { query, collection, where, and, or, onSnapshot } = require('firebase/firestore');
+      const q = query(
+        collection(db, 'loans'),
+        and(
+          where('status', '==', activeTab),
+          or(
+            where('userId', '==', user.uid),
+            where('personEmail', '==', user.email)
+          )
+        )
+      );
+      unsubscribe = onSnapshot(q, handleSnapshot);
+    } else {
+      const { Filter } = require('@react-native-firebase/firestore');
+      unsubscribe = db.collection('loans')
+        .where(
+          Filter.and(
+            Filter('status', '==', activeTab),
+            Filter.or(
+              Filter('userId', '==', user.uid),
+              Filter('personEmail', '==', user.email)
+            )
+          )
+        )
+        .onSnapshot((snapshot: any) => {
+          handleSnapshot(snapshot);
+        }, (err: any) => {
+          console.error("Firestore Native Error (Loans):", err);
+          // Fallback if index is missing or Filter not supported
+          db.collection('loans')
+            .where('status', '==', activeTab)
+            .where('userId', '==', user.uid)
+            .get()
+            .then((snap: any) => handleSnapshot(snap));
+        });
+    }
 
-    return () => unsubscribe();
-  }, [activeTab, currency]);
+    return () => unsubscribe && unsubscribe();
+  }, [activeTab, currency, user]);
 
   const handleAddLoan = () => {
     setIsModalVisible(true);
   };
-  const toggleLoanStatus = (id: string, currentStatus: 'active' | 'settled') => {
+  const toggleLoanStatus = async (id: string, currentStatus: 'active' | 'settled') => {
     const newStatus = currentStatus === 'active' ? 'settled' : 'active';
-    updateDoc(doc(db, 'loans', id), {
-      status: newStatus
-    });
+    try {
+      if (Platform.OS === 'web') {
+        const { doc, updateDoc } = require('firebase/firestore');
+        await updateDoc(doc(db, 'loans', id), { status: newStatus });
+      } else {
+        await db.collection('loans').doc(id).update({ status: newStatus });
+      }
+    } catch (error) {
+      console.error("Error toggling loan status:", error);
+    }
   };
   return (
     <View style={styles.viewContainer}>
@@ -341,12 +389,22 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
     try {
       // Fetch the current user's display name from Firestore for the recipient to see
       let finalOwnerName = user.displayName || user.email?.split('@')[0] || 'A user';
-      const userProfile = await getDoc(doc(db, 'users', user.uid));
-      if (userProfile.exists() && userProfile.data().displayName) {
-        finalOwnerName = userProfile.data().displayName;
+      let userDoc: any;
+      if (Platform.OS === 'web') {
+        const { getDoc, doc } = require('firebase/firestore');
+        userDoc = await getDoc(doc(db, 'users', user.uid));
+      } else {
+        userDoc = await db.collection('users').doc(user.uid).get();
       }
 
-      await addDoc(collection(db, 'loans'), {
+      if (userDoc.exists || (userDoc.exists && typeof userDoc.exists === 'function' ? userDoc.exists() : userDoc.exists)) {
+        const data = userDoc.data();
+        if (data.displayName) {
+          finalOwnerName = data.displayName;
+        }
+      }
+
+      const loanData = {
         userId: user.uid,
         amount: parseFloat(amount),
         currency: currency,
@@ -356,10 +414,19 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
         personEmail: personEmail,
         note: notes,
         status: 'active',
-        date: Timestamp.now(),
+        date: new Date(),
+        createdAt: new Date(),
         ownerName: finalOwnerName,
         ownerEmail: user.email || '',
-      });
+      };
+
+      if (Platform.OS === 'web') {
+        const { collection, addDoc } = require('firebase/firestore');
+        await addDoc(collection(db, 'loans'), loanData);
+      } else {
+        await db.collection('loans').add(loanData);
+      }
+
       setLoanType(null);
       setPersonName('');
       setPersonEmail('');

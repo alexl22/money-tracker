@@ -36,22 +36,33 @@ export default function RegisterScreen() {
       return;
     }
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // Update auth profile
-      await updateProfile(user, {
-        displayName: name
-      });
+      let user;
+      if (Platform.OS === 'web') {
+        const { createUserWithEmailAndPassword, updateProfile } = require('firebase/auth');
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        user = userCredential.user;
+        await updateProfile(user, { displayName: name });
+      } else {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        user = userCredential.user;
+        await user.updateProfile({ displayName: name });
+      }
 
       // Create user document in Firestore
-      await setDoc(doc(db, 'users', user.uid), {
+      const userData = {
         uid: user.uid,
         displayName: name,
         email: email,
-        createdAt: serverTimestamp(),
+        createdAt: new Date(), // using Date objects works for both SDKs
         baseCurrency: ''
-      });
+      };
+
+      if (Platform.OS === 'web') {
+        const { doc, setDoc } = require('firebase/firestore');
+        await setDoc(doc(db, 'users', user.uid), userData);
+      } else {
+        await db.collection('users').doc(user.uid).set(userData);
+      }
 
       router.push('/(tabs)/home');
     } catch (error: any) {

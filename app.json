@@ -10,10 +10,12 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.alex.moneytracker"
+      "bundleIdentifier": "com.alex.moneytracker",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "package": "com.alex.moneytracker",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "SCHEDULE_EXACT_ALARM",
         "POST_NOTIFICATIONS"
@@ -34,6 +36,7 @@
     "plugins": [
       "expo-router",
       "expo-notifications",
+      "@react-native-firebase/app",
       [
         "expo-splash-screen",
         {
@@ -45,7 +48,9 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "@react-native-firebase/auth",
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true,

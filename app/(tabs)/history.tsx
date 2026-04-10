@@ -9,6 +9,7 @@ import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
 import { auth, db } from '../../firebaseConfig';
 import styles from './_styles/historystyles';
+import { Platform } from 'react-native';
 
 interface TransactionItem {
   id: string;
@@ -100,25 +101,54 @@ export default function HistoryScreen() {
     const startOfMonth = new Date(selectedYear, Number(selectedMonth), 1);
     const endOfMonth = new Date(selectedYear, Number(selectedMonth) + 1, 0, 23, 59, 59);
 
-    const q = query(
-      collection(db, "transactions"),
-      where("userId", "==", user.uid)
-    );
+    let unsubscribe: () => void;
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    if (Platform.OS === 'web') {
+      const { query, collection, where, onSnapshot } = require('firebase/firestore');
+      const q = query(
+        collection(db, "transactions"),
+        where("userId", "==", user.uid)
+      );
+      unsubscribe = onSnapshot(q, (snapshot: any) => {
+        handleSnapshot(snapshot);
+      });
+    } else {
+      unsubscribe = db.collection('transactions')
+        .where('userId', '==', user.uid)
+        .onSnapshot((snapshot: any) => {
+          handleSnapshot(snapshot);
+        }, (error: any) => {
+          console.error("Firestore Error:", error);
+        });
+    }
+
+    function handleSnapshot(snapshot: any) {
       let grossIncome = 0;
       let grossExpense = 0;
 
-      const rawList: RawTransaction[] = snapshot.docs.map(doc => {
+      const rawList: RawTransaction[] = snapshot.docs.map((doc: any) => {
         const data = doc.data();
+        const rawDate = data.date || data.createdAt;
+        let finalDate: Date;
+
+        if (rawDate && typeof rawDate.toDate === 'function') {
+          finalDate = rawDate.toDate();
+        } else if (rawDate instanceof Date) {
+          finalDate = rawDate;
+        } else if (rawDate) {
+          finalDate = new Date(rawDate);
+        } else {
+          finalDate = new Date();
+        }
+
         return {
           id: doc.id,
           ...data,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || Date.now()),
+          createdAt: finalDate,
         } as RawTransaction;
-      }).filter(t => {
+      }).filter((t: RawTransaction) => {
         return t.createdAt >= startOfMonth && t.createdAt <= endOfMonth;
-      }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      }).sort((a: RawTransaction, b: RawTransaction) => b.createdAt.getTime() - a.createdAt.getTime());
 
       rawList.forEach((t) => {
         if (t.type === "income") grossIncome += t.amountUSD || t.amount;
@@ -189,11 +219,11 @@ export default function HistoryScreen() {
       setMonthExpense(grossExpense);
       setMonthProfit(grossIncome - grossExpense);
       setWeekIncome(weekBalance);
-    });
+    }
 
 
-    return () => unsubscribe();
-  }, [selectedMonth, selectedYear, selectedWeekIndex, currency]);
+    return () => unsubscribe && unsubscribe();
+  }, [selectedMonth, selectedYear, selectedWeekIndex, currency, user]);
 
   const { tabBarOffset } = useTabBar();
   const lastScrollY = useSharedValue(0);
@@ -224,7 +254,12 @@ export default function HistoryScreen() {
       'alert',
       async () => {
         try {
-          await deleteDoc(doc(db, "transactions", transactionId))
+          if (Platform.OS === 'web') {
+            const { doc, deleteDoc } = require('firebase/firestore');
+            await deleteDoc(doc(db, "transactions", transactionId));
+          } else {
+            await db.collection("transactions").doc(transactionId).delete();
+          }
         } catch (error) {
           console.error("Error deleting transaction: ", error);
           showAlert('Error', 'We could not delete the transaction. Please try again.', 'alert');

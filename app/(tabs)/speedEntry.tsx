@@ -7,6 +7,7 @@ import { auth, db } from "../../firebaseConfig";
 import { FinanceModalBase, styles as baseStyles } from "../../components/FinanceModalBase";
 import { useAlert } from "../../context/AlertContext";
 import { useCurrency } from "../../context/CurrencyContext";
+import { Platform } from "react-native";
 interface TransactionModalProps {
   isVisible: boolean;
   onClose: () => void;
@@ -36,7 +37,7 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
         }   
         setIsSaving(true);   
         try{
-            await addDoc(collection(db, 'transactions'),{
+            const transactionData = {
                 userId : user.uid,
                 amount : parseFloat(amount),
                 amountUSD: convertToBase(parseFloat(amount)),
@@ -44,8 +45,17 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                 type : transactionType,
                 title : title,
                 notes: notes,
-                createdAt: Timestamp.now()
-            });
+                date: new Date(), // using Date objects works for both SDKs
+                createdAt: new Date()
+            };
+
+            if (Platform.OS === 'web') {
+                const { addDoc, collection } = require('firebase/firestore');
+                await addDoc(collection(db, 'transactions'), transactionData);
+            } else {
+                await db.collection('transactions').add(transactionData);
+            }
+
             setTransactionType(null);
             setTitle('');
             setNotes('');

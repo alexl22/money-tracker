@@ -16,6 +16,7 @@ import { exportToCSV, exportToPDF } from '../../utils/export';
 import { updateNotification } from '../../utils/notifications';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
 import styles from './_styles/settings.styles';
+import { Platform } from 'react-native';
 
 export default function SettingsScreen() {
   const { currency, setCurrency, availableCurrencies, format } = useCurrency();
@@ -45,15 +46,37 @@ export default function SettingsScreen() {
 
     setIsExporting(true);
     try {
-      const q = query(
-        collection(db, "transactions"),
-        where("userId", "==", auth.currentUser.uid),
-        orderBy("createdAt", "desc")
-      );
+      let snapshot: any;
+      if (Platform.OS === 'web') {
+        const { query, collection, where, orderBy, getDocs } = require('firebase/firestore');
+        const q = query(
+          collection(db, "transactions"),
+          where("userId", "==", auth.currentUser.uid),
+          orderBy("createdAt", "desc")
+        );
+        snapshot = await getDocs(q);
+      } else {
+        snapshot = await db.collection("transactions")
+          .where("userId", "==", auth.currentUser.uid)
+          .orderBy("createdAt", "desc")
+          .get();
+      }
 
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => {
+      const data = snapshot.docs.map((doc: any) => {
         const d = doc.data();
+        const rawDate = d.date || d.createdAt;
+        let finalDate: Date;
+
+        if (rawDate && typeof rawDate.toDate === 'function') {
+          finalDate = rawDate.toDate();
+        } else if (rawDate instanceof Date) {
+          finalDate = rawDate;
+        } else if (rawDate) {
+          finalDate = new Date(rawDate);
+        } else {
+          finalDate = new Date();
+        }
+
         return {
           id: doc.id,
           title: d.title || 'Untitled',
@@ -61,7 +84,7 @@ export default function SettingsScreen() {
           type: d.type || 'expense',
           notes: d.notes || '',
           category: d.category || 'General',
-          createdAt: d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt || Date.now()),
+          createdAt: finalDate,
         };
       });
 
@@ -97,8 +120,15 @@ export default function SettingsScreen() {
 
       if (!user.displayName)
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
+          let userDoc: any;
+          if (Platform.OS === 'web') {
+            const { getDoc, doc } = require('firebase/firestore');
+            userDoc = await getDoc(doc(db, 'users', user.uid));
+          } else {
+            userDoc = await db.collection('users').doc(user.uid).get();
+          }
+
+          if (userDoc.exists || (userDoc.exists && typeof userDoc.exists === 'function' ? userDoc.exists() : userDoc.exists)) {
             const data = userDoc.data();
             if (data.displayName) {
               setUserName(data.displayName);
@@ -109,7 +139,7 @@ export default function SettingsScreen() {
         }
     };
 
-    const unsubscribe = auth.onAuthStateChanged((u) => {
+    const unsubscribe = auth.onAuthStateChanged((u: any) => {
       fetchUserData(u);
     });
 
@@ -150,7 +180,7 @@ export default function SettingsScreen() {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
   };
 
-  const handleUpdatePassword = () => {
+  const handleUpdatePassword = async () => {
     if (newPassword !== confirmPassword) {
       showAlert("Password Error", "Your passwords do not match. Please try again.", "alert");
       return;
@@ -160,10 +190,20 @@ export default function SettingsScreen() {
       return;
     }
     if (auth.currentUser) {
-      updatePassword(auth.currentUser, newPassword);
-      showAlert("Updated Successfully", "Your security credentials have been successfully updated.", "success");
-      setNewPassword('');
-      setConfirmPassword('');
+      try {
+        if (Platform.OS === 'web') {
+          const { updatePassword } = require('firebase/auth');
+          await updatePassword(auth.currentUser, newPassword);
+        } else {
+          await auth.currentUser.updatePassword(newPassword);
+        }
+        showAlert("Updated Successfully", "Your security credentials have been successfully updated.", "success");
+        setNewPassword('');
+        setConfirmPassword('');
+      } catch (error: any) {
+        console.error(error);
+        showAlert("Update Failed", "We could not update your password. You may need to log in again.", "alert");
+      }
     }
   }
 
@@ -218,10 +258,18 @@ export default function SettingsScreen() {
       "alert",
       async () => {
         try {
-          const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
-          const snapshot = await getDocs(q);
-          for (const document of snapshot.docs) {
-            await deleteDoc(doc(db, 'transactions', document.id));
+          if (Platform.OS === 'web') {
+            const { query, collection, where, getDocs, doc, deleteDoc } = require('firebase/firestore');
+            const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
+            const snapshot = await getDocs(q);
+            for (const document of snapshot.docs) {
+              await deleteDoc(doc(db, 'transactions', document.id));
+            }
+          } else {
+            const snapshot = await db.collection('transactions').where('userId', '==', user.uid).get();
+            const batch = db.batch();
+            snapshot.docs.forEach((doc: any) => batch.delete(doc.ref));
+            await batch.commit();
           }
           showAlert("Success", "All transactions have been deleted.", "success");
         } catch (error) {
@@ -241,10 +289,18 @@ export default function SettingsScreen() {
       "alert",
       async () => {
         try {
-          const q = query(collection(db, 'loans'), where('userId', '==', user.uid));
-          const snapshot = await getDocs(q);
-          for (const document of snapshot.docs) {
-            await deleteDoc(doc(db, 'loans', document.id));
+          if (Platform.OS === 'web') {
+            const { query, collection, where, getDocs, doc, deleteDoc } = require('firebase/firestore');
+            const q = query(collection(db, 'loans'), where('userId', '==', user.uid));
+            const snapshot = await getDocs(q);
+            for (const document of snapshot.docs) {
+              await deleteDoc(doc(db, 'loans', document.id));
+            }
+          } else {
+            const snapshot = await db.collection('loans').where('userId', '==', user.uid).get();
+            const batch = db.batch();
+            snapshot.docs.forEach((doc: any) => batch.delete(doc.ref));
+            await batch.commit();
           }
           showAlert("Success", "All loans have been deleted.", "success");
         } catch (error) {
@@ -265,23 +321,40 @@ export default function SettingsScreen() {
       "alert",
       async () => {
         try {
-          const transactionsQuery = query(collection(db, 'transactions'), where('userId', '==', user.uid));
-          const transactionsSnapshot = await getDocs(transactionsQuery);
-          for (const document of transactionsSnapshot.docs) {
-            await deleteDoc(doc(db, 'transactions', document.id));
+          if (Platform.OS === 'web') {
+            const { query, collection, where, getDocs, doc, deleteDoc } = require('firebase/firestore');
+            // Delete Transactions
+            const txQ = query(collection(db, 'transactions'), where('userId', '==', user.uid));
+            const txS = await getDocs(txQ);
+            for (const d of txS.docs) await deleteDoc(doc(db, 'transactions', d.id));
+            // Delete Loans
+            const lQ = query(collection(db, 'loans'), where('userId', '==', user.uid));
+            const lS = await getDocs(lQ);
+            for (const d of lS.docs) await deleteDoc(doc(db, 'loans', d.id));
+            // Delete Goals
+            const gQ = query(collection(db, 'goals'), where('userId', '==', user.uid));
+            const gS = await getDocs(gQ);
+            for (const d of gS.docs) await deleteDoc(doc(db, 'goals', d.id));
+            // Delete User Doc
+            await deleteDoc(doc(db, "users", user.uid)).catch(() => { });
+          } else {
+            // Native deletion (using batches for efficiency)
+            const collections = ['transactions', 'loans', 'goals'];
+            for (const col of collections) {
+              const snap = await db.collection(col).where('userId', '==', user.uid).get();
+              const batch = db.batch();
+              snap.docs.forEach((doc: any) => batch.delete(doc.ref));
+              await batch.commit();
+            }
+            await db.collection("users").doc(user.uid).delete().catch(() => { });
           }
-          const loansQuerry = query(collection(db, 'loans'), where('userId', '==', user.uid));
-          const loansSnapshot = await getDocs(loansQuerry);
-          for (const document of loansSnapshot.docs) {
-            await deleteDoc(doc(db, 'loans', document.id));
+
+          // Delete Auth User
+          if (Platform.OS === 'web') {
+            await user.delete();
+          } else {
+            await user.delete();
           }
-          const goalsQuerry = query(collection(db, 'goals'), where('userId', '==', user.uid));
-          const goalsSnapshot = await getDocs(goalsQuerry);
-          for (const document of goalsSnapshot.docs) {
-            await deleteDoc(doc(db, 'goals', document.id));
-          }
-          await deleteDoc(doc(db, "users", user.uid)).catch(() => { });
-          await user.delete();
           router.replace("/login");
         } catch (error: any) {
           console.error("Error deleting account:", error);
