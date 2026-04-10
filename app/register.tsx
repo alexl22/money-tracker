@@ -3,9 +3,7 @@ import { useRouter } from 'expo-router';
 import { Eye, EyeOff, Lock, LogIn, Mail, User, UserPlus } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
+import { signUp, auth, db } from '../firebaseConfig';
 import { useAlert } from '../context/AlertContext';
 const BLUE = '#4A8AF4';
 const BG = '#101010';
@@ -36,15 +34,14 @@ export default function RegisterScreen() {
       return;
     }
     try {
-      let user;
+      const userCredential = await signUp(email, password);
+      const user = userCredential.user;
+
+      // Update Profile
       if (Platform.OS === 'web') {
-        const { createUserWithEmailAndPassword, updateProfile } = require('firebase/auth');
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        user = userCredential.user;
+        const { updateProfile } = require('firebase/auth');
         await updateProfile(user, { displayName: name });
       } else {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        user = userCredential.user;
         await user.updateProfile({ displayName: name });
       }
 
@@ -53,7 +50,7 @@ export default function RegisterScreen() {
         uid: user.uid,
         displayName: name,
         email: email,
-        createdAt: new Date(), // using Date objects works for both SDKs
+        createdAt: new Date(),
         baseCurrency: ''
       };
 
@@ -67,7 +64,11 @@ export default function RegisterScreen() {
       router.push('/(tabs)/home');
     } catch (error: any) {
       console.error(error);
-      showAlert("Registration Failed", error.message || "We couldn't create your account. Please try again later.", "alert");
+      if (error.code === 'auth/network-request-failed' || error.message?.includes('network')) {
+        showAlert("Internet Required", "You need an active internet connection to create a new account. Please check your WiFi or Data and try again.", "alert");
+      } else {
+        showAlert("Registration Failed", error.message || "We couldn't create your account. Please try again later.", "alert");
+      }
     }
   };
 

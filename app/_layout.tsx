@@ -15,12 +15,11 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { onAuthStateChanged } from 'firebase/auth';
 import { useState, useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
-import { auth } from '../firebaseConfig';
+import { onAuthChanged } from '../firebaseConfig';
 import { AlertProvider } from '../context/AlertContext';
 import { CurrencyProvider } from '../context/CurrencyContext';
 import { setupNotifications } from '../utils/notifications';
@@ -42,7 +41,7 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, () => {
+    const unsubscribe = onAuthChanged(() => {
       setIsAuthReady(true);
     });
     return () => unsubscribe();

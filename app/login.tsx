@@ -3,8 +3,7 @@ import { useRouter } from 'expo-router';
 import { Eye, EyeOff, Lock, LogIn, Mail, UserPlus } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
+import { signIn } from '../firebaseConfig';
 import { useAlert } from '../context/AlertContext';
 const BLUE = '#4A8AF4';
 const BG = '#101010';
@@ -25,7 +24,7 @@ export default function LoginScreen() {
       return;
     }
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signIn(email, password);
       router.push('/(tabs)/home');
     } catch (error: any) {
       console.error(error);

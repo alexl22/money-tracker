@@ -1,14 +1,13 @@
 import { Colors } from '@/constants/DesignSystem';
 import { BlurView } from 'expo-blur';
 import { Tabs, useRouter } from 'expo-router';
-import { signOut } from 'firebase/auth';
+import { signOutUser, auth, db } from '../../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import { ArrowRightLeft, History, LayoutGrid, LogOut, Plus, Settings, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { TabBarProvider, useTabBar } from '../../context/TabBarContext';
-import { auth, db } from '../../firebaseConfig';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
 import { TransactionModal } from './speedEntry';
 const { width } = Dimensions.get('window');
@@ -35,7 +34,7 @@ export default function TabLayout() {
     fetchUserName();
 
     // Also listen for auth changes to re-fetch if user changes
-    const unsubscribe = auth.onAuthStateChanged((u) => {
+    const unsubscribe = auth.onAuthStateChanged((u: any) => {
       if (u) fetchUserName();
       else setUserName('User');
     });
@@ -44,7 +43,7 @@ export default function TabLayout() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await signOutUser();
       router.replace('/login');
     } catch (error) {
       console.error('Logout error:', error);

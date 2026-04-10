@@ -45,7 +45,7 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                 type : transactionType,
                 title : title,
                 notes: notes,
-                date: new Date(), // using Date objects works for both SDKs
+                date: new Date(), 
                 createdAt: new Date()
             };
 
@@ -53,9 +53,13 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                 const { addDoc, collection } = require('firebase/firestore');
                 await addDoc(collection(db, 'transactions'), transactionData);
             } else {
+                // For native, we don't necessarily need to await the server confirmation
+                // The native SDK handles local persistence reliably.
+                // However, we wait for the promise which should resolve locally.
                 await db.collection('transactions').add(transactionData);
             }
 
+            // Success cleanup
             setTransactionType(null);
             setTitle('');
             setNotes('');

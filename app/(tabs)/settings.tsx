@@ -11,7 +11,7 @@ import { TimePickerModal } from '../../components/TimePickerModal';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
-import { auth, db, } from '../../firebaseConfig';
+import { auth, db, updateUserPassword as helperUpdatePassword, deleteUserAccount as helperDeleteAccount } from '../../firebaseConfig';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { updateNotification } from '../../utils/notifications';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
@@ -191,12 +191,7 @@ export default function SettingsScreen() {
     }
     if (auth.currentUser) {
       try {
-        if (Platform.OS === 'web') {
-          const { updatePassword } = require('firebase/auth');
-          await updatePassword(auth.currentUser, newPassword);
-        } else {
-          await auth.currentUser.updatePassword(newPassword);
-        }
+        await helperUpdatePassword(newPassword);
         showAlert("Updated Successfully", "Your security credentials have been successfully updated.", "success");
         setNewPassword('');
         setConfirmPassword('');
@@ -350,11 +345,7 @@ export default function SettingsScreen() {
           }
 
           // Delete Auth User
-          if (Platform.OS === 'web') {
-            await user.delete();
-          } else {
-            await user.delete();
-          }
+          await helperDeleteAccount();
           router.replace("/login");
         } catch (error: any) {
           console.error("Error deleting account:", error);
