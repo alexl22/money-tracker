@@ -53,10 +53,9 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                 const { addDoc, collection } = require('firebase/firestore');
                 await addDoc(collection(db, 'transactions'), transactionData);
             } else {
-                // For native, we don't necessarily need to await the server confirmation
-                // The native SDK handles local persistence reliably.
-                // However, we wait for the promise which should resolve locally.
-                await db.collection('transactions').add(transactionData);
+                // For native, we trust the local cache and don't await the promise
+                // to ensure the UI feels instant even when offline.
+                db.collection('transactions').add(transactionData).catch(e => console.error(e));
             }
 
             // Success cleanup
