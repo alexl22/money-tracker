@@ -63,12 +63,18 @@ export default function RootLayout() {
       <ThemeProvider value={DarkTheme}>
         <CurrencyProvider>
           <AlertProvider>
-            <Stack>
-              <Stack.Screen name="login" options={{ headerShown: false }} />
-              <Stack.Screen name="register" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="privacy" options={{ title: 'Privacy Policy', presentation: 'modal' }} />
-              <Stack.Screen name="terms" options={{ title: 'Terms of Use', presentation: 'modal' }} />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                animation: 'fade',
+                contentStyle: { backgroundColor: '#101010' },
+              }}
+            >
+              <Stack.Screen name="login" />
+              <Stack.Screen name="register" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="privacy" options={{ title: 'Privacy Policy', presentation: 'modal', animation: 'slide_from_bottom' }} />
+              <Stack.Screen name="terms" options={{ title: 'Terms of Use', presentation: 'modal', animation: 'slide_from_bottom' }} />
             </Stack>
             <CustomAlert />
             <StatusBar style="light" />

@@ -11,7 +11,7 @@ import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
 import { auth, db, deleteUserAccount as helperDeleteAccount, updateUserPassword as helperUpdatePassword } from '../../firebaseConfig';
 import { exportToCSV, exportToPDF } from '../../utils/export';
-import { updateNotification } from '../../utils/notifications';
+import { updateNotification, checkNotificationPermission, requestNotificationPermission } from '../../utils/notifications';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
 import styles from '../../styles/settings.styles';
 
@@ -19,7 +19,7 @@ export default function SettingsScreen() {
   const { currency, setCurrency, availableCurrencies, format } = useCurrency();
   const [isCurrencyPickerVisible, setIsCurrencyPickerVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [syncEnabled, setSyncEnabled] = useState(true);
+  const [syncEnabled, setSyncEnabled] = useState(false);
   const [exportFormat, setExportFormat] = useState('CSV');
   const [syncTime, setSyncTime] = useState({ hours: 23, minutes: 0 });
   const [isTimePickerVisible, setIsTimePickerVisible] = useState(false);
@@ -145,8 +145,19 @@ export default function SettingsScreen() {
       try {
         const savedEnabled = await AsyncStorage.getItem('notifications_enabled');
         const savedTime = await AsyncStorage.getItem('notifications_time');
+        
+        let isActuallyEnabled = savedEnabled !== null ? JSON.parse(savedEnabled) : false;
 
-        if (savedEnabled !== null) setSyncEnabled(JSON.parse(savedEnabled));
+        // VERIFICARE REALĂ: Chiar dacă am salvat "true", verificăm dacă sistemul încă ne dă voie
+        if (isActuallyEnabled) {
+          const hasPermission = await checkNotificationPermission();
+          if (!hasPermission) {
+            isActuallyEnabled = false;
+            await AsyncStorage.setItem('notifications_enabled', JSON.stringify(false));
+          }
+        }
+
+        setSyncEnabled(isActuallyEnabled);
         if (savedTime !== null) setSyncTime(JSON.parse(savedTime));
       } catch (e) {
         console.error('Failed to load notification settings', e);
@@ -502,7 +513,27 @@ export default function SettingsScreen() {
             </View>
             <Switch
               value={syncEnabled}
-              onValueChange={setSyncEnabled}
+              onValueChange={async (newValue) => {
+                if (newValue) {
+                  // Încercăm să activăm
+                  const { granted, canAskAgain } = await requestNotificationPermission();
+                  if (granted) {
+                    setSyncEnabled(true);
+                  } else {
+                    setSyncEnabled(false);
+                    if (!canAskAgain) {
+                      showAlert(
+                        "Permissions Required", 
+                        "Notifications are blocked in system settings. Please enable them manually from your phone settings to receive reminders.", 
+                        "alert"
+                      );
+                    }
+                  }
+                } else {
+                  // Dezactivăm simplu
+                  setSyncEnabled(false);
+                }
+              }}
               trackColor={{ false: '#2C2C2E', true: '#3b82f6' }}
               thumbColor={syncEnabled ? '#FFFFFF' : '#f4f3f4'}
             />

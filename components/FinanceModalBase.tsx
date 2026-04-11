@@ -68,19 +68,21 @@ export function FinanceModalBase({
       visible={isVisible}
       onRequestClose={resetModal}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={resetModal}
-        >
-          <TouchableOpacity 
-            activeOpacity={1} 
-            style={[styles.modalContent, modalStep === 2 && { maxHeight: '80%' }]}
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            style={styles.keyboardAvoidingView}
           >
+            <TouchableOpacity
+              style={styles.contentWrapper}
+              activeOpacity={1}
+              onPress={resetModal}
+            >
+              <TouchableOpacity 
+                activeOpacity={1} 
+                style={[styles.modalContent, modalStep === 2 && { maxHeight: '80%' }]}
+              >
             {modalStep === 1 ? (
               <View>
                 <View style={styles.modalHeader}>
@@ -139,6 +141,7 @@ export function FinanceModalBase({
                 <ScrollView 
                    showsVerticalScrollIndicator={false}
                    keyboardShouldPersistTaps="handled"
+                   contentContainerStyle={{ paddingBottom: horizontalScale(40) }}
                 >
                   <View style={styles.pillContainer}>
                     <TouchableOpacity
@@ -157,17 +160,24 @@ export function FinanceModalBase({
                 </ScrollView>
               </View>
             )}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </KeyboardAvoidingView>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </View>
     </Modal>
   );
 }
 
 export const styles = StyleSheet.create({
   modalOverlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.85)',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  contentWrapper: {
+    flex: 1,
     justifyContent: 'center',
     paddingHorizontal: horizontalScale(24),
   },
@@ -281,7 +291,8 @@ export const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: horizontalScale(4) },
     shadowOpacity: 0.2,
     shadowRadius: moderateScale(10),
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
   },
   primaryButtonText: {
     fontSize: moderateScale(16),
@@ -321,9 +332,10 @@ export const styles = StyleSheet.create({
     opacity: 1,
     shadowColor: '#FFFFFF',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.3,
     shadowRadius: moderateScale(15),
-    elevation: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   typeLabel: {
     fontSize: moderateScale(14),

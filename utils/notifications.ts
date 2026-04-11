@@ -21,9 +21,14 @@ export function setupNotifications() {
 }
 
 
-export async function requestNotificationPermission(): Promise<boolean> {
-    const { status } = await Notifications.requestPermissionsAsync();
+export async function checkNotificationPermission(): Promise<boolean> {
+    const { status } = await Notifications.getPermissionsAsync();
     return status === 'granted';
+}
+
+export async function requestNotificationPermission(): Promise<{ granted: boolean, canAskAgain: boolean }> {
+    const { status, canAskAgain } = await Notifications.requestPermissionsAsync();
+    return { granted: status === 'granted', canAskAgain };
 }
 
 
@@ -67,8 +72,9 @@ export async function updateNotification(
 
     if (!enabled) return;
 
-    const granted = await requestNotificationPermission();
-    if (!granted) return;
+    const { granted } = await requestNotificationPermission();
+    if (!granted) return false; // Return status to the caller
 
     await scheduleDailyNotification(hour, minute);
+    return true;
 }
