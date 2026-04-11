@@ -1,7 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Delete, Pencil, X } from "lucide-react-native";
 import React, { ReactNode, useState } from "react";
-import { Modal, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform, ScrollView, Keyboard } from "react-native";
+import { Modal, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { BlurView } from "expo-blur";
 import { useCurrency } from "../context/CurrencyContext";
 import { horizontalScale, moderateScale } from "../utils/scaling";
 
@@ -22,24 +23,7 @@ export function FinanceModalBase({
 }: FinanceModalBaseProps) {
   const [modalStep, setModalStep] = useState<1 | 2>(1);
   const [amount, setAmount] = useState('0');
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const { currency, getSymbol } = useCurrency();
-
-  React.useEffect(() => {
-    const showSubscription = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
-    );
-    const hideSubscription = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardVisible(false)
-    );
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
 
   const handleKeyPress = (val: string) => {
     if (val === '.') {
@@ -86,16 +70,14 @@ export function FinanceModalBase({
       onRequestClose={resetModal}
     >
         <View style={styles.modalOverlay}>
+          <BlurView intensity={10} tint="dark" style={StyleSheet.absoluteFill} />
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? horizontalScale(20) : 0}
             style={styles.keyboardAvoidingView}
           >
             <TouchableOpacity
-              style={[
-                styles.contentWrapper,
-                isKeyboardVisible && { justifyContent: 'flex-end', paddingBottom: horizontalScale(20) }
-              ]}
+              style={styles.contentWrapper}
               activeOpacity={1}
               onPress={resetModal}
             >
@@ -191,7 +173,7 @@ export function FinanceModalBase({
 export const styles = StyleSheet.create({
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.85)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -206,8 +188,10 @@ export const styles = StyleSheet.create({
     borderRadius: moderateScale(32),
     paddingHorizontal: horizontalScale(20),
     paddingTop: horizontalScale(24),
+    paddingBottom: horizontalScale(20),
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
+    maxHeight: '100%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -265,7 +249,7 @@ export const styles = StyleSheet.create({
   },
   keypadButton: {
     width: '31%',
-    height: horizontalScale(50),
+    height: horizontalScale(55),
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#26282E',
@@ -395,9 +379,9 @@ export const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   step1Container: {
-    paddingBottom: horizontalScale(30),
+    paddingBottom: horizontalScale(8),
   },
   step2Container: {
-    paddingBottom: horizontalScale(12),
+    paddingBottom: horizontalScale(1),
   }
 });
