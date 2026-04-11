@@ -1,8 +1,8 @@
+import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Delete, Pencil, X } from "lucide-react-native";
 import React, { ReactNode, useState } from "react";
-import { Modal, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
-import { BlurView } from "expo-blur";
+import { Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useCurrency } from "../context/CurrencyContext";
 import { horizontalScale, moderateScale } from "../utils/scaling";
 
@@ -23,11 +23,31 @@ export function FinanceModalBase({
 }: FinanceModalBaseProps) {
   const [modalStep, setModalStep] = useState<1 | 2>(1);
   const [amount, setAmount] = useState('0');
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const { currency, getSymbol } = useCurrency();
 
+  React.useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
   const handleKeyPress = (val: string) => {
+    const digitCount = amount.replace('.', '').length;
+
     if (val === '.') {
       if (amount.includes('.')) return;
+      if (digitCount >= 10) return;
       setAmount(amount + '.');
     } else if (val === 'delete') {
       if (amount.length <= 1) {
@@ -36,6 +56,7 @@ export function FinanceModalBase({
         setAmount(amount.slice(0, -1));
       }
     } else {
+      if (digitCount >= 10) return;
       if (amount === '0') {
         setAmount(val);
       } else {
@@ -64,108 +85,115 @@ export function FinanceModalBase({
 
   return (
     <Modal
-      animationType="fade"
       transparent={true}
       visible={isVisible}
       onRequestClose={resetModal}
     >
-        <View style={styles.modalOverlay}>
-          <BlurView intensity={10} tint="dark" style={StyleSheet.absoluteFill} experimentalBlurMethod="none" />
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? horizontalScale(20) : 0}
-            style={styles.keyboardAvoidingView}
+      <View style={styles.modalOverlay}>
+        <BlurView
+          intensity={20}
+          tint="dark"
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+          style={styles.keyboardAvoidingView}
+        >
+          <TouchableOpacity
+            style={[
+              styles.contentWrapper,
+              isKeyboardVisible && { justifyContent: 'flex-end', paddingBottom: horizontalScale(20) }
+            ]}
+            activeOpacity={1}
+            onPress={resetModal}
           >
             <TouchableOpacity
-              style={styles.contentWrapper}
               activeOpacity={1}
-              onPress={resetModal}
+              style={styles.modalContent}
             >
-              <TouchableOpacity 
-                activeOpacity={1} 
-                style={styles.modalContent}
-              >
-            {modalStep === 1 ? (
-              <View style={styles.step1Container}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>{titleStep1}</Text>
-                  <TouchableOpacity onPress={resetModal}>
-                    <X color="rgba(255,255,255,0.4)" size={24} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.amountDisplay}>
-                  <View style={styles.amountRow}>
-                    <Text style={[styles.currencySymbol, getSymbol().length > 1 && { fontSize: moderateScale(22) }]}>{getSymbol()}</Text>
-                    <Text 
-                      style={styles.amountText}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit={true}
-                      minimumFontScale={0.5}
-                    >
-                      {Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </Text>
-                  </View>
-                </View>
-
-
-                <View style={styles.dividerContainer}>
-                  <LinearGradient
-                    colors={['transparent', '#3b82f6', 'transparent']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.fadedLine}
-                  />
-                </View>
-
-                <View style={styles.keypadGrid}>
-                  {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'delete'].map((key) =>
-                    renderKeypadButton(key, key === 'delete' ? <Delete color="rgba(255,255,255,0.8)" size={moderateScale(28)} /> : undefined)
-                  )}
-                </View>
-
-                <TouchableOpacity
-                  style={styles.primaryButton}
-                  onPress={() => setModalStep(2)}
-                >
-                  <Text style={styles.primaryButtonText}>CONTINUE</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.step2Container}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>{titleStep2}</Text>
-                  <TouchableOpacity onPress={resetModal}>
-                    <X color="rgba(255,255,255,0.4)" size={24} />
-                  </TouchableOpacity>
-                </View>
-
-                <ScrollView 
-                   showsVerticalScrollIndicator={false}
-                   keyboardShouldPersistTaps="handled"
-                   contentContainerStyle={{ paddingBottom: horizontalScale(15) }}
-                >
-                  <View style={styles.pillContainer}>
-                    <TouchableOpacity
-                      style={styles.amountPill}
-                      onPress={() => setModalStep(1)}
-                    >
-                      <Text style={styles.amountPillText}>
-                        {getSymbol()} {Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </Text>
-                      <View style={styles.pillDivider} />
-                      <Pencil color="#3b82f6" size={moderateScale(25)} strokeWidth={2.5} />
+              {modalStep === 1 ? (
+                <View style={styles.step1Container}>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>{titleStep1}</Text>
+                    <TouchableOpacity onPress={resetModal}>
+                      <X color="rgba(255,255,255,0.4)" size={24} />
                     </TouchableOpacity>
                   </View>
 
-                  {renderStep2(amount, resetModal)}
-                </ScrollView>
-              </View>
-            )}
-              </TouchableOpacity>
+                  <View style={styles.amountDisplay}>
+                    <View style={styles.amountRow}>
+                      <Text style={[styles.currencySymbol, getSymbol().length > 1 && { fontSize: moderateScale(22) }]}>{getSymbol()}</Text>
+                      <Text
+                        style={styles.amountText}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit={true}
+                        minimumFontScale={0.5}
+                      >
+                        {Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Text>
+                    </View>
+                  </View>
+
+
+                  <View style={styles.dividerContainer}>
+                    <LinearGradient
+                      colors={['transparent', '#3b82f6', 'transparent']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.fadedLine}
+                    />
+                  </View>
+
+                  <View style={styles.keypadGrid}>
+                    {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'delete'].map((key) =>
+                      renderKeypadButton(key, key === 'delete' ? <Delete color="rgba(255,255,255,0.8)" size={moderateScale(28)} /> : undefined)
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.primaryButton}
+                    onPress={() => setModalStep(2)}
+                  >
+                    <Text style={styles.primaryButtonText}>CONTINUE</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.step2Container}>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>{titleStep2}</Text>
+                    <TouchableOpacity onPress={resetModal}>
+                      <X color="rgba(255,255,255,0.4)" size={24} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={{ paddingBottom: horizontalScale(15) }}
+                  >
+                    <View style={styles.pillContainer}>
+                      <TouchableOpacity
+                        style={styles.amountPill}
+                        onPress={() => setModalStep(1)}
+                      >
+                        <Text style={styles.amountPillText}>
+                          {getSymbol()} {Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Text>
+                        <View style={styles.pillDivider} />
+                        <Pencil color="#3b82f6" size={moderateScale(25)} strokeWidth={2.5} />
+                      </TouchableOpacity>
+                    </View>
+
+                    {renderStep2(amount, resetModal)}
+                  </ScrollView>
+                </View>
+              )}
             </TouchableOpacity>
-          </KeyboardAvoidingView>
-        </View>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -173,7 +201,7 @@ export function FinanceModalBase({
 export const styles = StyleSheet.create({
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -188,10 +216,8 @@ export const styles = StyleSheet.create({
     borderRadius: moderateScale(32),
     paddingHorizontal: horizontalScale(20),
     paddingTop: horizontalScale(24),
-    paddingBottom: horizontalScale(20),
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
-    maxHeight: '100%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -205,7 +231,7 @@ export const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     letterSpacing: 1.5,
   },
-   amountDisplay: {
+  amountDisplay: {
     marginBottom: horizontalScale(8),
     width: '100%',
     alignItems: 'center',
@@ -249,7 +275,7 @@ export const styles = StyleSheet.create({
   },
   keypadButton: {
     width: '31%',
-    height: horizontalScale(55),
+    height: horizontalScale(50),
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#26282E',
@@ -379,9 +405,9 @@ export const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   step1Container: {
-    paddingBottom: horizontalScale(8),
+    paddingBottom: horizontalScale(30),
   },
   step2Container: {
-    paddingBottom: horizontalScale(1),
+    paddingBottom: horizontalScale(12),
   }
 });

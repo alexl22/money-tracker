@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   },
   toggleContainer: {
     height: horizontalScale(60),
-    backgroundColor: 'rgba(28, 29, 31, 0.8)',
+    backgroundColor: '#1C1D1F',
     borderRadius: moderateScale(9999),
     flexDirection: 'row',
     padding: horizontalScale(6),
@@ -117,9 +117,9 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(9999),
     shadowColor: '#3b82f6',
     shadowOffset: { width: 0, height: horizontalScale(4) },
-    shadowOpacity: 0.5,
-    shadowRadius: moderateScale(10),
-    elevation: 8,
+    shadowOpacity: 0.8,
+    shadowRadius: moderateScale(15),
+    elevation: 12,
   },
   toggleTab: {
     flex: 1,
@@ -129,7 +129,6 @@ const styles = StyleSheet.create({
   toggleText: {
     fontSize: moderateScale(14),
     color: 'rgba(255,255,255,0.4)',
-    fontWeight: 'bold',
     fontFamily: 'Manrope_700Bold',
   },
   toggleTextActive: {
