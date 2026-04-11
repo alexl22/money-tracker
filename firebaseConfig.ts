@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 
 // Configuration constants
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  apiKey: "AIzaSyBNyzssEirRuA3EmBUDlqyJP0CuyXGeRZk",
   authDomain: "money-tracker-81507.firebaseapp.com",
   projectId: "money-tracker-81507",
   storageBucket: "money-tracker-81507.firebasestorage.app",
@@ -27,7 +27,7 @@ if (Platform.OS === 'web') {
   // Safe way to load native Firebase modules
   const firebaseAuth = require('@react-native-firebase/auth');
   const firebaseFirestore = require('@react-native-firebase/firestore');
-  
+
   // RN Firebase modules export a function as default
   auth = firebaseAuth.default ? firebaseAuth.default() : firebaseAuth();
   db = firebaseFirestore.default ? firebaseFirestore.default() : firebaseFirestore();
@@ -77,7 +77,7 @@ export const signOutUser = async () => {
 export const updateUserPassword = async (newPassword: any) => {
   const user = auth.currentUser;
   if (!user) throw new Error("No user logged in");
-  
+
   if (Platform.OS === 'web') {
     const { updatePassword } = require("firebase/auth");
     return await updatePassword(user, newPassword);
@@ -90,6 +90,15 @@ export const deleteUserAccount = async () => {
   const user = auth.currentUser;
   if (!user) throw new Error("No user logged in");
   return await user.delete();
+};
+
+export const sendPasswordReset = async (email: string) => {
+  if (Platform.OS === 'web') {
+    const { sendPasswordResetEmail } = require("firebase/auth");
+    return await sendPasswordResetEmail(auth, email);
+  } else {
+    return await auth.sendPasswordResetEmail(email);
+  }
 };
 
 export const onAuthChanged = (callback: any) => {

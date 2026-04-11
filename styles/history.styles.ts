@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { horizontalScale, moderateScale } from '../../../utils/scaling';
+import { horizontalScale, moderateScale } from '../utils/scaling';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0b0c14ff' },

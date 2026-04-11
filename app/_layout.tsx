@@ -15,13 +15,13 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
-import { onAuthChanged } from '../firebaseConfig';
 import { AlertProvider } from '../context/AlertContext';
 import { CurrencyProvider } from '../context/CurrencyContext';
+import { onAuthChanged } from '../firebaseConfig';
 import { setupNotifications } from '../utils/notifications';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.

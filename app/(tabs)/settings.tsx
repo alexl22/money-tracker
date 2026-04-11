@@ -13,7 +13,7 @@ import { auth, db, deleteUserAccount as helperDeleteAccount, updateUserPassword 
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { updateNotification } from '../../utils/notifications';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
-import styles from './_styles/settings.styles';
+import styles from '../../styles/settings.styles';
 
 export default function SettingsScreen() {
   const { currency, setCurrency, availableCurrencies, format } = useCurrency();

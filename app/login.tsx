@@ -3,8 +3,8 @@ import { useRouter } from 'expo-router';
 import { Eye, EyeOff, Lock, LogIn, Mail, UserPlus } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { signIn } from '../firebaseConfig';
 import { useAlert } from '../context/AlertContext';
+import { sendPasswordReset, signIn } from '../firebaseConfig';
 const BLUE = '#4A8AF4';
 const BG = '#101010';
 const INPUT_BG = '#1A1A1A';
@@ -28,7 +28,24 @@ export default function LoginScreen() {
       router.push('/(tabs)/home');
     } catch (error: any) {
       console.error(error);
-      showAlert("Login Error", error.message || "We couldn't sign you in. Please check your credentials.", "alert");
+      showAlert("Login Error", "We couldn't sign you in. Please check your credentials.", "alert");
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      showAlert("Email Required", "Please enter your email address to receive a password reset link.", "alert");
+      return;
+    }
+
+    const cleanEmail = email.trim();
+
+    try {
+      await sendPasswordReset(cleanEmail);
+      showAlert("Email Sent", "If an account exists with that email, a password reset link has been sent.", "success");
+    } catch (error: any) {
+      console.error(error);
+      showAlert("Error", `[${error.code || 'unknown'}] ${error.message || "Something went wrong. Please try again later."}`, "alert");
     }
   };
 
@@ -64,7 +81,7 @@ export default function LoginScreen() {
               <View style={styles.fieldWrapper}>
                 <View style={styles.passwordLabelRow}>
                   <Text style={styles.label}>PASSWORD</Text>
-                  <TouchableOpacity>
+                  <TouchableOpacity onPress={handleForgotPassword}>
                     <Text style={styles.forgotText}>FORGOT PASSWORD?</Text>
                   </TouchableOpacity>
                 </View>

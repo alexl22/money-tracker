@@ -7,7 +7,7 @@ import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
 import { auth, db } from '../../firebaseConfig';
-import styles from './_styles/historystyles';
+import styles from '../../styles/history.styles';
 
 interface TransactionItem {
   id: string;
