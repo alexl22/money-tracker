@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Delete, Pencil, X } from "lucide-react-native";
 import React, { ReactNode, useState } from "react";
-import { Modal, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { Modal, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform, ScrollView, Keyboard } from "react-native";
 import { useCurrency } from "../context/CurrencyContext";
 import { horizontalScale, moderateScale } from "../utils/scaling";
 
@@ -22,7 +22,24 @@ export function FinanceModalBase({
 }: FinanceModalBaseProps) {
   const [modalStep, setModalStep] = useState<1 | 2>(1);
   const [amount, setAmount] = useState('0');
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const { currency, getSymbol } = useCurrency();
+
+  React.useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const handleKeyPress = (val: string) => {
     if (val === '.') {
@@ -71,11 +88,14 @@ export function FinanceModalBase({
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 80}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             style={styles.keyboardAvoidingView}
           >
             <TouchableOpacity
-              style={styles.contentWrapper}
+              style={[
+                styles.contentWrapper,
+                isKeyboardVisible && { justifyContent: 'flex-end', paddingBottom: horizontalScale(20) }
+              ]}
               activeOpacity={1}
               onPress={resetModal}
             >
@@ -245,7 +265,7 @@ export const styles = StyleSheet.create({
   },
   keypadButton: {
     width: '31%',
-    height: horizontalScale(44),
+    height: horizontalScale(50),
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#26282E',
