@@ -70,8 +70,8 @@ export function FinanceModalBase({
     >
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 40}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 80}
             style={styles.keyboardAvoidingView}
           >
             <TouchableOpacity
@@ -84,7 +84,7 @@ export function FinanceModalBase({
                 style={styles.modalContent}
               >
             {modalStep === 1 ? (
-              <View>
+              <View style={styles.step1Container}>
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>{titleStep1}</Text>
                   <TouchableOpacity onPress={resetModal}>
@@ -130,7 +130,7 @@ export function FinanceModalBase({
                 </TouchableOpacity>
               </View>
             ) : (
-              <View>
+              <View style={styles.step2Container}>
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>{titleStep2}</Text>
                   <TouchableOpacity onPress={resetModal}>
@@ -141,7 +141,7 @@ export function FinanceModalBase({
                 <ScrollView 
                    showsVerticalScrollIndicator={false}
                    keyboardShouldPersistTaps="handled"
-                   contentContainerStyle={{ paddingBottom: horizontalScale(150) }}
+                   contentContainerStyle={{ paddingBottom: horizontalScale(15) }}
                 >
                   <View style={styles.pillContainer}>
                     <TouchableOpacity
@@ -183,10 +183,9 @@ export const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: '#1C1D21',
-    borderRadius: moderateScale(36),
-    paddingHorizontal: horizontalScale(24),
+    borderRadius: moderateScale(32),
+    paddingHorizontal: horizontalScale(20),
     paddingTop: horizontalScale(24),
-    paddingBottom: horizontalScale(24),
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
   },
@@ -230,7 +229,7 @@ export const styles = StyleSheet.create({
   dividerContainer: {
     height: horizontalScale(3),
     width: '100%',
-    marginBottom: horizontalScale(25),
+    marginBottom: horizontalScale(15),
     justifyContent: 'center',
   },
   fadedLine: {
@@ -246,12 +245,12 @@ export const styles = StyleSheet.create({
   },
   keypadButton: {
     width: '31%',
-    height: horizontalScale(50),
+    height: horizontalScale(44),
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#26282E',
     borderRadius: moderateScale(50),
-    marginBottom: horizontalScale(15),
+    marginBottom: horizontalScale(10),
   },
   keypadButtonText: {
     fontSize: moderateScale(24),
@@ -374,5 +373,11 @@ export const styles = StyleSheet.create({
   textArea: {
     minHeight: horizontalScale(60),
     textAlignVertical: 'top',
+  },
+  step1Container: {
+    paddingBottom: horizontalScale(30),
+  },
+  step2Container: {
+    paddingBottom: horizontalScale(12),
   }
 });
