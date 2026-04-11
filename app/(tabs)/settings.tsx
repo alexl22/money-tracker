@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeOff, Lock, Mail, RefreshCcw, Search, Shield, Trash2, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Platform, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Platform, Switch, Text, TextInput, TouchableOpacity, View, Linking } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { TimePickerModal } from '../../components/TimePickerModal';
 import { useAlert } from '../../context/AlertContext';
@@ -168,20 +168,7 @@ export default function SettingsScreen() {
     return () => unsubscribe();
   }, []);
 
-  // Save and Update Notifications
-  useEffect(() => {
-    const persistAndSchedule = async () => {
-      try {
-        await AsyncStorage.setItem('notifications_enabled', JSON.stringify(syncEnabled));
-        await AsyncStorage.setItem('notifications_time', JSON.stringify(syncTime));
 
-        await updateNotification(syncEnabled, syncTime.hours, syncTime.minutes);
-      } catch (e) {
-        console.error('Failed to update notifications', e);
-      }
-    };
-    persistAndSchedule();
-  }, [syncEnabled, syncTime]);
 
 
   const formatTime = (h: number, m: number) => {
@@ -247,9 +234,20 @@ export default function SettingsScreen() {
     c.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSaveTime = () => {
-    setSyncTime({ hours: tempHours, minutes: tempMinutes });
+  const handleSaveTime = async () => {
+    const newTime = { hours: tempHours, minutes: tempMinutes };
+    setSyncTime(newTime);
     setIsTimePickerVisible(false);
+    
+    // Salvăm și programăm imediat
+    try {
+      await AsyncStorage.setItem('notifications_time', JSON.stringify(newTime));
+      if (syncEnabled) {
+        await updateNotification(true, newTime.hours, newTime.minutes);
+      }
+    } catch (e) {
+      console.error("Failed to save notification time", e);
+    }
   };
 
   const handleClearTransactions = () => {
@@ -514,24 +512,39 @@ export default function SettingsScreen() {
             <Switch
               value={syncEnabled}
               onValueChange={async (newValue) => {
-                if (newValue) {
-                  // Încercăm să activăm
-                  const { granted, canAskAgain } = await requestNotificationPermission();
-                  if (granted) {
-                    setSyncEnabled(true);
-                  } else {
-                    setSyncEnabled(false);
-                    if (!canAskAgain) {
-                      showAlert(
-                        "Permissions Required", 
-                        "Notifications are blocked in system settings. Please enable them manually from your phone settings to receive reminders.", 
-                        "alert"
-                      );
+                // 1. Mutăm butonul INSTANTANEU pentru animație smooth
+                setSyncEnabled(newValue);
+                
+                try {
+                  if (newValue) {
+                    // Cerem permisiunea
+                    const { granted, canAskAgain } = await requestNotificationPermission();
+                    if (granted) {
+                      // Salvăm și programăm notificarea
+                      await AsyncStorage.setItem('notifications_enabled', JSON.stringify(true));
+                      await updateNotification(true, syncTime.hours, syncTime.minutes);
+                    } else {
+                      // Dacă n-avem voie, sărim înapoi pe OFF
+                      setSyncEnabled(false);
+                      await AsyncStorage.setItem('notifications_enabled', JSON.stringify(false));
+                      
+                      if (!canAskAgain) {
+                        showAlert(
+                          "Permissions Required", 
+                          "Notifications are blocked in system settings. Tap 'Confirm' to open settings and enable them manually.", 
+                          "alert",
+                          () => Linking.openSettings(),
+                          true
+                        );
+                      }
                     }
+                  } else {
+                    // Oprim totul
+                    await AsyncStorage.setItem('notifications_enabled', JSON.stringify(false));
+                    await updateNotification(false, 0, 0);
                   }
-                } else {
-                  // Dezactivăm simplu
-                  setSyncEnabled(false);
+                } catch (e) {
+                  console.error("Notification toggle failed", e);
                 }
               }}
               trackColor={{ false: '#2C2C2E', true: '#3b82f6' }}

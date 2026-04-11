@@ -11,6 +11,7 @@ interface FinanceModalBaseProps {
   titleStep1: string;
   titleStep2: string;
   renderStep2: (amount: string, resetModal: () => void) => ReactNode;
+  renderFooter?: (amount: string, resetModal: () => void) => ReactNode;
 }
 
 export function FinanceModalBase({
@@ -18,7 +19,8 @@ export function FinanceModalBase({
   onClose,
   titleStep1,
   titleStep2,
-  renderStep2
+  renderStep2,
+  renderFooter
 }: FinanceModalBaseProps) {
   const [modalStep, setModalStep] = useState<1 | 2>(1);
   const [amount, setAmount] = useState('0');
@@ -70,8 +72,8 @@ export function FinanceModalBase({
     >
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 40}
             style={styles.keyboardAvoidingView}
           >
             <TouchableOpacity
@@ -81,7 +83,11 @@ export function FinanceModalBase({
             >
               <TouchableOpacity 
                 activeOpacity={1} 
-                style={[styles.modalContent, modalStep === 2 && { maxHeight: '80%' }]}
+                style={[
+                  styles.modalContent, 
+                  modalStep === 1 && { maxHeight: '90%' },
+                  modalStep === 2 && { maxHeight: '85%' }
+                ]}
               >
             {modalStep === 1 ? (
               <View>
@@ -141,7 +147,8 @@ export function FinanceModalBase({
                 <ScrollView 
                    showsVerticalScrollIndicator={false}
                    keyboardShouldPersistTaps="handled"
-                   contentContainerStyle={{ paddingBottom: horizontalScale(40) }}
+                   style={{ maxHeight: Platform.OS === 'ios' ? horizontalScale(400) : horizontalScale(350) }}
+                   contentContainerStyle={{ paddingBottom: horizontalScale(20) }}
                 >
                   <View style={styles.pillContainer}>
                     <TouchableOpacity
@@ -158,6 +165,13 @@ export function FinanceModalBase({
 
                   {renderStep2(amount, resetModal)}
                 </ScrollView>
+
+                {/* Fixed Footer Area */}
+                {renderFooter && (
+                  <View style={styles.fixedFooter}>
+                    {renderFooter(amount, resetModal)}
+                  </View>
+                )}
               </View>
             )}
               </TouchableOpacity>
@@ -184,10 +198,13 @@ export const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: '#1C1D21',
     borderRadius: moderateScale(36),
-    padding: horizontalScale(24),
-    paddingBottom: horizontalScale(32),
+    paddingHorizontal: horizontalScale(24),
+    paddingTop: horizontalScale(24),
+    paddingBottom: horizontalScale(28),
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
+    // Add margin to prevent the "slice" look at the bottom
+    marginVertical: horizontalScale(20),
   },
   modalHeader: {
     flexDirection: 'row',
@@ -373,5 +390,11 @@ export const styles = StyleSheet.create({
   textArea: {
     minHeight: horizontalScale(60),
     textAlignVertical: 'top',
+  },
+  fixedFooter: {
+    marginTop: horizontalScale(12),
+    paddingTop: horizontalScale(12),
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.03)',
   }
 });
