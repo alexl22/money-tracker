@@ -11,7 +11,6 @@ interface FinanceModalBaseProps {
   titleStep1: string;
   titleStep2: string;
   renderStep2: (amount: string, resetModal: () => void) => ReactNode;
-  renderFooter?: (amount: string, resetModal: () => void) => ReactNode;
 }
 
 export function FinanceModalBase({
@@ -19,8 +18,7 @@ export function FinanceModalBase({
   onClose,
   titleStep1,
   titleStep2,
-  renderStep2,
-  renderFooter
+  renderStep2
 }: FinanceModalBaseProps) {
   const [modalStep, setModalStep] = useState<1 | 2>(1);
   const [amount, setAmount] = useState('0');
@@ -83,11 +81,7 @@ export function FinanceModalBase({
             >
               <TouchableOpacity 
                 activeOpacity={1} 
-                style={[
-                  styles.modalContent, 
-                  modalStep === 1 && { maxHeight: '90%' },
-                  modalStep === 2 && { maxHeight: '85%' }
-                ]}
+                style={styles.modalContent}
               >
             {modalStep === 1 ? (
               <View>
@@ -147,8 +141,7 @@ export function FinanceModalBase({
                 <ScrollView 
                    showsVerticalScrollIndicator={false}
                    keyboardShouldPersistTaps="handled"
-                   style={{ maxHeight: Platform.OS === 'ios' ? horizontalScale(400) : horizontalScale(350) }}
-                   contentContainerStyle={{ paddingBottom: horizontalScale(20) }}
+                   contentContainerStyle={{ paddingBottom: horizontalScale(150) }}
                 >
                   <View style={styles.pillContainer}>
                     <TouchableOpacity
@@ -165,13 +158,6 @@ export function FinanceModalBase({
 
                   {renderStep2(amount, resetModal)}
                 </ScrollView>
-
-                {/* Fixed Footer Area */}
-                {renderFooter && (
-                  <View style={styles.fixedFooter}>
-                    {renderFooter(amount, resetModal)}
-                  </View>
-                )}
               </View>
             )}
               </TouchableOpacity>
@@ -200,11 +186,9 @@ export const styles = StyleSheet.create({
     borderRadius: moderateScale(36),
     paddingHorizontal: horizontalScale(24),
     paddingTop: horizontalScale(24),
-    paddingBottom: horizontalScale(28),
+    paddingBottom: horizontalScale(24),
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
-    // Add margin to prevent the "slice" look at the bottom
-    marginVertical: horizontalScale(20),
   },
   modalHeader: {
     flexDirection: 'row',
@@ -390,11 +374,5 @@ export const styles = StyleSheet.create({
   textArea: {
     minHeight: horizontalScale(60),
     textAlignVertical: 'top',
-  },
-  fixedFooter: {
-    marginTop: horizontalScale(12),
-    paddingTop: horizontalScale(12),
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.03)',
   }
 });

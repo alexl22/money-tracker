@@ -151,18 +151,16 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                         />
                     </View>
 
-                    </View>
-            )}
-            renderFooter={(amount, resetModal) => (
-                <TouchableOpacity
-                    style={[baseStyles.primaryButton, isSaving && { opacity: 0.7 }]}
-                    onPress={() => handleSave(amount, resetModal)}
-                    disabled={isSaving}
-                >
-                    <Text style={baseStyles.primaryButtonText}>
-                        {isSaving ? 'SAVING...' : 'FINALIZE'}
-                    </Text>
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[baseStyles.primaryButton, isSaving && { opacity: 0.7 }]}
+                        onPress={() => handleSave(amount, resetModal)}
+                        disabled={isSaving}
+                    >
+                        <Text style={baseStyles.primaryButtonText}>
+                            {isSaving ? 'SAVING...' : 'FINALIZE'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             )}
         />
     );

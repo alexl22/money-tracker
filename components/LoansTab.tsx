@@ -536,18 +536,16 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
             />
           </View>
 
-          </View>
-      )}
-      renderFooter={(amount, resetModal) => (
-        <TouchableOpacity
-          style={[baseStyles.primaryButton, isSaving && { opacity: 0.7 }]}
-          onPress={() => handleSave(amount, resetModal)}
-          disabled={isSaving}
-        >
-          <Text style={baseStyles.primaryButtonText}>
-            {isSaving ? 'SAVING...' : 'FINALIZE'}
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[baseStyles.primaryButton, isSaving && { opacity: 0.7 }]}
+            onPress={() => handleSave(amount, resetModal)}
+            disabled={isSaving}
+          >
+            <Text style={baseStyles.primaryButtonText}>
+              {isSaving ? 'SAVING...' : 'FINALIZE'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
     />
   );
