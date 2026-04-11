@@ -70,7 +70,7 @@ export function FinanceModalBase({
       onRequestClose={resetModal}
     >
         <View style={styles.modalOverlay}>
-          <BlurView intensity={10} tint="dark" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={10} tint="dark" style={StyleSheet.absoluteFill} experimentalBlurMethod="none" />
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? horizontalScale(20) : 0}

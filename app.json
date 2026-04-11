@@ -50,13 +50,7 @@
         }
       ],
       "@react-native-firebase/auth",
-      "expo-build-properties",
-      [
-        "expo-blur",
-        {
-          "experimentalBlurMethod": "none"
-        }
-      ]
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true,

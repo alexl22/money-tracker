@@ -55,7 +55,7 @@ export default function CustomAlert() {
           style={StyleSheet.absoluteFill}
         >
           <Pressable style={styles.backdrop} onPress={hideAlert}>
-            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} experimentalBlurMethod="none" />
           </Pressable>
         </Animated.View>
 
