@@ -1,6 +1,6 @@
 import { AlignLeft, TrendingUp, Type, Wallet } from "lucide-react-native";
 import { useState } from "react";
-import { Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { FinanceModalBase, styles as baseStyles } from "../../components/FinanceModalBase";
 import { useAlert } from "../../context/AlertContext";
 import { useCurrency } from "../../context/CurrencyContext";
@@ -20,16 +20,19 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
     const handleSave = async (amount: string, resetModal: () => void) => {
         const user = auth.currentUser;
         if (!user) {
-            showAlert("Authentication Required", "You must be logged in to save a transaction.", "alert");
+            if (Platform.OS === 'ios') Alert.alert("Authentication Required", "You must be logged in to save a transaction.");
+            else showAlert("Authentication Required", "You must be logged in to save a transaction.", "alert", undefined, false, true);
             return;
         }
 
         if (!transactionType) {
-            showAlert("Selection Required", "Please select whether this is an Income or an Expense.", "alert");
+            if (Platform.OS === 'ios') Alert.alert("Selection Required", "Please select whether this is an Income or an Expense.");
+            else showAlert("Selection Required", "Please select whether this is an Income or an Expense.", "alert", undefined, false, true);
             return;
         }
         if (amount === '0' || !amount) {
-            showAlert("Invalid Amount", "Please enter a valid amount for this transaction.", "alert");
+            if (Platform.OS === 'ios') Alert.alert("Invalid Amount", "Please enter a valid amount for this transaction.");
+            else showAlert("Invalid Amount", "Please enter a valid amount for this transaction.", "alert", undefined, false, true);
             return;
         }
         setIsSaving(true);
@@ -58,7 +61,11 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
         }
         catch (error: any) {
             console.error("Eroare la salvare!", error);
-            showAlert("Save Error", "We couldn't save your transaction. Please check your connection and try again.", "alert");
+            if (Platform.OS === 'ios') {
+                Alert.alert("Save Error", "We couldn't save your transaction.");
+            } else {
+                showAlert("Save Error", "We couldn't save your transaction. Please check your connection and try again.", "alert", undefined, false, true);
+            }
         }
         finally {
             setIsSaving(false);

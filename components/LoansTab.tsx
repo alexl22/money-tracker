@@ -1,7 +1,7 @@
 import { addDoc, and, collection, doc, onSnapshot, or, query, updateDoc, where, getDoc } from 'firebase/firestore';
 import { AlignLeft, CheckCircle2, Mail, Plus, TrendingUp, Type, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAlert } from '../context/AlertContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { auth, db } from '../firebaseConfig';
@@ -341,15 +341,18 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
     if (!user) return;
 
     if (!loanType) {
-      showAlert('Error', 'Please select the type of loan', 'alert');
+      if (Platform.OS === 'ios') Alert.alert('Error', 'Please select the type of loan');
+      else showAlert('Error', 'Please select the type of loan', 'alert');
       return;
     }
     if (amount === '0') {
-      showAlert('Error', 'Please enter an amount', 'alert');
+      if (Platform.OS === 'ios') Alert.alert('Error', 'Please enter an amount');
+      else showAlert('Error', 'Please enter an amount', 'alert');
       return;
     }
     if (!personName) {
-      showAlert('Error', 'Please enter the person name', 'alert');
+      if (Platform.OS === 'ios') Alert.alert('Error', 'Please enter the person name');
+      else showAlert('Error', 'Please enter the person name', 'alert');
       return;
     }
 

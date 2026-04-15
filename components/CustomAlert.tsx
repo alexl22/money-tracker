@@ -11,13 +11,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAlert } from '../context/AlertContext';
 import { horizontalScale, moderateScale } from '../utils/scaling';
+import { Platform } from 'react-native';
 
 
 const { width } = Dimensions.get('window');
 
 export default function CustomAlert() {
   const { alertState, hideAlert } = useAlert();
-  const { visible, title, message, type, onConfirm, showCancel } = alertState;
+  const { visible, title, message, type, onConfirm, showCancel, disableBlur } = alertState;
 
   const handleConfirm = () => {
     if (onConfirm) onConfirm();
@@ -55,7 +56,12 @@ export default function CustomAlert() {
           style={StyleSheet.absoluteFill}
         >
           <Pressable style={styles.backdrop} onPress={hideAlert}>
-            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} experimentalBlurMethod="none" />
+            <BlurView
+              intensity={Platform.OS === 'android' && disableBlur ? 0 : 10}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+              experimentalBlurMethod={Platform.OS === 'android' && disableBlur ? 'none' : 'dimezisBlurView'}
+            />
           </Pressable>
         </Animated.View>
 
@@ -127,7 +133,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
   },
   alertContainer: {
     width: width * 0.75,

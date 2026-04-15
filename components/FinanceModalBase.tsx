@@ -1,8 +1,7 @@
-import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Delete, Pencil, X } from "lucide-react-native";
 import React, { ReactNode, useState } from "react";
-import { Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useCurrency } from "../context/CurrencyContext";
 import { horizontalScale, moderateScale } from "../utils/scaling";
 
@@ -88,110 +87,107 @@ export function FinanceModalBase({
       transparent={true}
       visible={isVisible}
       onRequestClose={resetModal}
+      statusBarTranslucent={true}
+
     >
       <View style={styles.modalOverlay}>
-        <BlurView
-          intensity={20}
-          tint="dark"
-          experimentalBlurMethod="none"
-          style={StyleSheet.absoluteFill}
-        />
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
           style={styles.keyboardAvoidingView}
         >
-          <TouchableOpacity
-            style={[
-              styles.contentWrapper,
-              isKeyboardVisible && { justifyContent: 'flex-end', paddingBottom: Platform.OS === 'android' ? horizontalScale(80) : horizontalScale(20) }
-            ]}
-            activeOpacity={1}
-            onPress={resetModal}
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <TouchableOpacity
-              activeOpacity={1}
-              style={styles.modalContent}
+            <Pressable
+              style={[
+                styles.contentWrapper,
+                isKeyboardVisible && { justifyContent: 'center', paddingBottom: horizontalScale(500) }
+              ]}
+              onPress={isKeyboardVisible ? Keyboard.dismiss : resetModal}
             >
-              {modalStep === 1 ? (
-                <View style={styles.step1Container}>
-                  <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>{titleStep1}</Text>
-                    <TouchableOpacity onPress={resetModal}>
-                      <X color="rgba(255,255,255,0.4)" size={24} />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.amountDisplay}>
-                    <View style={styles.amountRow}>
-                      <Text style={[styles.currencySymbol, getSymbol().length > 1 && { fontSize: moderateScale(22) }]}>{getSymbol()}</Text>
-                      <Text
-                        style={styles.amountText}
-                        numberOfLines={1}
-                        adjustsFontSizeToFit={true}
-                        minimumFontScale={0.5}
-                      >
-                        {Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </Text>
-                    </View>
-                  </View>
-
-
-                  <View style={styles.dividerContainer}>
-                    <LinearGradient
-                      colors={['transparent', '#3b82f6', 'transparent']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.fadedLine}
-                    />
-                  </View>
-
-                  <View style={styles.keypadGrid}>
-                    {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'delete'].map((key) =>
-                      renderKeypadButton(key, key === 'delete' ? <Delete color="rgba(255,255,255,0.8)" size={moderateScale(28)} /> : undefined)
-                    )}
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.primaryButton}
-                    onPress={() => setModalStep(2)}
-                  >
-                    <Text style={styles.primaryButtonText}>CONTINUE</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.step2Container}>
-                  <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>{titleStep2}</Text>
-                    <TouchableOpacity onPress={resetModal}>
-                      <X color="rgba(255,255,255,0.4)" size={24} />
-                    </TouchableOpacity>
-                  </View>
-
-                  <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    contentContainerStyle={{ paddingBottom: horizontalScale(15) }}
-                  >
-                    <View style={styles.pillContainer}>
-                      <TouchableOpacity
-                        style={styles.amountPill}
-                        onPress={() => setModalStep(1)}
-                      >
-                        <Text style={styles.amountPillText} numberOfLines={1} adjustsFontSizeToFit={true} minimumFontScale={0.4}>
-                          {getSymbol()} {Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </Text>
-                        <View style={styles.pillDivider} />
-                        <Pencil color="#3b82f6" size={moderateScale(25)} strokeWidth={2.5} />
+              <Pressable
+                style={styles.modalContent}
+                onPress={Keyboard.dismiss}
+              >
+                {modalStep === 1 ? (
+                  <View style={styles.step1Container}>
+                    <View style={styles.modalHeader}>
+                      <Text style={styles.modalTitle}>{titleStep1}</Text>
+                      <TouchableOpacity onPress={resetModal}>
+                        <X color="rgba(255,255,255,0.4)" size={24} />
                       </TouchableOpacity>
                     </View>
 
-                    {renderStep2(amount, resetModal)}
-                  </ScrollView>
-                </View>
-              )}
-            </TouchableOpacity>
-          </TouchableOpacity>
+                    <View style={styles.amountDisplay}>
+                      <View style={styles.amountRow}>
+                        <Text style={[styles.currencySymbol, getSymbol().length > 1 && { fontSize: moderateScale(22) }]}>{getSymbol()}</Text>
+                        <Text
+                          style={styles.amountText}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit={true}
+                          minimumFontScale={0.5}
+                        >
+                          {Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Text>
+                      </View>
+                    </View>
+
+
+                    <View style={styles.dividerContainer}>
+                      <LinearGradient
+                        colors={['transparent', '#3b82f6', 'transparent']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.fadedLine}
+                      />
+                    </View>
+
+                    <View style={styles.keypadGrid}>
+                      {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'delete'].map((key) =>
+                        renderKeypadButton(key, key === 'delete' ? <Delete color="rgba(255,255,255,0.8)" size={moderateScale(28)} /> : undefined)
+                      )}
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.primaryButton}
+                      onPress={() => setModalStep(2)}
+                    >
+                      <Text style={styles.primaryButtonText}>CONTINUE</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.step2Container}>
+                    <View style={styles.modalHeader}>
+                      <Text style={styles.modalTitle}>{titleStep2}</Text>
+                      <TouchableOpacity onPress={resetModal}>
+                        <X color="rgba(255,255,255,0.4)" size={24} />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={{ paddingBottom: horizontalScale(15) }}>
+                      <View style={styles.pillContainer}>
+                        <TouchableOpacity
+                          style={styles.amountPill}
+                          onPress={() => setModalStep(1)}
+                        >
+                          <Text style={styles.amountPillText} numberOfLines={1} adjustsFontSizeToFit={true} minimumFontScale={0.4}>
+                            {getSymbol()} {Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </Text>
+                          <View style={styles.pillDivider} />
+                          <Pencil color="#3b82f6" size={moderateScale(25)} strokeWidth={2.5} />
+                        </TouchableOpacity>
+                      </View>
+
+                      {renderStep2(amount, resetModal)}
+                    </View>
+                  </View>
+                )}
+              </Pressable>
+            </Pressable>
+          </ScrollView>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -200,14 +196,14 @@ export function FinanceModalBase({
 
 export const styles = StyleSheet.create({
   modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
   },
   keyboardAvoidingView: {
     flex: 1,
   },
   contentWrapper: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: horizontalScale(24),
   },
@@ -405,6 +401,7 @@ export const styles = StyleSheet.create({
   textArea: {
     minHeight: horizontalScale(60),
     textAlignVertical: 'top',
+
   },
   step1Container: {
     paddingBottom: horizontalScale(30),

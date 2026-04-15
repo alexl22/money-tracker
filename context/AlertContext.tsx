@@ -9,6 +9,7 @@ interface AlertState {
   type: AlertType;
   onConfirm?: () => void;
   showCancel?: boolean;
+  disableBlur?: boolean;
 }
 
 interface AlertContextProps {
@@ -17,7 +18,8 @@ interface AlertContextProps {
     message: string, 
     type?: AlertType, 
     onConfirm?: () => void,
-    showCancel?: boolean
+    showCancel?: boolean,
+    disableBlur?: boolean
   ) => void;
   hideAlert: () => void;
   alertState: AlertState;
@@ -32,6 +34,7 @@ export const AlertProvider = ({ children }: { children: ReactNode }) => {
     message: '',
     type: 'alert',
     showCancel: false,
+    disableBlur: false,
   });
 
   const showAlert = (
@@ -39,9 +42,10 @@ export const AlertProvider = ({ children }: { children: ReactNode }) => {
     message: string, 
     type: AlertType = 'alert', 
     onConfirm?: () => void,
-    showCancel: boolean = false
+    showCancel: boolean = false,
+    disableBlur: boolean = false
   ) => {
-    setAlertState({ visible: true, title, message, type, onConfirm, showCancel });
+    setAlertState({ visible: true, title, message, type, onConfirm, showCancel, disableBlur });
   };
 
   const hideAlert = () => {
