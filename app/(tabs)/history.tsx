@@ -101,24 +101,16 @@ export default function HistoryScreen() {
 
     let unsubscribe: () => void;
 
-    if (Platform.OS === 'web') {
-      const { query, collection, where, onSnapshot } = require('firebase/firestore');
-      const q = query(
-        collection(db, "transactions"),
-        where("userId", "==", user.uid)
-      );
-      unsubscribe = onSnapshot(q, (snapshot: any) => {
-        handleSnapshot(snapshot);
-      });
-    } else {
-      unsubscribe = db.collection('transactions')
-        .where('userId', '==', user.uid)
-        .onSnapshot((snapshot: any) => {
-          handleSnapshot(snapshot);
-        }, (error: any) => {
-          console.error("Firestore Error:", error);
-        });
-    }
+    const { query, collection, where, onSnapshot } = require('firebase/firestore');
+    const q = query(
+      collection(db, "transactions"),
+      where("userId", "==", user.uid)
+    );
+    unsubscribe = onSnapshot(q, (snapshot: any) => {
+      handleSnapshot(snapshot);
+    }, (error: any) => {
+      console.error("Firestore Error:", error);
+    });
 
     function handleSnapshot(snapshot: any) {
       let grossIncome = 0;
@@ -252,12 +244,8 @@ export default function HistoryScreen() {
       'alert',
       async () => {
         try {
-          if (Platform.OS === 'web') {
-            const { doc, deleteDoc } = require('firebase/firestore');
-            await deleteDoc(doc(db, "transactions", transactionId));
-          } else {
-            await db.collection("transactions").doc(transactionId).delete();
-          }
+          const { doc, deleteDoc } = require('firebase/firestore');
+          await deleteDoc(doc(db, "transactions", transactionId));
         } catch (error) {
           console.error("Error deleting transaction: ", error);
           showAlert('Error', 'We could not delete the transaction. Please try again.', 'alert');

@@ -1,4 +1,16 @@
-import { Platform } from "react-native";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { 
+  getAuth, 
+  initializeAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  updatePassword,
+  sendPasswordResetEmail,
+  onAuthStateChanged
+} from "firebase/auth";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configuration constants
 const firebaseConfig = {
@@ -11,79 +23,50 @@ const firebaseConfig = {
   measurementId: "G-TCDLWB81ZW"
 };
 
-let auth: any;
-let db: any;
+// Initialize app only once
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize instances based on platform
-if (Platform.OS === 'web') {
-  const { initializeApp, getApps, getApp } = require("firebase/app");
-  const { getAuth } = require("firebase/auth");
-  const { getFirestore } = require("firebase/firestore");
-
-  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-  auth = getAuth(app);
-  db = getFirestore(app);
-} else {
-  // Safe way to load native Firebase modules
-  const firebaseAuth = require('@react-native-firebase/auth');
-  const firebaseFirestore = require('@react-native-firebase/firestore');
-
-  // RN Firebase modules export a function as default
-  auth = firebaseAuth.default ? firebaseAuth.default() : firebaseAuth();
-  db = firebaseFirestore.default ? firebaseFirestore.default() : firebaseFirestore();
-
-  // Handle settings safely
-  try {
-    const firestoreModule = firebaseFirestore.default || firebaseFirestore;
-    if (firestoreModule.CACHE_SIZE_UNLIMITED !== undefined) {
-      db.settings({
-        cacheSizeBytes: firestoreModule.CACHE_SIZE_UNLIMITED,
-      });
-    }
-  } catch (e) {
-    console.warn("Firestore settings error:", e);
+// Initialize Auth with secure persistence logic
+let auth: ReturnType<typeof getAuth>;
+try {
+  // Try to use AsyncStorage dynamically if available in the auth export
+  // @ts-ignore
+  const { getReactNativePersistence } = require('firebase/auth');
+  if (getReactNativePersistence) {
+    auth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage)
+    });
+  } else {
+    // Fallback to standard initialization
+    auth = initializeAuth(app);
   }
+} catch (error) {
+  auth = getAuth(app);
 }
+
+// Initialize Firestore with robust local caching enabled for offline support
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
 
 // -- Platform Agnostic Auth Helpers --
 
-export const signIn = async (email: any, password: any) => {
-  if (Platform.OS === 'web') {
-    const { signInWithEmailAndPassword } = require("firebase/auth");
-    return await signInWithEmailAndPassword(auth, email, password);
-  } else {
-    return await auth.signInWithEmailAndPassword(email, password);
-  }
+export const signIn = async (email: string, password: string) => {
+  return await signInWithEmailAndPassword(auth, email, password);
 };
 
-export const signUp = async (email: any, password: any) => {
-  if (Platform.OS === 'web') {
-    const { createUserWithEmailAndPassword } = require("firebase/auth");
-    return await createUserWithEmailAndPassword(auth, email, password);
-  } else {
-    return await auth.createUserWithEmailAndPassword(email, password);
-  }
+export const signUp = async (email: string, password: string) => {
+  return await createUserWithEmailAndPassword(auth, email, password);
 };
 
 export const signOutUser = async () => {
-  if (Platform.OS === 'web') {
-    const { signOut } = require("firebase/auth");
-    return await signOut(auth);
-  } else {
-    return await auth.signOut();
-  }
+  return await signOut(auth);
 };
 
-export const updateUserPassword = async (newPassword: any) => {
+export const updateUserPassword = async (newPassword: string) => {
   const user = auth.currentUser;
   if (!user) throw new Error("No user logged in");
-
-  if (Platform.OS === 'web') {
-    const { updatePassword } = require("firebase/auth");
-    return await updatePassword(user, newPassword);
-  } else {
-    return await user.updatePassword(newPassword);
-  }
+  return await updatePassword(user, newPassword);
 };
 
 export const deleteUserAccount = async () => {
@@ -93,21 +76,12 @@ export const deleteUserAccount = async () => {
 };
 
 export const sendPasswordReset = async (email: string) => {
-  if (Platform.OS === 'web') {
-    const { sendPasswordResetEmail } = require("firebase/auth");
-    return await sendPasswordResetEmail(auth, email);
-  } else {
-    return await auth.sendPasswordResetEmail(email);
-  }
+  return await sendPasswordResetEmail(auth, email);
 };
 
 export const onAuthChanged = (callback: any) => {
-  if (Platform.OS === 'web') {
-    const { onAuthStateChanged } = require('firebase/auth');
-    return onAuthStateChanged(auth, callback);
-  } else {
-    return auth.onAuthStateChanged(callback);
-  }
+  return onAuthStateChanged(auth, callback);
 };
 
 export { auth, db };
+

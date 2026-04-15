@@ -1,6 +1,6 @@
 import { Calendar, TrendingDown, TrendingUp, Trophy } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import { useAlert } from '../context/AlertContext';
 import { useCurrency } from '../context/CurrencyContext';
@@ -105,12 +105,8 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       };
 
       if (currentGoal) {
-        if (Platform.OS === 'web') {
           const { doc, updateDoc } = require('firebase/firestore');
           await updateDoc(doc(db, "goals", currentGoal.id), updateData);
-        } else {
-          await db.collection("goals").doc(currentGoal.id).update(updateData);
-        }
       } else {
         const newData = {
           userId: user.uid,
@@ -120,12 +116,8 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
           currency: currency,
           title: "My Saving Goal"
         };
-        if (Platform.OS === 'web') {
-          const { collection, addDoc } = require('firebase/firestore');
-          await addDoc(collection(db, "goals"), newData);
-        } else {
-          await db.collection("goals").add(newData);
-        }
+        const { collection, addDoc } = require('firebase/firestore');
+        await addDoc(collection(db, "goals"), newData);
       }
     } catch (error) {
       console.error("Error updating goal period:", error);
@@ -143,12 +135,8 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       };
 
       if (currentGoal) {
-        if (Platform.OS === 'web') {
-          const { doc, updateDoc } = require('firebase/firestore');
-          await updateDoc(doc(db, "goals", currentGoal.id), updateData);
-        } else {
-          await db.collection("goals").doc(currentGoal.id).update(updateData);
-        }
+        const { doc, updateDoc } = require('firebase/firestore');
+        await updateDoc(doc(db, "goals", currentGoal.id), updateData);
       } else {
         const start = new Date();
         start.setHours(0, 0, 0, 0);
@@ -164,12 +152,8 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
           title: "My Saving Goal"
         };
 
-        if (Platform.OS === 'web') {
-          const { collection, addDoc } = require('firebase/firestore');
-          await addDoc(collection(db, "goals"), newData);
-        } else {
-          await db.collection("goals").add(newData);
-        }
+        const { collection, addDoc } = require('firebase/firestore');
+        await addDoc(collection(db, "goals"), newData);
       }
     } catch (error) {
       console.error("Error updating goal target:", error);
@@ -179,12 +163,8 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
   const handleResetGoal = async () => {
     if (!currentGoal) return;
     try {
-      if (Platform.OS === 'web') {
-        const { doc, deleteDoc } = require('firebase/firestore');
-        await deleteDoc(doc(db, "goals", currentGoal.id));
-      } else {
-        await db.collection("goals").doc(currentGoal.id).delete();
-      }
+      const { doc, deleteDoc } = require('firebase/firestore');
+      await deleteDoc(doc(db, "goals", currentGoal.id));
       setCurrentGoal(null);
       setTotalProfit(0);
       setTodayProfit(0);
@@ -246,18 +226,12 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       setTodayProfit(todayInc - todayExp);
     };
 
-    if (Platform.OS === 'web') {
-      const { query, collection, where, onSnapshot } = require('firebase/firestore');
-      const q = query(
-        collection(db, "transactions"),
-        where("userId", "==", user.uid)
-      );
-      unsubscribe = onSnapshot(q, handleSnapshot);
-    } else {
-      unsubscribe = db.collection('transactions')
-        .where('userId', '==', user.uid)
-        .onSnapshot(handleSnapshot, (err: any) => console.error(err));
-    }
+    const { query, collection, where, onSnapshot } = require('firebase/firestore');
+    const q = query(
+      collection(db, "transactions"),
+      where("userId", "==", user.uid)
+    );
+    unsubscribe = onSnapshot(q, handleSnapshot);
 
     return () => unsubscribe && unsubscribe();
   }, [currentGoal?.startDate, currency, user]);
@@ -300,15 +274,9 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       }
     };
 
-    if (Platform.OS === 'web') {
-      const { query, collection, where, onSnapshot } = require('firebase/firestore');
-      const q = query(collection(db, "goals"), where("userId", "==", user.uid));
-      unsubscribe = onSnapshot(q, handleGoalSnapshot);
-    } else {
-      unsubscribe = db.collection('goals')
-        .where('userId', '==', user.uid)
-        .onSnapshot(handleGoalSnapshot, (err: any) => console.error(err));
-    }
+    const { query, collection, where, onSnapshot } = require('firebase/firestore');
+    const q = query(collection(db, "goals"), where("userId", "==", user.uid));
+    unsubscribe = onSnapshot(q, handleGoalSnapshot);
 
     return () => unsubscribe && unsubscribe();
   }, [user]);

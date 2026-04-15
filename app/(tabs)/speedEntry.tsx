@@ -46,14 +46,8 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                 createdAt: new Date()
             };
 
-            if (Platform.OS === 'web') {
-                const { addDoc, collection } = require('firebase/firestore');
-                await addDoc(collection(db, 'transactions'), transactionData);
-            } else {
-                // For native, we trust the local cache and don't await the promise
-                // to ensure the UI feels instant even when offline.
-                db.collection('transactions').add(transactionData).catch((e: any) => console.error(e));
-            }
+            const { addDoc, collection } = require('firebase/firestore');
+            await addDoc(collection(db, 'transactions'), transactionData);
 
             // Success cleanup
             setTransactionType(null);

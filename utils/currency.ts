@@ -21,23 +21,37 @@ export const getExchangeRates = async () => {
     }
 
     // 2. Dacă Cache Local lipsește/e expirat, verificăm Cache Global (Firestore)
+    let globalData: any = null;
     try {
       const globalRef = doc(db, "global_configs", "exchange_rates");
       const globalSnap = await getDoc(globalRef);
-
       if (globalSnap.exists()) {
-        const data = globalSnap.data();
-        const updatedAt = data.updatedAt?.toDate() || new Date(0);
+        globalData = globalSnap.data();
+      }
+
+      if (globalData) {
+        const rawUpdatedAt = globalData.updatedAt;
+        let updatedAtDate: Date;
+        
+        if (rawUpdatedAt && typeof rawUpdatedAt.toDate === 'function') {
+          updatedAtDate = rawUpdatedAt.toDate();
+        } else if (rawUpdatedAt instanceof Date) {
+          updatedAtDate = rawUpdatedAt;
+        } else if (rawUpdatedAt?.seconds) {
+           updatedAtDate = new Date(rawUpdatedAt.seconds * 1000);
+        } else {
+          updatedAtDate = new Date(0);
+        }
         
         // Dacă datele din Firestore sunt de astăzi (mai noi de 24h)
-        if (Date.now() - updatedAt.getTime() < CACHE_EXPIRY) {
+        if (Date.now() - updatedAtDate.getTime() < CACHE_EXPIRY) {
           console.log("Currency: Using Firestore Global Cache");
           // Updatează cache-ul local pentru acest user pentru a nu mai citi din Firestore data viitoare
           await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({
-            rates: data.rates,
+            rates: globalData.rates,
             timestamp: Date.now()
           }));
-          return data.rates;
+          return globalData.rates;
         }
       }
     } catch (firestoreError) {
@@ -48,6 +62,13 @@ export const getExchangeRates = async () => {
     // 3. Dacă nici Firestore nu are date proaspete, facem Fetch de la API Extern (limitat la 1500/lună)
     console.group("Currency Update Required");
     console.log("Currency: Fetching from External API...");
+    
+    if (!API_KEY) {
+      console.warn("Currency: API Key is missing. Check your .env file.");
+      if (globalData) return globalData.rates; // Fallback to stale firestore if API is unreachable
+      return null;
+    }
+
     const response = await fetch(BASE_URL);
     const apiData = await response.json();
 
@@ -77,6 +98,8 @@ export const getExchangeRates = async () => {
     }
     
     console.groupEnd();
+    // Dacă API-ul a eșuat, dar avem date din Firestore (fie ele și vechi), le folosim ca backup
+    if (globalData) return globalData.rates;
     return null;
   } catch (error) {
     console.error("Eroare la preluarea ratelor valutare:", error);
@@ -89,3 +112,4 @@ export const getExchangeRates = async () => {
     return null;
   }
 }
+

@@ -38,12 +38,8 @@ export default function RegisterScreen() {
       const user = userCredential.user;
 
       // Update Profile
-      if (Platform.OS === 'web') {
-        const { updateProfile } = require('firebase/auth');
-        await updateProfile(user, { displayName: name });
-      } else {
-        await user.updateProfile({ displayName: name });
-      }
+      const { updateProfile } = require('firebase/auth');
+      await updateProfile(user, { displayName: name });
 
       // Create user document in Firestore
       const userData = {
@@ -54,12 +50,8 @@ export default function RegisterScreen() {
         baseCurrency: ''
       };
 
-      if (Platform.OS === 'web') {
-        const { doc, setDoc } = require('firebase/firestore');
-        await setDoc(doc(db, 'users', user.uid), userData);
-      } else {
-        await db.collection('users').doc(user.uid).set(userData);
-      }
+      const { doc, setDoc } = require('firebase/firestore');
+      await setDoc(doc(db, 'users', user.uid), userData);
 
       router.push('/(tabs)/home');
     } catch (error: any) {

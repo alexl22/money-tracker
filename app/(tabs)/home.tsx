@@ -79,26 +79,16 @@ export default function DashboardScreen() {
 
     let unsubscribe: () => void;
 
-    if (Platform.OS === 'web') {
-      // JS SDK for Web
-      const { query, collection, where, onSnapshot } = require('firebase/firestore');
-      const q = query(
-        collection(db, 'transactions'),
-        where('userId', '==', user.uid)
-      );
-      unsubscribe = onSnapshot(q, (snapshot: any) => {
-        handleSnapshot(snapshot);
-      });
-    } else {
-      // Native SDK for Mobile
-      unsubscribe = db.collection('transactions')
-        .where('userId', '==', user.uid)
-        .onSnapshot((snapshot: any) => {
-          handleSnapshot(snapshot);
-        }, (error: any) => {
-          console.error("Firestore Error:", error);
-        });
-    }
+    const { query, collection, where, onSnapshot } = require('firebase/firestore');
+    const q = query(
+      collection(db, 'transactions'),
+      where('userId', '==', user.uid)
+    );
+    unsubscribe = onSnapshot(q, (snapshot: any) => {
+      handleSnapshot(snapshot);
+    }, (error: any) => {
+      console.error("Firestore Error:", error);
+    });
 
     function handleSnapshot(snapshot: any) {
       let currentTotalIncome = 0;

@@ -43,21 +43,13 @@ export default function SettingsScreen() {
 
     setIsExporting(true);
     try {
-      let snapshot: any;
-      if (Platform.OS === 'web') {
-        const { query, collection, where, orderBy, getDocs } = require('firebase/firestore');
-        const q = query(
-          collection(db, "transactions"),
-          where("userId", "==", auth.currentUser.uid),
-          orderBy("createdAt", "desc")
-        );
-        snapshot = await getDocs(q);
-      } else {
-        snapshot = await db.collection("transactions")
-          .where("userId", "==", auth.currentUser.uid)
-          .orderBy("createdAt", "desc")
-          .get();
-      }
+      const { query, collection, where, orderBy, getDocs } = require('firebase/firestore');
+      const q = query(
+        collection(db, "transactions"),
+        where("userId", "==", auth.currentUser.uid),
+        orderBy("createdAt", "desc")
+      );
+      const snapshot = await getDocs(q);
 
       const data = snapshot.docs.map((doc: any) => {
         const d = doc.data();
@@ -117,15 +109,10 @@ export default function SettingsScreen() {
 
       if (!user.displayName)
         try {
-          let userDoc: any;
-          if (Platform.OS === 'web') {
-            const { getDoc, doc } = require('firebase/firestore');
-            userDoc = await getDoc(doc(db, 'users', user.uid));
-          } else {
-            userDoc = await db.collection('users').doc(user.uid).get();
-          }
+          const { getDoc, doc } = require('firebase/firestore');
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
 
-          if (userDoc.exists || (userDoc.exists && typeof userDoc.exists === 'function' ? userDoc.exists() : userDoc.exists)) {
+          if (userDoc.exists()) {
             const data = userDoc.data();
             if (data.displayName) {
               setUserName(data.displayName);
@@ -259,18 +246,11 @@ export default function SettingsScreen() {
       "alert",
       async () => {
         try {
-          if (Platform.OS === 'web') {
-            const { query, collection, where, getDocs, doc, deleteDoc } = require('firebase/firestore');
-            const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
-            const snapshot = await getDocs(q);
-            for (const document of snapshot.docs) {
-              await deleteDoc(doc(db, 'transactions', document.id));
-            }
-          } else {
-            const snapshot = await db.collection('transactions').where('userId', '==', user.uid).get();
-            const batch = db.batch();
-            snapshot.docs.forEach((doc: any) => batch.delete(doc.ref));
-            await batch.commit();
+          const { query, collection, where, getDocs, doc, deleteDoc } = require('firebase/firestore');
+          const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
+          const snapshot = await getDocs(q);
+          for (const document of snapshot.docs) {
+            await deleteDoc(doc(db, 'transactions', document.id));
           }
           showAlert("Success", "All transactions have been deleted.", "success");
         } catch (error) {
@@ -290,18 +270,11 @@ export default function SettingsScreen() {
       "alert",
       async () => {
         try {
-          if (Platform.OS === 'web') {
-            const { query, collection, where, getDocs, doc, deleteDoc } = require('firebase/firestore');
-            const q = query(collection(db, 'loans'), where('userId', '==', user.uid));
-            const snapshot = await getDocs(q);
-            for (const document of snapshot.docs) {
-              await deleteDoc(doc(db, 'loans', document.id));
-            }
-          } else {
-            const snapshot = await db.collection('loans').where('userId', '==', user.uid).get();
-            const batch = db.batch();
-            snapshot.docs.forEach((doc: any) => batch.delete(doc.ref));
-            await batch.commit();
+          const { query, collection, where, getDocs, doc, deleteDoc } = require('firebase/firestore');
+          const q = query(collection(db, 'loans'), where('userId', '==', user.uid));
+          const snapshot = await getDocs(q);
+          for (const document of snapshot.docs) {
+            await deleteDoc(doc(db, 'loans', document.id));
           }
           showAlert("Success", "All loans have been deleted.", "success");
         } catch (error) {
@@ -322,33 +295,21 @@ export default function SettingsScreen() {
       "alert",
       async () => {
         try {
-          if (Platform.OS === 'web') {
-            const { query, collection, where, getDocs, doc, deleteDoc } = require('firebase/firestore');
-            // Delete Transactions
-            const txQ = query(collection(db, 'transactions'), where('userId', '==', user.uid));
-            const txS = await getDocs(txQ);
-            for (const d of txS.docs) await deleteDoc(doc(db, 'transactions', d.id));
-            // Delete Loans
-            const lQ = query(collection(db, 'loans'), where('userId', '==', user.uid));
-            const lS = await getDocs(lQ);
-            for (const d of lS.docs) await deleteDoc(doc(db, 'loans', d.id));
-            // Delete Goals
-            const gQ = query(collection(db, 'goals'), where('userId', '==', user.uid));
-            const gS = await getDocs(gQ);
-            for (const d of gS.docs) await deleteDoc(doc(db, 'goals', d.id));
-            // Delete User Doc
-            await deleteDoc(doc(db, "users", user.uid)).catch(() => { });
-          } else {
-            // Native deletion (using batches for efficiency)
-            const collections = ['transactions', 'loans', 'goals'];
-            for (const col of collections) {
-              const snap = await db.collection(col).where('userId', '==', user.uid).get();
-              const batch = db.batch();
-              snap.docs.forEach((doc: any) => batch.delete(doc.ref));
-              await batch.commit();
-            }
-            await db.collection("users").doc(user.uid).delete().catch(() => { });
-          }
+          const { query, collection, where, getDocs, doc, deleteDoc } = require('firebase/firestore');
+          // Delete Transactions
+          const txQ = query(collection(db, 'transactions'), where('userId', '==', user.uid));
+          const txS = await getDocs(txQ);
+          for (const d of txS.docs) await deleteDoc(doc(db, 'transactions', d.id));
+          // Delete Loans
+          const lQ = query(collection(db, 'loans'), where('userId', '==', user.uid));
+          const lS = await getDocs(lQ);
+          for (const d of lS.docs) await deleteDoc(doc(db, 'loans', d.id));
+          // Delete Goals
+          const gQ = query(collection(db, 'goals'), where('userId', '==', user.uid));
+          const gS = await getDocs(gQ);
+          for (const d of gS.docs) await deleteDoc(doc(db, 'goals', d.id));
+          // Delete User Doc
+          await deleteDoc(doc(db, "users", user.uid)).catch(() => { });
 
           // Delete Auth User
           await helperDeleteAccount();
