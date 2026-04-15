@@ -42,7 +42,7 @@ export default function LoginScreen() {
 
     try {
       await sendPasswordReset(cleanEmail);
-      showAlert("Email Sent", "If an account exists with that email, a password reset link has been sent.", "success");
+      showAlert("Email Sent", "If an account exists with that email, a password reset link has been sent. Please also check your Spam/Junk folder.", "success");
     } catch (error: any) {
       console.error(error);
       showAlert("Error", `[${error.code || 'unknown'}] ${error.message || "Something went wrong. Please try again later."}`, "alert");

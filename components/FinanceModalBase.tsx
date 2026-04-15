@@ -104,7 +104,7 @@ export function FinanceModalBase({
           <TouchableOpacity
             style={[
               styles.contentWrapper,
-              isKeyboardVisible && { justifyContent: 'flex-end', paddingBottom: horizontalScale(20) }
+              isKeyboardVisible && { justifyContent: 'flex-end', paddingBottom: Platform.OS === 'android' ? horizontalScale(80) : horizontalScale(20) }
             ]}
             activeOpacity={1}
             onPress={resetModal}
@@ -178,7 +178,7 @@ export function FinanceModalBase({
                         style={styles.amountPill}
                         onPress={() => setModalStep(1)}
                       >
-                        <Text style={styles.amountPillText}>
+                        <Text style={styles.amountPillText} numberOfLines={1} adjustsFontSizeToFit={true} minimumFontScale={0.4}>
                           {getSymbol()} {Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </Text>
                         <View style={styles.pillDivider} />
@@ -298,12 +298,14 @@ export const styles = StyleSheet.create({
     paddingHorizontal: horizontalScale(16),
     paddingVertical: horizontalScale(10),
     borderRadius: moderateScale(20),
-    gap: horizontalScale(12),
+    gap: horizontalScale(6),
+    maxWidth: '100%',
   },
   amountPillText: {
-    fontSize: moderateScale(25),
+    fontSize: moderateScale(30),
     fontFamily: 'Manrope_700Bold',
     color: '#34d399',
+    flexShrink: 1,
   },
   pillDivider: {
     width: 1,
