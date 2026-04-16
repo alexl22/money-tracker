@@ -215,7 +215,7 @@ export function LoansTab({ localColors }: LoansTabProps) {
       </View>
 
       <TouchableOpacity style={styles.addLoanButton} onPress={handleAddLoan}>
-        <Plus color={localColors.white} size={moderateScale(18)} strokeWidth={3} />
+        <Plus color={localColors.white} size={moderateScale(19)} strokeWidth={3} />
         <Text style={styles.addLoanText}>ADD NEW LOAN</Text>
       </TouchableOpacity>
 
@@ -342,17 +342,17 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
 
     if (!loanType) {
       if (Platform.OS === 'ios') Alert.alert('Error', 'Please select the type of loan');
-      else showAlert('Error', 'Please select the type of loan', 'alert');
+      else showAlert('Error', 'Please select the type of loan', 'alert', undefined, false, true);
       return;
     }
     if (amount === '0') {
       if (Platform.OS === 'ios') Alert.alert('Error', 'Please enter an amount');
-      else showAlert('Error', 'Please enter an amount', 'alert');
+      else showAlert('Error', 'Please enter an amount', 'alert', undefined, false, true);
       return;
     }
     if (!personName) {
       if (Platform.OS === 'ios') Alert.alert('Error', 'Please enter the person name');
-      else showAlert('Error', 'Please enter the person name', 'alert');
+      else showAlert('Error', 'Please enter the person name', 'alert', undefined, false, true);
       return;
     }
 
@@ -586,10 +586,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: horizontalScale(10),
-    paddingHorizontal: horizontalScale(20),
+    paddingVertical: horizontalScale(11),
+    paddingHorizontal: horizontalScale(21),
     borderRadius: moderateScale(9999),
-    gap: horizontalScale(8),
+    gap: horizontalScale(10),
     marginBottom: horizontalScale(24),
     alignSelf: 'center',
     shadowColor: '#3b82f6',
@@ -599,10 +599,11 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   addLoanText: {
-    fontSize: moderateScale(11),
+    fontSize: moderateScale(12),
     fontWeight: 'bold',
     color: '#FFFFFF',
     fontFamily: 'Manrope_700Bold',
+    
   },
   listContainer: {
     gap: horizontalScale(12),

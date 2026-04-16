@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   },
   timePickerContent: {
     padding: horizontalScale(24),
-    paddingBottom: horizontalScale(40),
+    paddingBottom: horizontalScale(0),
     backgroundColor: 'rgba(15, 15, 17, 0.95)',
   },
   modalHandle: {

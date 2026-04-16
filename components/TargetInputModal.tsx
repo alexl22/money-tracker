@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View, Pressable } from 'react-native';
-import { X, Check, Delete } from 'lucide-react-native';
 import { LinearGradient } from "expo-linear-gradient";
-import { horizontalScale, moderateScale } from '../utils/scaling';
+import { Check, Delete, X } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCurrency } from '../context/CurrencyContext';
+import { horizontalScale, moderateScale } from '../utils/scaling';
 interface TargetInputModalProps {
   isVisible: boolean;
   onClose: () => void;
@@ -12,15 +12,15 @@ interface TargetInputModalProps {
   initialAmount?: number;
 }
 
-export function TargetInputModal({ 
-  isVisible, 
-  onClose, 
-  onSave, 
+export function TargetInputModal({
+  isVisible,
+  onClose,
+  onSave,
   onReset,
-  initialAmount 
+  initialAmount
 }: TargetInputModalProps) {
   const [amount, setAmount] = useState('0');
-  const {getSymbol } = useCurrency();
+  const { getSymbol } = useCurrency();
   useEffect(() => {
     if (isVisible) {
       setAmount(initialAmount ? initialAmount.toString() : '0');
@@ -65,60 +65,60 @@ export function TargetInputModal({
   );
 
   return (
-    <Modal visible={isVisible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={isVisible} transparent onRequestClose={onClose} statusBarTranslucent={true}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <View style={styles.modalContent}>
-            <View style={styles.header}>
-              <View style={{ flex: 1, marginRight: 15 }}>
-                <Text style={styles.title}>SET GOAL TARGET</Text>
-                <Text style={styles.subtitle} numberOfLines={2}>How much do you want to save?</Text>
-              </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <X color="rgba(255,255,255,0.4)" size={20} style={{ marginTop: 1 }} />
-              </TouchableOpacity>
+          <View style={styles.header}>
+            <View style={{ flex: 1, marginRight: 15 }}>
+              <Text style={styles.title}>SET GOAL TARGET</Text>
+              <Text style={styles.subtitle} numberOfLines={2}>How much do you want to save?</Text>
             </View>
-
-            <View style={styles.amountDisplay}>
-              <View style={styles.amountRow}>
-                <Text style={[styles.currencySymbol, getSymbol().length > 1 && { fontSize: moderateScale(22) }]}>{getSymbol()}</Text>
-                <Text 
-                  style={styles.amountText}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit={true}
-                  minimumFontScale={0.5}
-                >
-                    {Number(amount).toLocaleString(undefined, { 
-                        minimumFractionDigits: 0, 
-                        maximumFractionDigits: 2 
-                    })}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.dividerContainer}>
-              <LinearGradient
-                colors={['transparent', '#3b82f6', 'transparent']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.fadedLine}
-              />
-            </View>
-
-            <View style={styles.keypadGrid}>
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'delete'].map((key) =>
-                renderKeypadButton(key, key === 'delete' ? <Delete color="rgba(255,255,255,0.8)" size={moderateScale(28)} /> : undefined)
-              )}
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.btnBase, amount === '0' ? styles.resetBtn : styles.confirmBtn]} 
-              onPress={amount === '0' ? () => { onReset?.(); onClose(); } : handleSave}
-            >
-              <Text style={styles.saveBtnText}>
-                {amount === '0' ? 'RESET GOAL' : 'Confirm Target'}
-              </Text>
-              {amount === '0' ? <Delete color="#fff" size={moderateScale(20)} /> : <Check color="#fff" size={moderateScale(20)} />}
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <X color="rgba(255,255,255,0.4)" size={20} style={{ marginTop: 1 }} />
             </TouchableOpacity>
+          </View>
+
+          <View style={styles.amountDisplay}>
+            <View style={styles.amountRow}>
+              <Text style={[styles.currencySymbol, getSymbol().length > 1 && { fontSize: moderateScale(22) }]}>{getSymbol()}</Text>
+              <Text
+                style={styles.amountText}
+                numberOfLines={1}
+                adjustsFontSizeToFit={true}
+                minimumFontScale={0.5}
+              >
+                {Number(amount).toLocaleString(undefined, {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 2
+                })}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.dividerContainer}>
+            <LinearGradient
+              colors={['transparent', '#3b82f6', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.fadedLine}
+            />
+          </View>
+
+          <View style={styles.keypadGrid}>
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'delete'].map((key) =>
+              renderKeypadButton(key, key === 'delete' ? <Delete color="rgba(255,255,255,0.8)" size={moderateScale(28)} /> : undefined)
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.btnBase, amount === '0' ? styles.resetBtn : styles.confirmBtn]}
+            onPress={amount === '0' ? () => { onReset?.(); onClose(); } : handleSave}
+          >
+            <Text style={styles.saveBtnText}>
+              {amount === '0' ? 'RESET GOAL' : 'Confirm Target'}
+            </Text>
+            {amount === '0' ? <Delete color="#fff" size={moderateScale(20)} /> : <Check color="#fff" size={moderateScale(20)} />}
+          </TouchableOpacity>
         </View>
       </Pressable>
     </Modal>
@@ -126,13 +126,13 @@ export function TargetInputModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { 
-    flex: 1, 
-    justifyContent: 'center', 
+  overlay: {
+    flex: 1,
+    justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.85)',
     paddingHorizontal: horizontalScale(24),
   },
-  modalContent: { 
+  modalContent: {
     backgroundColor: '#1C1D21',
     borderRadius: moderateScale(36),
     padding: horizontalScale(24),
@@ -140,16 +140,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
   },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: horizontalScale(32),
   },
-  title: { 
-    fontSize: moderateScale(10), 
-    color: '#3b82f6', 
-    letterSpacing: 2, 
+  title: {
+    fontSize: moderateScale(10),
+    color: '#3b82f6',
+    letterSpacing: 2,
     fontFamily: 'Inter_700Bold',
     marginBottom: horizontalScale(4),
   },
@@ -158,12 +158,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontFamily: 'Manrope_700Bold',
   },
-  closeBtn: { 
-    width: horizontalScale(36), 
-    height: horizontalScale(36), 
-    borderRadius: moderateScale(18), 
-    backgroundColor: 'rgba(255,255,255,0.05)', 
-    justifyContent: 'center', 
+  closeBtn: {
+    width: horizontalScale(36),
+    height: horizontalScale(36),
+    borderRadius: moderateScale(18),
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   amountDisplay: {

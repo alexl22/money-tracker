@@ -2,7 +2,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AlertTriangle, Check, Info } from 'lucide-react-native';
 import React from 'react';
-import { Dimensions, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -11,7 +11,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAlert } from '../context/AlertContext';
 import { horizontalScale, moderateScale } from '../utils/scaling';
-import { Platform } from 'react-native';
 
 
 const { width } = Dimensions.get('window');
@@ -48,6 +47,7 @@ export default function CustomAlert() {
       visible={visible}
       animationType="none"
       onRequestClose={hideAlert}
+      statusBarTranslucent={true}
     >
       <View style={styles.overlay}>
         <Animated.View

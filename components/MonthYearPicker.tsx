@@ -39,8 +39,9 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
         <Modal
             visible={isVisible}
             transparent={true}
-            animationType="fade"
+            animationType='fade'
             onRequestClose={onClose}
+            statusBarTranslucent={true}
         >
             <Pressable
                 style={styles.modalOverlay}
@@ -49,7 +50,7 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
                 <View style={styles.modalContent}>
                     <View style={styles.yearNavigator}>
                         <Pressable onPress={() => onSelectYear(selectedYear - 1)} style={styles.navButton}>
-                            <ChevronLeft color="#FFFFFF" size={moderateScale(20)} strokeWidth={2.5} />
+                            <ChevronLeft color="#3b82f6" size={moderateScale(24)} strokeWidth={3} />
                         </Pressable>
                         <View style={styles.yearContainer}>
                             <Text style={styles.yearText}>{selectedYear}</Text>
@@ -58,13 +59,13 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
                             onPress={() => { if (selectedYear < currentYear) { onSelectYear(selectedYear + 1) } }}
                             style={[styles.navButton, { opacity: selectedYear >= currentYear ? 0.3 : 1 }]}
                         >
-                            <ChevronRight color="#FFFFFF" size={moderateScale(20)} strokeWidth={2.5} />
+                            <ChevronRight color="#3b82f6" size={moderateScale(24)} strokeWidth={3} />
                         </Pressable>
                     </View>
 
                     <View style={styles.dividerContainer}>
                         <LinearGradient
-                            colors={['transparent', 'rgba(59, 130, 246, 0.4)', 'transparent']}
+                            colors={['transparent', '#3b82f6', 'transparent']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={styles.fadedLine}
@@ -82,7 +83,7 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
                                     disabled={isFutureMonth}
                                     style={[
                                         styles.gridMonthItem,
-                                        isFutureMonth && { opacity: 0.2 }
+                                        isFutureMonth && { opacity: 0.15 }
                                     ]}
                                     onPress={() => {
                                         onSelectMonth(item.value);
@@ -91,8 +92,10 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
                                 >
                                     {isActive ? (
                                         <LinearGradient
-                                            colors={['#3b82f6', '#2563eb']}
+                                            colors={['#6366f1', '#3b82f6']}
                                             style={styles.activeMonthGradient}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
                                         >
                                             <Text style={styles.gridMonthTextActive}>
                                                 {item.sub}
@@ -101,7 +104,7 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
                                     ) : (
                                         <Text style={[
                                             styles.gridMonthText,
-                                            isFutureMonth && { color: 'rgba(255,255,255,0.1)' }
+                                            isFutureMonth && { color: 'rgba(255,255,255,0.25)' }
                                         ]}>
                                             {item.sub}
                                         </Text>
@@ -120,19 +123,19 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
 const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.8)',
+        backgroundColor: 'rgba(0,0,0,0.88)',
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: horizontalScale(20),
     },
     modalContent: {
-        backgroundColor: '#131416',
+        backgroundColor: '#0F1014', // Jet Black
         borderRadius: moderateScale(28),
         paddingHorizontal: horizontalScale(24),
         paddingVertical: horizontalScale(24),
-        width: '95%', // Increased to make the whole UI larger again
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
+        width: '94%',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.5,
@@ -146,23 +149,23 @@ const styles = StyleSheet.create({
         marginBottom: horizontalScale(20),
     },
     navButton: {
-        width: horizontalScale(42), // Larger buttons
-        height: horizontalScale(42),
+        width: horizontalScale(44),
+        height: horizontalScale(44),
         justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: moderateScale(12),
-        backgroundColor: 'rgba(255,255,255,0.03)',
+        borderRadius: moderateScale(14),
+        backgroundColor: 'rgba(6, 182, 212, 0.05)',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)',
+        borderColor: 'rgba(6, 182, 212, 0.15)',
     },
     yearContainer: {
         alignItems: 'center',
     },
     yearText: {
-        fontSize: moderateScale(28), // Larger year
-        color: '#ffffffff',
+        fontSize: moderateScale(32),
+        color: '#FFFFFF',
         fontFamily: 'Manrope_800ExtraBold',
-        letterSpacing: 3,
+        letterSpacing: 2,
     },
     dividerContainer: {
         height: horizontalScale(1),
@@ -171,7 +174,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     fadedLine: {
-        height: horizontalScale(1),
+        height: horizontalScale(1.5),
         width: '100%',
         borderRadius: moderateScale(1),
     },
@@ -183,12 +186,12 @@ const styles = StyleSheet.create({
     },
     gridMonthItem: {
         width: '31%',
-        height: horizontalScale(54), // Taller, meatier buttons
+        height: horizontalScale(56),
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: moderateScale(16),
         marginBottom: horizontalScale(12),
-        backgroundColor: 'rgba(255,255,255,0.02)',
+        backgroundColor: '#1A1B21', // Dark Slate
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.03)',
     },
@@ -198,24 +201,24 @@ const styles = StyleSheet.create({
         borderRadius: moderateScale(16),
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#3b82f6',
+        shadowColor: '#06B6D4',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
-        elevation: 6,
+        shadowOpacity: 0.5,
+        shadowRadius: 12,
+        elevation: 8,
     },
     gridMonthText: {
-        fontSize: moderateScale(15), // Larger text
-        color: 'rgba(255,255,255,0.4)',
+        fontSize: moderateScale(14),
+        color: 'rgba(255,255,255,0.75)',
         fontFamily: 'Inter_700Bold',
-        letterSpacing: 0.6,
+        letterSpacing: 1,
         textTransform: 'uppercase',
     },
     gridMonthTextActive: {
         color: '#FFFFFF',
-        fontFamily: 'Inter_700Bold',
-        fontSize: moderateScale(15), // Larger active text
-        letterSpacing: 0.6,
+        fontFamily: 'Manrope_800ExtraBold',
+        fontSize: moderateScale(14),
+        letterSpacing: 1,
         textTransform: 'uppercase',
     },
 });

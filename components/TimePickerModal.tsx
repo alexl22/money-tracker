@@ -51,6 +51,7 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
       transparent
       animationType="slide"
       onRequestClose={onClose}
+      statusBarTranslucent={true}
     >
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <BlurView intensity={80} tint="dark" style={styles.timePickerBlur}>

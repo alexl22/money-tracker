@@ -3,17 +3,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeOff, Lock, Mail, RefreshCcw, Search, Shield, Trash2, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Platform, Switch, Text, TextInput, TouchableOpacity, View, Linking } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, Modal, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { TimePickerModal } from '../../components/TimePickerModal';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
 import { auth, db, deleteUserAccount as helperDeleteAccount, updateUserPassword as helperUpdatePassword } from '../../firebaseConfig';
-import { exportToCSV, exportToPDF } from '../../utils/export';
-import { updateNotification, checkNotificationPermission, requestNotificationPermission } from '../../utils/notifications';
-import { horizontalScale, moderateScale } from '../../utils/scaling';
 import styles from '../../styles/settings.styles';
+import { exportToCSV, exportToPDF } from '../../utils/export';
+import { checkNotificationPermission, requestNotificationPermission, updateNotification } from '../../utils/notifications';
+import { horizontalScale, moderateScale } from '../../utils/scaling';
 
 export default function SettingsScreen() {
   const { currency, setCurrency, availableCurrencies, format } = useCurrency();
@@ -132,7 +132,7 @@ export default function SettingsScreen() {
       try {
         const savedEnabled = await AsyncStorage.getItem('notifications_enabled');
         const savedTime = await AsyncStorage.getItem('notifications_time');
-        
+
         let isActuallyEnabled = savedEnabled !== null ? JSON.parse(savedEnabled) : false;
 
         // VERIFICARE REALĂ: Chiar dacă am salvat "true", verificăm dacă sistemul încă ne dă voie
@@ -225,7 +225,7 @@ export default function SettingsScreen() {
     const newTime = { hours: tempHours, minutes: tempMinutes };
     setSyncTime(newTime);
     setIsTimePickerVisible(false);
-    
+
     // Salvăm și programăm imediat
     try {
       await AsyncStorage.setItem('notifications_time', JSON.stringify(newTime));
@@ -475,7 +475,7 @@ export default function SettingsScreen() {
               onValueChange={async (newValue) => {
                 // 1. Mutăm butonul INSTANTANEU pentru animație smooth
                 setSyncEnabled(newValue);
-                
+
                 try {
                   if (newValue) {
                     // Cerem permisiunea
@@ -488,11 +488,11 @@ export default function SettingsScreen() {
                       // Dacă n-avem voie, sărim înapoi pe OFF
                       setSyncEnabled(false);
                       await AsyncStorage.setItem('notifications_enabled', JSON.stringify(false));
-                      
+
                       if (!canAskAgain) {
                         showAlert(
-                          "Permissions Required", 
-                          "Notifications are blocked in system settings. Tap 'Confirm' to open settings and enable them manually.", 
+                          "Permissions Required",
+                          "Notifications are blocked in system settings. Tap 'Confirm' to open settings and enable them manually.",
                           "alert",
                           () => Linking.openSettings(),
                           true
@@ -655,6 +655,7 @@ export default function SettingsScreen() {
         animationType="slide"
         transparent={true}
         onRequestClose={() => setIsCurrencyPickerVisible(false)}
+        statusBarTranslucent={true}
       >
         <TouchableOpacity
           style={styles.modalOverlay}
@@ -693,7 +694,7 @@ export default function SettingsScreen() {
               data={filteredCurrencies}
               keyExtractor={(item) => item}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 40 }}
+              contentContainerStyle={{ paddingBottom: horizontalScale(60) }}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[

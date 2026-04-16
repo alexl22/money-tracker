@@ -105,8 +105,8 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       };
 
       if (currentGoal) {
-          const { doc, updateDoc } = require('firebase/firestore');
-          await updateDoc(doc(db, "goals", currentGoal.id), updateData);
+        const { doc, updateDoc } = require('firebase/firestore');
+        await updateDoc(doc(db, "goals", currentGoal.id), updateData);
       } else {
         const newData = {
           userId: user.uid,
@@ -327,25 +327,35 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       </View>
 
       <Text style={styles.motivationalText}>
-        {currentGoal ? (
+        {currentGoal && targetForCalc > 0 ? (
           <>
             <Text style={{ color: localColors.white, fontWeight: 'bold' }}>
-              {totalProfit >= targetForCalc ? "Goal Accomplished!" : "You're nearly there!"}
+              {isUpcoming 
+                ? "Get ready for your goal!" 
+                : (totalProfit >= targetForCalc ? "Goal Accomplished!" : "You're nearly there!")}
             </Text>{"\n"}
-            {totalProfit >= targetForCalc ? (
-              <>
-                <Text style={{ color: 'rgba(255,255,255,0.4)' }}>You've exceeded your target by </Text>
-                <Text style={{ color: '#6ee591', fontWeight: 'bold' }}>
-                  {format(Math.abs(totalProfit - targetForCalc), { isConverted: true })}
-                </Text>
-              </>
+            {isUpcoming ? (
+              <Text style={{ color: 'rgba(255,255,255,0.4)' }}>
+                Stay focused, your journey begins soon.
+              </Text>
             ) : (
               <>
-                <Text style={{ color: 'rgba(255,255,255,0.4)' }}>Only </Text>
-                <Text style={{ color: '#67E8F9', fontWeight: 'bold' }}>
-                  {format(targetForCalc - totalProfit, { isConverted: true })}
-                </Text>
-                <Text style={{ color: 'rgba(255,255,255,0.4)' }}> left to reach your goal.</Text>
+                {totalProfit >= targetForCalc ? (
+                  <>
+                    <Text style={{ color: 'rgba(255,255,255,0.4)' }}>You've exceeded your target by </Text>
+                    <Text style={{ color: '#6ee591', fontWeight: 'bold' }}>
+                      {format(Math.abs(totalProfit - targetForCalc), { isConverted: true })}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={{ color: 'rgba(255,255,255,0.4)' }}>Only </Text>
+                    <Text style={{ color: '#67E8F9', fontWeight: 'bold' }}>
+                      {format(targetForCalc - totalProfit, { isConverted: true })}
+                    </Text>
+                    <Text style={{ color: 'rgba(255,255,255,0.4)' }}> left to reach your goal.</Text>
+                  </>
+                )}
               </>
             )}
           </>
