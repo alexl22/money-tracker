@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import firestore from '@react-native-firebase/firestore';
 import { db } from '../firebaseConfig';
 
 const API_KEY = process.env.EXPO_PUBLIC_EXCHANGE_RATE_API_KEY;
@@ -23,8 +23,8 @@ export const getExchangeRates = async () => {
     // 2. Dacă Cache Local lipsește/e expirat, verificăm Cache Global (Firestore)
     let globalData: any = null;
     try {
-      const globalRef = doc(db, "global_configs", "exchange_rates");
-      const globalSnap = await getDoc(globalRef);
+      const globalRef = db.collection("global_configs").doc("exchange_rates");
+      const globalSnap = await globalRef.get();
       if (globalSnap.exists()) {
         globalData = globalSnap.data();
       }
@@ -77,10 +77,10 @@ export const getExchangeRates = async () => {
 
       // Updatează Cache Global (Firestore) - OPTIMISTIC
       try {
-        const globalRef = doc(db, "global_configs", "exchange_rates");
-        setDoc(globalRef, {
+        const globalRef = db.collection("global_configs").doc("exchange_rates");
+        globalRef.set({
           rates: rates,
-          updatedAt: serverTimestamp()
+          updatedAt: firestore.FieldValue.serverTimestamp()
         }).catch(err => console.warn("Firestore Global Cache write error:", err));
         
         console.log("Currency: Global Cache update initiated.");

@@ -1,4 +1,4 @@
-import { addDoc, and, collection, doc, onSnapshot, or, query, updateDoc, where, getDoc, serverTimestamp } from 'firebase/firestore';
+import firestore from '@react-native-firebase/firestore';
 import { AlignLeft, CheckCircle2, Mail, Plus, TrendingUp, Type, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -47,8 +47,6 @@ export function LoansTab({ localColors }: LoansTabProps) {
   useEffect(() => {
     if (!user) return;
 
-    let unsubscribe: () => void;
-
     const handleSnapshot = (snapshot: any) => {
       const loansData = snapshot.docs.map((doc: any) => {
         const data = doc.data({ serverTimestamps: 'estimate' });
@@ -94,21 +92,22 @@ export function LoansTab({ localColors }: LoansTabProps) {
       setTotalBorrowed(sumBorrowed);
     };
 
-    const q = query(
-      collection(db, 'loans'),
-      and(
-        where('status', '==', activeTab),
-        or(
-          where('userId', '==', user.uid),
-          where('personEmail', '==', user.email)
+    const q = db.collection('loans')
+      .where('status', '==', activeTab)
+      .where(
+        firestore.Filter.or(
+          firestore.Filter('userId', '==', user.uid),
+          firestore.Filter('personEmail', '==', user.email)
         )
-      )
-    );
-    unsubscribe = onSnapshot(q, (snapshot) => {
+      );
+
+    const unsubscribe = q.onSnapshot((snapshot) => {
       handleSnapshot(snapshot);
+    }, (error) => {
+      console.error("Loans Snapshot Error:", error);
     });
 
-    return () => unsubscribe && unsubscribe();
+    return () => unsubscribe();
   }, [activeTab, currency, user]);
 
   const handleAddLoan = () => {
@@ -117,7 +116,7 @@ export function LoansTab({ localColors }: LoansTabProps) {
   const toggleLoanStatus = async (id: string, currentStatus: 'active' | 'settled') => {
     const newStatus = currentStatus === 'active' ? 'settled' : 'active';
     try {
-      await updateDoc(doc(db, 'loans', id), { status: newStatus });
+      await db.collection('loans').doc(id).update({ status: newStatus });
     } catch (error) {
       console.error("Error toggling loan status:", error);
     }
@@ -363,10 +362,10 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
       // Fetch user data (this is okay to await as it's a read, though offline it might use cache)
       let finalOwnerName = user.displayName || user.email?.split('@')[0] || 'A user';
       try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const userDoc = await db.collection('users').doc(user.uid).get();
         if (userDoc.exists()) {
           const data = userDoc.data();
-          if (data.displayName) {
+          if (data && data.displayName) {
             finalOwnerName = data.displayName;
           }
         }
@@ -385,13 +384,13 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
         note: notes,
         status: 'active',
         date: new Date(),
-        createdAt: serverTimestamp(), // Use server time
+        createdAt: firestore.FieldValue.serverTimestamp(), // Use server time
         ownerName: finalOwnerName,
         ownerEmail: user.email || '',
       };
 
       // OPTIMISTIC UI: Don't 'await' the write
-      addDoc(collection(db, 'loans'), loanData)
+      db.collection('loans').add(loanData)
         .catch(err => console.error("Loan Save Error", err));
 
       // UI cleanup - HAPPENS IMMEDIATELY

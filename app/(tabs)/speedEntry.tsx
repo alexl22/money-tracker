@@ -1,7 +1,7 @@
 import { AlignLeft, TrendingUp, Type, Wallet } from "lucide-react-native";
 import { useState } from "react";
 import { Alert, Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import firestore from '@react-native-firebase/firestore';
 import { FinanceModalBase, styles as baseStyles } from "../../components/FinanceModalBase";
 import { useAlert } from "../../context/AlertContext";
 import { useCurrency } from "../../context/CurrencyContext";
@@ -47,12 +47,12 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                 title: title,
                 notes: notes,
                 date: new Date(), // Local display date
-                createdAt: serverTimestamp() // Official server date for sync
+                createdAt: firestore.FieldValue.serverTimestamp() // Official server date for sync
             };
 
             // OPTIMISTIC UI: We don't 'await' the server response here.
             // Firestore handles the save in the background.
-            addDoc(collection(db, 'transactions'), transactionData)
+            db.collection('transactions').add(transactionData)
                 .catch(error => {
                     console.error("Delayed Save Error!", error);
                     // Silent background error or non-blocking notification

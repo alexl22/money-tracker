@@ -1,5 +1,5 @@
 import MonthYearPicker, { LUNI } from '@/components/MonthYearPicker';
-import { deleteDoc, doc, onSnapshot, query, where, collection } from 'firebase/firestore';
+// Removed firebase/firestore imports for native SDK migration
 import { Calendar, ChevronDown, ShoppingBag, Trash2, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
@@ -100,17 +100,13 @@ export default function HistoryScreen() {
     const startOfMonth = new Date(selectedYear, Number(selectedMonth), 1);
     const endOfMonth = new Date(selectedYear, Number(selectedMonth) + 1, 0, 23, 59, 59);
 
-    let unsubscribe: () => void;
-
-    const q = query(
-      collection(db, "transactions"),
-      where("userId", "==", user.uid)
-    );
-    unsubscribe = onSnapshot(q, (snapshot: any) => {
-      handleSnapshot(snapshot);
-    }, (error: any) => {
-      console.error("Firestore Error:", error);
-    });
+    const unsubscribe = db.collection("transactions")
+      .where("userId", "==", user.uid)
+      .onSnapshot((snapshot: any) => {
+        handleSnapshot(snapshot);
+      }, (error: any) => {
+        console.error("Firestore Error:", error);
+      });
 
     function handleSnapshot(snapshot: any) {
       let grossIncome = 0;
@@ -245,7 +241,7 @@ export default function HistoryScreen() {
       () => {
         try {
           // OPTIMISTIC DELETE: Don't await
-          deleteDoc(doc(db, "transactions", transactionId))
+          db.collection("transactions").doc(transactionId).delete()
             .catch(err => console.error("History Delete Error", err));
           
           showAlert('Action Recorded', 'The transaction is being deleted and will sync soon.', 'success');

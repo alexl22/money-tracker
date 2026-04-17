@@ -1,7 +1,7 @@
 import { Colors } from '@/constants/DesignSystem';
 import { BlurView } from 'expo-blur';
 import { Tabs, useRouter } from 'expo-router';
-import { doc, getDoc } from 'firebase/firestore';
+// Removed firebase/firestore import for native SDK migration
 import { ArrowRightLeft, History, LayoutGrid, LogOut, Plus, Settings, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -21,9 +21,9 @@ export default function TabLayout() {
       const user = auth.currentUser;
       if (user) {
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists() && userDoc.data().displayName) {
-            setUserName(userDoc.data().displayName);
+          const userDoc = await db.collection('users').doc(user.uid).get();
+          if (userDoc.exists() && userDoc.data()?.displayName) {
+            setUserName(userDoc.data()?.displayName);
           }
         } catch (error) {
           console.error("Error fetching name:", error);

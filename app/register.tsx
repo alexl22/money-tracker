@@ -37,9 +37,7 @@ export default function RegisterScreen() {
       const userCredential = await signUp(email, password);
       const user = userCredential.user;
 
-      // Update Profile
-      const { updateProfile } = require('firebase/auth');
-      await updateProfile(user, { displayName: name });
+      await user.updateProfile({ displayName: name });
 
       // Create user document in Firestore
       const userData = {
@@ -50,8 +48,7 @@ export default function RegisterScreen() {
         baseCurrency: ''
       };
 
-      const { doc, setDoc } = require('firebase/firestore');
-      await setDoc(doc(db, 'users', user.uid), userData);
+      await db.collection('users').doc(user.uid).set(userData);
 
       router.push('/(tabs)/home');
     } catch (error: any) {

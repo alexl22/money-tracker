@@ -2,7 +2,7 @@ import { DatePicker } from '@/components/DatePicker';
 import MonthYearPicker, { LUNI } from '@/components/MonthYearPicker';
 import { Calendar, ChevronDown, Receipt, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -77,18 +77,13 @@ export default function DashboardScreen() {
   useEffect(() => {
     if (!user) return;
 
-    let unsubscribe: () => void;
-
-    const { query, collection, where, onSnapshot } = require('firebase/firestore');
-    const q = query(
-      collection(db, 'transactions'),
-      where('userId', '==', user.uid)
-    );
-    unsubscribe = onSnapshot(q, (snapshot: any) => {
-      handleSnapshot(snapshot);
-    }, (error: any) => {
-      console.error("Firestore Error:", error);
-    });
+    const unsubscribe = db.collection('transactions')
+      .where('userId', '==', user.uid)
+      .onSnapshot((snapshot) => {
+        handleSnapshot(snapshot);
+      }, (error) => {
+        console.error("Firestore Error:", error);
+      });
 
     function handleSnapshot(snapshot: any) {
       let currentTotalIncome = 0;
