@@ -37,8 +37,6 @@
       "expo-router",
       "expo-notifications",
       "@react-native-firebase/app",
-      "@react-native-firebase/auth",
-      "@react-native-firebase/firestore",
       [
         "expo-splash-screen",
         {
