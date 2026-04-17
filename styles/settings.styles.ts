@@ -282,6 +282,7 @@ const styles = StyleSheet.create({
     height: horizontalScale(60),
     borderRadius: moderateScale(22),
     overflow: 'hidden',
+    marginBottom: horizontalScale(20),
   },
   saveTimeGradient: {
     flex: 1,

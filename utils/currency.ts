@@ -75,14 +75,15 @@ export const getExchangeRates = async () => {
     if (apiData.result === 'success') {
       const rates = apiData.conversion_rates;
 
-      // Updatează Cache Global (Firestore) pentru ca alți utilizatori să nu mai consume API
+      // Updatează Cache Global (Firestore) - OPTIMISTIC
       try {
         const globalRef = doc(db, "global_configs", "exchange_rates");
-        await setDoc(globalRef, {
+        setDoc(globalRef, {
           rates: rates,
           updatedAt: serverTimestamp()
-        });
-        console.log("Currency: Global Cache updated in Firestore.");
+        }).catch(err => console.warn("Firestore Global Cache write error:", err));
+        
+        console.log("Currency: Global Cache update initiated.");
       } catch (firestoreWriteError) {
         console.warn("Firestore Currency Cache write error:", firestoreWriteError);
       }

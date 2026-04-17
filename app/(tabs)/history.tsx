@@ -1,4 +1,5 @@
 import MonthYearPicker, { LUNI } from '@/components/MonthYearPicker';
+import { deleteDoc, doc, onSnapshot, query, where, collection } from 'firebase/firestore';
 import { Calendar, ChevronDown, ShoppingBag, Trash2, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
@@ -101,7 +102,6 @@ export default function HistoryScreen() {
 
     let unsubscribe: () => void;
 
-    const { query, collection, where, onSnapshot } = require('firebase/firestore');
     const q = query(
       collection(db, "transactions"),
       where("userId", "==", user.uid)
@@ -117,7 +117,7 @@ export default function HistoryScreen() {
       let grossExpense = 0;
 
       const rawList: RawTransaction[] = snapshot.docs.map((doc: any) => {
-        const data = doc.data();
+        const data = doc.data({ serverTimestamps: 'estimate' });
         const rawDate = data.date || data.createdAt;
         let finalDate: Date;
 
@@ -242,10 +242,13 @@ export default function HistoryScreen() {
       'Delete Trasaction?',
       `Are you sure you want to delete the transaction? This action cannot be undone.`,
       'alert',
-      async () => {
+      () => {
         try {
-          const { doc, deleteDoc } = require('firebase/firestore');
-          await deleteDoc(doc(db, "transactions", transactionId));
+          // OPTIMISTIC DELETE: Don't await
+          deleteDoc(doc(db, "transactions", transactionId))
+            .catch(err => console.error("History Delete Error", err));
+          
+          showAlert('Action Recorded', 'The transaction is being deleted and will sync soon.', 'success');
         } catch (error) {
           console.error("Error deleting transaction: ", error);
           showAlert('Error', 'We could not delete the transaction. Please try again.', 'alert');

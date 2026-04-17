@@ -1,4 +1,4 @@
-import { addDoc, and, collection, doc, onSnapshot, or, query, updateDoc, where, getDoc } from 'firebase/firestore';
+import { addDoc, and, collection, doc, onSnapshot, or, query, updateDoc, where, getDoc, serverTimestamp } from 'firebase/firestore';
 import { AlignLeft, CheckCircle2, Mail, Plus, TrendingUp, Type, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -51,7 +51,7 @@ export function LoansTab({ localColors }: LoansTabProps) {
 
     const handleSnapshot = (snapshot: any) => {
       const loansData = snapshot.docs.map((doc: any) => {
-        const data = doc.data();
+        const data = doc.data({ serverTimestamps: 'estimate' });
         const rawDate = data.date;
         let date: Date;
         if (rawDate && typeof rawDate.toDate === 'function') {
@@ -104,7 +104,9 @@ export function LoansTab({ localColors }: LoansTabProps) {
         )
       )
     );
-    unsubscribe = onSnapshot(q, handleSnapshot);
+    unsubscribe = onSnapshot(q, (snapshot) => {
+      handleSnapshot(snapshot);
+    });
 
     return () => unsubscribe && unsubscribe();
   }, [activeTab, currency, user]);
@@ -358,16 +360,18 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
 
     setIsSaving(true);
     try {
-      // Fetch the current user's display name from Firestore for the recipient to see
+      // Fetch user data (this is okay to await as it's a read, though offline it might use cache)
       let finalOwnerName = user.displayName || user.email?.split('@')[0] || 'A user';
-      let userDoc: any;
-      userDoc = await getDoc(doc(db, 'users', user.uid));
-
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        if (data.displayName) {
-          finalOwnerName = data.displayName;
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          if (data.displayName) {
+            finalOwnerName = data.displayName;
+          }
         }
+      } catch (e) {
+        console.warn("Could not fetch owner name, using default", e);
       }
 
       const loanData = {
@@ -381,13 +385,16 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
         note: notes,
         status: 'active',
         date: new Date(),
-        createdAt: new Date(),
+        createdAt: serverTimestamp(), // Use server time
         ownerName: finalOwnerName,
         ownerEmail: user.email || '',
       };
 
-      await addDoc(collection(db, 'loans'), loanData);
+      // OPTIMISTIC UI: Don't 'await' the write
+      addDoc(collection(db, 'loans'), loanData)
+        .catch(err => console.error("Loan Save Error", err));
 
+      // UI cleanup - HAPPENS IMMEDIATELY
       setLoanType(null);
       setPersonName('');
       setPersonEmail('');
@@ -397,6 +404,7 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
       showAlert('Success', 'Loan added successfully!', 'success');
     } catch (error) {
       console.error("Error while saving!", error);
+      showAlert('Error', 'We could not process the loan. Please try again.', 'alert');
     } finally {
       setIsSaving(false);
     }

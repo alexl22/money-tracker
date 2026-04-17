@@ -1,6 +1,7 @@
 import { AlignLeft, TrendingUp, Type, Wallet } from "lucide-react-native";
 import { useState } from "react";
 import { Alert, Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { FinanceModalBase, styles as baseStyles } from "../../components/FinanceModalBase";
 import { useAlert } from "../../context/AlertContext";
 import { useCurrency } from "../../context/CurrencyContext";
@@ -45,22 +46,29 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                 type: transactionType,
                 title: title,
                 notes: notes,
-                date: new Date(),
-                createdAt: new Date()
+                date: new Date(), // Local display date
+                createdAt: serverTimestamp() // Official server date for sync
             };
 
-            const { addDoc, collection } = require('firebase/firestore');
-            await addDoc(collection(db, 'transactions'), transactionData);
+            // OPTIMISTIC UI: We don't 'await' the server response here.
+            // Firestore handles the save in the background.
+            addDoc(collection(db, 'transactions'), transactionData)
+                .catch(error => {
+                    console.error("Delayed Save Error!", error);
+                    // Silent background error or non-blocking notification
+                });
 
-            // Success cleanup
-            setTransactionType(null);
-            setTitle('');
-            setNotes('');
-            resetModal();
-            showAlert("Transaction Saved", `Your ${transactionType} of ${format(parseFloat(amount), { isConverted: true })} has been recorded.`, "success");
+            // Success cleanup - HAPPENS IMMEDIATELY
+            setTimeout(() => {
+                setTransactionType(null);
+                setTitle('');
+                setNotes('');
+                resetModal();
+                showAlert("Transaction Saved", `Your ${transactionType} of ${format(parseFloat(amount), { isConverted: true })} has been recorded.`, "success");
+            }, 100);
         }
         catch (error: any) {
-            console.error("Eroare la salvare!", error);
+            console.error("Saving error!", error);
             if (Platform.OS === 'ios') {
                 Alert.alert("Save Error", "We couldn't save your transaction.");
             } else {

@@ -9,7 +9,7 @@ import {
   sendPasswordResetEmail,
   onAuthStateChanged
 } from "firebase/auth";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache } from "firebase/firestore";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configuration constants
@@ -46,7 +46,7 @@ try {
 
 // Initialize Firestore with robust local caching enabled for offline support
 const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  localCache: persistentLocalCache()
 });
 
 // -- Platform Agnostic Auth Helpers --

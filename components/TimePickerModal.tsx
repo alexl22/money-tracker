@@ -3,7 +3,7 @@ import { Modal, Pressable, View, Text, TouchableOpacity, ScrollView, StyleSheet 
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X, Check } from 'lucide-react-native';
-import { horizontalScale, moderateScale } from '../utils/scaling';
+import { horizontalScale } from '../utils/scaling';
 
 interface TimePickerModalProps {
   isVisible: boolean;

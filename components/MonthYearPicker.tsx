@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 
@@ -34,7 +34,13 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
 
     const currentYear = new Date().getFullYear();
     const currentDate = new Date();
+    const [viewYear, setViewYear] = useState(selectedYear);
 
+    useEffect(() => {
+        if(isVisible){
+            setViewYear(selectedYear);
+        }
+    }, [isVisible]);
     return (
         <Modal
             visible={isVisible}
@@ -49,15 +55,15 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
             >
                 <View style={styles.modalContent}>
                     <View style={styles.yearNavigator}>
-                        <Pressable onPress={() => onSelectYear(selectedYear - 1)} style={styles.navButton}>
+                        <Pressable onPress={() => setViewYear(viewYear - 1)} style={styles.navButton}>
                             <ChevronLeft color="#3b82f6" size={moderateScale(24)} strokeWidth={3} />
                         </Pressable>
                         <View style={styles.yearContainer}>
-                            <Text style={styles.yearText}>{selectedYear}</Text>
+                            <Text style={styles.yearText}>{viewYear}</Text>
                         </View>
                         <Pressable
-                            onPress={() => { if (selectedYear < currentYear) { onSelectYear(selectedYear + 1) } }}
-                            style={[styles.navButton, { opacity: selectedYear >= currentYear ? 0.3 : 1 }]}
+                            onPress={() => { if (viewYear < currentYear) { setViewYear(viewYear + 1) } }}
+                            style={[styles.navButton, { opacity: viewYear >= currentYear ? 0.3 : 1 }]}
                         >
                             <ChevronRight color="#3b82f6" size={moderateScale(24)} strokeWidth={3} />
                         </Pressable>
@@ -74,8 +80,8 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
 
                     <View style={styles.monthGrid}>
                         {LUNI.map((item) => {
-                            const isFutureMonth = selectedYear === currentYear && parseInt(item.value) > currentDate.getMonth();
-                            const isActive = selectedMonth === item.value;
+                            const isFutureMonth = viewYear === currentYear && parseInt(item.value) > currentDate.getMonth();
+                            const isActive = selectedMonth === item.value && viewYear === selectedYear;
 
                             return (
                                 <TouchableOpacity
@@ -86,6 +92,7 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
                                         isFutureMonth && { opacity: 0.15 }
                                     ]}
                                     onPress={() => {
+                                        onSelectYear(viewYear);
                                         onSelectMonth(item.value);
                                         onClose();
                                     }}

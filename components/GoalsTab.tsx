@@ -1,3 +1,4 @@
+import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { Calendar, TrendingDown, TrendingUp, Trophy } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -40,7 +41,13 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
   const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [isTargetModalVisible, setIsTargetModalVisible] = useState(false);
   const { convertToBase, currency, format, rates } = useCurrency();
-  const targetForCalc = currentGoal ? (currentGoal.currency === currency ? currentGoal.targetAmount : ((currentGoal.targetAmountUSD || (currentGoal.targetAmount / (rates?.[currentGoal.currency] || 1))) * (rates?.[currency] || 1))) : 0;
+  const targetForCalc = (() => {
+    if (!currentGoal) return 0;
+    const val = currentGoal.currency === currency 
+      ? currentGoal.targetAmount 
+      : ((currentGoal.targetAmountUSD || (currentGoal.targetAmount / (rates?.[currentGoal.currency] || 1))) * (rates?.[currency] || 1));
+    return isNaN(val) ? 0 : val;
+  })();
   const dynamicProgress = currentGoal && targetForCalc > 0
     ? Math.max(0, (totalProfit / targetForCalc) * 100)
     : 0;
@@ -91,7 +98,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
     return `Behind schedule. Estimated ${daysUntilTarget} days until reached (${daysDiff} days late).`;
   };
 
-  const handleUpdatePeriod = async (start: Date, end: Date) => {
+  const handleUpdatePeriod = (start: Date, end: Date) => {
     if (!user) return;
     try {
       const s = new Date(start);
@@ -105,8 +112,8 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       };
 
       if (currentGoal) {
-        const { doc, updateDoc } = require('firebase/firestore');
-        await updateDoc(doc(db, "goals", currentGoal.id), updateData);
+        updateDoc(doc(db, "goals", currentGoal.id), updateData)
+          .catch(err => console.error("Goal Update Error", err));
       } else {
         const newData = {
           userId: user.uid,
@@ -114,17 +121,18 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
           targetAmount: 0,
           targetAmountUSD: 0,
           currency: currency,
-          title: "My Saving Goal"
+          title: "My Saving Goal",
+          createdAt: serverTimestamp()
         };
-        const { collection, addDoc } = require('firebase/firestore');
-        await addDoc(collection(db, "goals"), newData);
+        addDoc(collection(db, "goals"), newData)
+          .catch(err => console.error("Goal Create Error", err));
       }
     } catch (error) {
       console.error("Error updating goal period:", error);
     }
   };
 
-  const handleUpdateTarget = async (amount: number) => {
+  const handleUpdateTarget = (amount: number) => {
     if (!user) return;
     const targetUSD = convertToBase(amount);
     try {
@@ -135,8 +143,8 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       };
 
       if (currentGoal) {
-        const { doc, updateDoc } = require('firebase/firestore');
-        await updateDoc(doc(db, "goals", currentGoal.id), updateData);
+        updateDoc(doc(db, "goals", currentGoal.id), updateData)
+          .catch(err => console.error("Goal Update Error", err));
       } else {
         const start = new Date();
         start.setHours(0, 0, 0, 0);
@@ -149,22 +157,23 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
           startDate: start,
           deadline: end,
           ...updateData,
-          title: "My Saving Goal"
+          title: "My Saving Goal",
+          createdAt: serverTimestamp()
         };
 
-        const { collection, addDoc } = require('firebase/firestore');
-        await addDoc(collection(db, "goals"), newData);
+        addDoc(collection(db, "goals"), newData)
+          .catch(err => console.error("Goal Create Error", err));
       }
     } catch (error) {
       console.error("Error updating goal target:", error);
     }
   };
 
-  const handleResetGoal = async () => {
+  const handleResetGoal = () => {
     if (!currentGoal) return;
     try {
-      const { doc, deleteDoc } = require('firebase/firestore');
-      await deleteDoc(doc(db, "goals", currentGoal.id));
+      deleteDoc(doc(db, "goals", currentGoal.id))
+        .catch(err => console.error("Goal Delete Error", err));
       setCurrentGoal(null);
       setTotalProfit(0);
       setTodayProfit(0);
@@ -194,7 +203,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       nowDay.setHours(0, 0, 0, 0);
 
       snapshot.docs.forEach((doc: any) => {
-        const data = doc.data();
+        const data = doc.data({ serverTimestamps: 'estimate' });
         const amount = (data.currency === currency) ? data.amount : ((data.amountUSD || (data.amount / (rates?.[data.currency] || 1))) * (rates?.[currency] || 1));
 
         const rawDate = data.date || data.createdAt;
@@ -226,7 +235,6 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       setTodayProfit(todayInc - todayExp);
     };
 
-    const { query, collection, where, onSnapshot } = require('firebase/firestore');
     const q = query(
       collection(db, "transactions"),
       where("userId", "==", user.uid)
@@ -247,7 +255,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
     const handleGoalSnapshot = (snapshot: any) => {
       if (!snapshot.empty) {
         const doc = snapshot.docs[0];
-        const data = doc.data();
+        const data = doc.data({ serverTimestamps: 'estimate' });
 
         const rawStart = data.startDate;
         const rawDeadline = data.deadline;
@@ -274,7 +282,6 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       }
     };
 
-    const { query, collection, where, onSnapshot } = require('firebase/firestore');
     const q = query(collection(db, "goals"), where("userId", "==", user.uid));
     unsubscribe = onSnapshot(q, handleGoalSnapshot);
 
@@ -330,8 +337,8 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
         {currentGoal && targetForCalc > 0 ? (
           <>
             <Text style={{ color: localColors.white, fontWeight: 'bold' }}>
-              {isUpcoming 
-                ? "Get ready for your goal!" 
+              {isUpcoming
+                ? "Get ready for your goal!"
                 : (totalProfit >= targetForCalc ? "Goal Accomplished!" : "You're nearly there!")}
             </Text>{"\n"}
             {isUpcoming ? (
