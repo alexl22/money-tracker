@@ -4,9 +4,10 @@ import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, where } fr
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeOff, Lock, Mail, RefreshCcw, Search, Shield, Trash2, X } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { ActivityIndicator, FlatList, Linking, Modal, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import { useFocusEffect } from '@react-navigation/native';
 import { TimePickerModal } from '../../components/TimePickerModal';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -40,6 +41,20 @@ export default function SettingsScreen() {
 
   const { showAlert } = useAlert();
   const user = auth.currentUser;
+
+  // Reset states when leaving the screen
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setIsSecurityExpanded(false);
+        setIsDataExpanded(false);
+        setIsCurrencyPickerVisible(false);
+        setIsTimePickerVisible(false);
+        setNewPassword('');
+        setConfirmPassword('');
+      };
+    }, [])
+  );
   const handleExportAudit = async () => {
     if (!user) return;
 
@@ -543,8 +558,15 @@ export default function SettingsScreen() {
                 <Download color="#3b82f6" size={20} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.softCardTitleNoMargin}>Audit Export</Text>
-                <Text style={styles.subText}>Generate Report (${exportFormat})</Text>
+                <Text 
+                  style={styles.softCardTitleNoMargin}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  Audit Export
+                </Text>
+                <Text style={styles.subText} numberOfLines={1}>Generate Report ({exportFormat})</Text>
               </View>
             </View>
             <View

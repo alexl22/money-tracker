@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "androidNavigationBar": {
-      "visible": "sticky-immersive",
+      "visible": "visible",
       "backgroundColor": "#00000000"
     },
     "ios": {

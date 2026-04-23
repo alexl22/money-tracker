@@ -1,4 +1,4 @@
-import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, deleteDoc, serverTimestamp } from '@react-native-firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from '@react-native-firebase/firestore';
 import { Calendar, TrendingDown, TrendingUp, Trophy } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -9,7 +9,6 @@ import { auth, db } from '../firebaseConfig';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 import { DatePicker } from './DatePicker';
 import { TargetInputModal } from './TargetInputModal';
-import { Plus } from 'lucide-react-native';
 interface GoalsTabProps {
   localColors: {
     primary: string;
@@ -41,11 +40,11 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
   const [todayProfit, setTodayProfit] = useState(0);
   const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [isTargetModalVisible, setIsTargetModalVisible] = useState(false);
-  const { convertToBase, currency, format, rates } = useCurrency();
+  const { convertToBase, currency, format, rates, getSymbol } = useCurrency();
   const targetForCalc = (() => {
     if (!currentGoal) return 0;
-    const val = currentGoal.currency === currency 
-      ? currentGoal.targetAmount 
+    const val = currentGoal.currency === currency
+      ? currentGoal.targetAmount
       : ((currentGoal.targetAmountUSD || (currentGoal.targetAmount / (rates?.[currentGoal.currency] || 1))) * (rates?.[currency] || 1));
     return isNaN(val) ? 0 : val;
   })();
@@ -77,7 +76,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       : (daysLeft > 0 ? Math.max(0, remainingAmount / daysLeft) : 0))
     : 0;
 
-  const isGoalReached = currentGoal && totalProfit >= targetForCalc;
+  const isGoalReached = currentGoal && totalProfit >= targetForCalc ? true : false;
   const isAhead = currentPace > 0 && daysUntilTarget < daysLeft;
   const isOnTrack = currentPace > 0 && daysUntilTarget === daysLeft;
   const daysDiff = Math.abs(Math.round(daysLeft - daysUntilTarget));
@@ -369,21 +368,22 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
           </>
         )}
       </Text>
-      
+
       <TouchableOpacity
         style={styles.summaryRow}
         onPress={() => {
-  if (currentGoal) {
-    setIsPickerVisible(true);
-  } else {
-    showAlert(
-      "Target Not Set", 
-      "Please set a target amount first by tapping the 'ADD TARGET' circle above.", 
-      "info"
-    );
-  }
-}}
+          if (currentGoal) {
+            setIsPickerVisible(true);
+          } else {
+            showAlert(
+              "Target Not Set",
+              "Please set a target amount first by tapping the 'ADD TARGET' circle above.",
+              "info"
+            );
+          }
+        }}
         activeOpacity={0.7}
+        disabled={isGoalReached}
       >
         <View style={[
           styles.goalStatusCard,
@@ -428,56 +428,64 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
 
 
       {currentGoal && (
-      <TouchableOpacity onPress={() => showAlert("Goal Performance", `Today: ${format(todayProfit, { isConverted: true })}\nDaily Target: ${format(dailyTarget, { isConverted: true })}\nTotal Profit: ${format(totalProfit, { isConverted: true })}`, "info")}>
-        <View style={styles.performanceCard}>
-          <View style={styles.perfHeader}>
-            <View>
-              <Text style={styles.perfLabel}>TODAY'S PERFORMANCE</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
-                <Text style={[styles.perfValue,
-                { color: todayProfit < 0 ? '#ff4d4d' : '#6ee591' }
-                ]}>
-                  {currentGoal ? format(todayProfit, { compact: true, threshold: 10000, isConverted: true }) : '--'}
+        <TouchableOpacity onPress={() => showAlert("Goal Performance", `Today: ${format(todayProfit, { isConverted: true })}\nDaily Target: ${format(dailyTarget, { isConverted: true })}\nTotal Profit: ${format(totalProfit, { isConverted: true })}`, "info")}>
+          <View style={styles.performanceCard}>
+            <View style={styles.perfHeader}>
+              <View style={{ flex: 1.4 }}>
+                <Text style={styles.perfLabel} numberOfLines={1}>TODAY'S PERFORMANCE</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+                  <Text
+                    style={[styles.perfValue, { color: todayProfit < 0 ? '#ff4d4d' : '#6ee591', flexShrink: 1 }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.6}
+                  >
+                    {currentGoal ? format(todayProfit, { compact: true, threshold: 10000, isConverted: true }) : '--'}
+                  </Text>
+                  {todayProfit < 0 ? (
+                    <TrendingDown color="#ff4d4d" size={16} style={{ marginLeft: 8, flexShrink: 0 }} />
+                  ) : (
+                    <TrendingUp color="#6ee591" size={16} style={{ marginLeft: 8, flexShrink: 0 }} />
+                  )}
+                </View>
+              </View>
+              <View style={{ alignItems: 'flex-end', flex: 0.9, marginLeft: 10 }}>
+                <Text style={styles.perfTargetLabel} numberOfLines={1}>DAILY TARGET</Text>
+                <Text
+                  style={[styles.perfTargetValue, { flexShrink: 1 }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.6}
+                >
+                  {currentGoal && daysLeft > 0
+                    ? format(dailyTarget, { compact: true, threshold: 10000, isConverted: true })
+                    : '--'}
                 </Text>
-                {todayProfit < 0 ? (
-                  <TrendingDown color="#ff4d4d" size={18} style={{ marginLeft: 12, opacity: 0.8 }} />
-                ) : (
-                  <TrendingUp color="#6ee591" size={18} style={{ marginLeft: 12, opacity: 0.8 }} />
-                )}
               </View>
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.perfTargetLabel}>DAILY TARGET</Text>
-              <Text style={styles.perfTargetValue}>
-                {currentGoal && daysLeft > 0
-                  ? format(dailyTarget, { compact: true, threshold: 10000, isConverted: true })
-                  : '--'}
-              </Text>
+            <View style={[
+              styles.perfStatusBox,
+              {
+                backgroundColor: isGoalReached
+                  ? 'rgba(110, 229, 145, 0.08)'
+                  : (isUpcoming ? 'rgba(103, 232, 249, 0.08)' : (isAhead || isOnTrack ? 'rgba(110, 229, 145, 0.05)' : 'rgba(255, 77, 77, 0.1)')),
+                borderLeftColor: isGoalReached
+                  ? '#6ee591'
+                  : (isUpcoming ? '#67E8F9' : (isAhead || isOnTrack ? '#6ee591' : '#ff4d4d'))
+              }
+            ]}>
+              <View style={styles.perfStatusContent}>
+                <Text style={[
+                  styles.perfStatusText,
+                  (!isAhead && !isGoalReached && !isOnTrack && !isUpcoming) && { color: '#ff4d4d' },
+                  isUpcoming && { color: '#67E8F9' }
+                ]}>
+                  {getStatusMessage()}
+                </Text>
+              </View>
             </View>
           </View>
-          <View style={[
-            styles.perfStatusBox,
-            {
-              backgroundColor: isGoalReached
-                ? 'rgba(110, 229, 145, 0.08)'
-                : (isUpcoming ? 'rgba(103, 232, 249, 0.08)' : (isAhead || isOnTrack ? 'rgba(110, 229, 145, 0.05)' : 'rgba(255, 77, 77, 0.1)')),
-              borderLeftColor: isGoalReached
-                ? '#6ee591'
-                : (isUpcoming ? '#67E8F9' : (isAhead || isOnTrack ? '#6ee591' : '#ff4d4d'))
-            }
-          ]}>
-            <View style={styles.perfStatusContent}>
-              <Text style={[
-                styles.perfStatusText,
-                (!isAhead && !isGoalReached && !isOnTrack && !isUpcoming) && { color: '#ff4d4d' },
-                isUpcoming && { color: '#67E8F9' }
-              ]}>
-                {getStatusMessage()}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
       )}
       {!isGoalReached && !isUpcoming && currentGoal && (
         <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: -8, marginBottom: 20, fontFamily: 'Inter_400Regular' }}>
@@ -515,7 +523,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   ringGoalValue: {
-    fontSize: moderateScale(22),
+    fontSize: moderateScale(24),
     marginVertical: horizontalScale(2),
     fontFamily: 'Manrope_800ExtraBold',
     color: '#FFFFFF',
@@ -619,7 +627,7 @@ const styles = StyleSheet.create({
   },
   perfTargetValue: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: moderateScale(18),
+    fontSize: moderateScale(21),
     color: '#FFFFFF',
     marginTop: horizontalScale(4),
   },

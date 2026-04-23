@@ -55,10 +55,9 @@ export default function RootLayout() {
       setupNotifications();
       SplashScreen.hideAsync();
 
-      // Hide Android Navigation Bar
+      // Ensure Android Navigation Bar is Visible and Transparent
       if (Platform.OS === 'android') {
-        NavigationBar.setVisibilityAsync('hidden');
-        NavigationBar.setBehaviorAsync('overlay-swipe');
+        NavigationBar.setVisibilityAsync('visible');
       }
     }
   }, [loaded, isAuthReady]);

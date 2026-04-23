@@ -4,6 +4,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X, Check } from 'lucide-react-native';
 import { horizontalScale } from '../utils/scaling';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface TimePickerModalProps {
   isVisible: boolean;
@@ -26,6 +27,7 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
   setTempMinutes,
   styles,
 }) => {
+  const insets = useSafeAreaInsets();
   const hoursScrollRef = useRef<ScrollView>(null);
   const minutesScrollRef = useRef<ScrollView>(null);
 
@@ -55,7 +57,10 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
     >
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <BlurView intensity={80} tint="dark" style={styles.timePickerBlur}>
-          <View style={styles.timePickerContent} onStartShouldSetResponder={() => true}>
+          <View 
+            style={[styles.timePickerContent, { paddingBottom: Math.max(insets.bottom, horizontalScale(1)) }]} 
+            onStartShouldSetResponder={() => true}
+          >
             <View style={styles.modalHandle} />
 
             <View style={styles.modalHeader}>
