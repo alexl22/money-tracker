@@ -1,5 +1,6 @@
-import { DatePicker } from '@/components/DatePicker';
-import MonthYearPicker, { LUNI } from '@/components/MonthYearPicker';
+import { DatePicker } from '../../components/DatePicker';
+import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
+import { collection, query, where, onSnapshot } from '@react-native-firebase/firestore';
 import { Calendar, ChevronDown, Receipt, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
@@ -77,9 +78,8 @@ export default function DashboardScreen() {
   useEffect(() => {
     if (!user) return;
 
-    const unsubscribe = db.collection('transactions')
-      .where('userId', '==', user.uid)
-      .onSnapshot((snapshot) => {
+    const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
         handleSnapshot(snapshot);
       }, (error) => {
         console.error("Firestore Error:", error);
@@ -360,7 +360,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0c14ff',
+    backgroundColor: '#0b0c14',
   },
   scrollContent: {
     paddingHorizontal: horizontalScale(24),
@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
 
   cardLabel: {
     fontSize: moderateScale(10),
-    color: '#ffffffc7',
+    color: 'rgba(255, 255, 255, 0.78)',
     letterSpacing: 1.1,
     marginBottom: horizontalScale(2),
     textTransform: 'uppercase',
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
 
   footerLabel: {
     fontSize: moderateScale(13),
-    color: '#ffffffc7',
+    color: 'rgba(255, 255, 255, 0.78)',
     fontFamily: 'Inter_500Medium',
   },
   footerValue: {

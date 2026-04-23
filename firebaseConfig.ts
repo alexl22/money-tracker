@@ -1,9 +1,9 @@
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import { getAuth } from '@react-native-firebase/auth';
+import { getFirestore } from '@react-native-firebase/firestore';
 
-// Initialize Firestore and Auth instances
-const db = firestore();
-const authInstance = auth();
+// Initialize Firestore and Auth instances using modular getters
+const db = getFirestore();
+const authInstance = getAuth();
 
 // Native SDK handles persistence automatically, no manual logic needed.
 

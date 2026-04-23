@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0b0c14ff' },
+  container: { flex: 1, backgroundColor: '#0b0c14' },
   scrollContent: {
     paddingHorizontal: horizontalScale(20),
     paddingTop: horizontalScale(20)
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   },
   transactionCard: {
     flexDirection: 'column',
-    backgroundColor: '#1c1e24ff',
+    backgroundColor: '#1c1e24',
     padding: horizontalScale(14),
     borderRadius: moderateScale(16),
     borderWidth: 1.5,
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   transactionCardExpanded: {
-    backgroundColor: '#24262cff',
+    backgroundColor: '#24262c',
   },
   expandedContent: {
     marginTop: horizontalScale(4),

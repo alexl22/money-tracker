@@ -4,6 +4,8 @@ import { Eye, EyeOff, Lock, LogIn, Mail, User, UserPlus } from 'lucide-react-nat
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAlert } from '../context/AlertContext';
+import { collection, doc, setDoc } from '@react-native-firebase/firestore';
+import { updateProfile } from '@react-native-firebase/auth';
 import { db, signUp } from '../firebaseConfig';
 const BLUE = '#4A8AF4';
 const BG = '#101010';
@@ -37,7 +39,7 @@ export default function RegisterScreen() {
       const userCredential = await signUp(email, password);
       const user = userCredential.user;
 
-      await user.updateProfile({ displayName: name });
+      await updateProfile(user, { displayName: name });
 
       // Create user document in Firestore
       const userData = {
@@ -48,7 +50,7 @@ export default function RegisterScreen() {
         baseCurrency: ''
       };
 
-      await db.collection('users').doc(user.uid).set(userData);
+      await setDoc(doc(db, 'users', user.uid), userData);
 
       router.push('/(tabs)/home');
     } catch (error: any) {
@@ -63,7 +65,7 @@ export default function RegisterScreen() {
 
 
   return (
-    <LinearGradient colors={['#101010', '#020f22ff']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.container}>
+    <LinearGradient colors={['#101010', '#020f22']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -263,9 +265,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(74, 138, 244, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    boxShadow: '0px 0px 15px rgba(74, 138, 244, 0.5)',
+    shadowColor: 'rgba(74, 138, 244, 0.5)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 15,
     elevation: 4,
-
   },
   eyeIcon: {
     padding: 8,
@@ -277,7 +281,10 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    boxShadow: '0px 0px 20px rgba(74, 138, 244, 0.5)',
+    shadowColor: 'rgba(74, 138, 244, 0.5)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
     elevation: 10,
   },
   signInText: {

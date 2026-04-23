@@ -49,8 +49,11 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // 2. Load cached rates for instant UI (Offline Fallback)
         const cachedRates = await AsyncStorage.getItem('cached_exchange_rates');
         const cachedCodes = await AsyncStorage.getItem('cached_currency_codes');
-        
-        if (cachedRates) setRates(JSON.parse(cachedRates));
+
+        if (cachedRates) {
+          const parsed = JSON.parse(cachedRates);
+          setRates(parsed.rates || parsed);
+        }
         if (cachedCodes) setAvailableCurrencies(JSON.parse(cachedCodes));
 
         // 3. Update with fresh rates in background
@@ -65,8 +68,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           ];
           setAvailableCurrencies(sortedCodes);
 
-          // Persist fresh data
-          await AsyncStorage.setItem('cached_exchange_rates', JSON.stringify(latestRates));
+          // Persist fresh currency codes (rates are already persisted in getExchangeRates)
           await AsyncStorage.setItem('cached_currency_codes', JSON.stringify(sortedCodes));
         }
       } catch (e) {

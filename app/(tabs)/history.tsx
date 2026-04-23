@@ -1,5 +1,5 @@
-import MonthYearPicker, { LUNI } from '@/components/MonthYearPicker';
-// Removed firebase/firestore imports for native SDK migration
+import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
+import { collection, query, where, onSnapshot, doc, deleteDoc } from '@react-native-firebase/firestore';
 import { Calendar, ChevronDown, ShoppingBag, Trash2, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
@@ -47,7 +47,6 @@ function getWeeksOfMonth(year: number, month: number) {
   const weeks = [];
   const lastDayDate = new Date(year, month + 1, 0).getDate();
 
-  // Fixed 7-day intervals for 01, 02, 03
   for (let i = 0; i < 3; i++) {
     const start = i * 7 + 1;
     const end = (i + 1) * 7;
@@ -59,7 +58,6 @@ function getWeeksOfMonth(year: number, month: number) {
     });
   }
 
-  // Week 04 takes everything from 22 to the last day
   weeks.push({
     start: new Date(year, month, 22, 0, 0, 0),
     end: new Date(year, month, lastDayDate, 23, 59, 59),
@@ -69,8 +67,6 @@ function getWeeksOfMonth(year: number, month: number) {
 
   return weeks;
 }
-
-
 
 export default function HistoryScreen() {
   const [isPickerVisible, setIsPickerVisible] = useState(false);
@@ -100,13 +96,12 @@ export default function HistoryScreen() {
     const startOfMonth = new Date(selectedYear, Number(selectedMonth), 1);
     const endOfMonth = new Date(selectedYear, Number(selectedMonth) + 1, 0, 23, 59, 59);
 
-    const unsubscribe = db.collection("transactions")
-      .where("userId", "==", user.uid)
-      .onSnapshot((snapshot: any) => {
-        handleSnapshot(snapshot);
-      }, (error: any) => {
-        console.error("Firestore Error:", error);
-      });
+    const q = query(collection(db, "transactions"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot: any) => {
+      handleSnapshot(snapshot);
+    }, (error: any) => {
+      console.error("Firestore Error:", error);
+    });
 
     function handleSnapshot(snapshot: any) {
       let grossIncome = 0;
@@ -233,7 +228,6 @@ export default function HistoryScreen() {
   });
 
   const handleDeleteTransaction = (transactionId: string, title: string) => {
-
     showAlert(
       'Delete Trasaction?',
       `Are you sure you want to delete the transaction? This action cannot be undone.`,
@@ -241,7 +235,7 @@ export default function HistoryScreen() {
       () => {
         try {
           // OPTIMISTIC DELETE: Don't await
-          db.collection("transactions").doc(transactionId).delete()
+          deleteDoc(doc(db, "transactions", transactionId))
             .catch(err => console.error("History Delete Error", err));
           
           showAlert('Action Recorded', 'The transaction is being deleted and will sync soon.', 'success');
@@ -282,7 +276,7 @@ export default function HistoryScreen() {
           <View style={styles.summaryCardLarge}>
             <View style={styles.summaryTop}>
               <View style={styles.summaryMetric}>
-                <Text style={[styles.summaryLabel, { color: '#31e6a966' }]}>TOTAL INCOME</Text>
+                <Text style={[styles.summaryLabel, { color: 'rgba(49, 230, 169, 0.4)' }]}>TOTAL INCOME</Text>
                 <Text
                   style={[styles.summaryValue, { color: '#10b981' }]}
                   numberOfLines={1}
@@ -294,7 +288,7 @@ export default function HistoryScreen() {
               </View>
               <View style={styles.verticalDivider} />
               <View style={styles.summaryMetric}>
-                <Text style={[styles.summaryLabel, { color: '#e65015ad' }]}>TOTAL EXPENSE</Text>
+                <Text style={[styles.summaryLabel, { color: 'rgba(230, 80, 21, 0.68)' }]}>TOTAL EXPENSE</Text>
                 <Text
                   style={[styles.summaryValue, { color: '#e25822' }]}
                   numberOfLines={1}

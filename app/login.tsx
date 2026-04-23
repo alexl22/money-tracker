@@ -50,7 +50,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <LinearGradient colors={['#101010', '#020f22ff']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.container}>
+    <LinearGradient colors={['#101010', '#020f22']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -223,7 +223,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(74, 138, 244, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    boxShadow: '0px 0px 15px rgba(74, 138, 244, 0.5)',
+    shadowColor: 'rgba(74, 138, 244, 0.5)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 15,
     elevation: 4,
   },
   eyeIcon: {
@@ -236,7 +239,10 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    boxShadow: '0px 0px 20px rgba(74, 138, 244, 0.5)',
+    shadowColor: 'rgba(74, 138, 244, 0.5)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
     elevation: 10,
   },
   signInText: {

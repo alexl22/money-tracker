@@ -3,6 +3,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeOff, Lock, Mail, RefreshCcw, Search, Shield, Trash2, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
+import { deleteDoc, doc, getDoc, getDocs, query, where, orderBy, collection } from '@react-native-firebase/firestore';
+import { onAuthStateChanged } from '@react-native-firebase/auth';
 import { ActivityIndicator, FlatList, Linking, Modal, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { TimePickerModal } from '../../components/TimePickerModal';
@@ -37,25 +39,23 @@ export default function SettingsScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const { showAlert } = useAlert();
-
+  const user = auth.currentUser;
   const handleExportAudit = async () => {
-    if (!auth.currentUser) return;
+    if (!user) return;
 
     setIsExporting(true);
     try {
-      const { query, collection, where, orderBy, getDocs } = require('firebase/firestore');
       const q = query(
-        collection(db, "transactions"),
-        where("userId", "==", auth.currentUser.uid),
-        orderBy("createdAt", "desc")
+        collection(db, 'transactions'),
+        where('userId', '==', user.uid),
+        orderBy('createdAt', 'desc')
       );
       const snapshot = await getDocs(q);
-
       const data = snapshot.docs.map((doc: any) => {
         const d = doc.data();
-        const rawDate = d.date || d.createdAt;
         let finalDate: Date;
-
+        const rawDate = d.date || d.createdAt;
+        
         if (rawDate && typeof rawDate.toDate === 'function') {
           finalDate = rawDate.toDate();
         } else if (rawDate instanceof Date) {
@@ -96,26 +96,24 @@ export default function SettingsScreen() {
   };
 
   useEffect(() => {
-    const fetchUserData = async (user: any) => {
-      if (!user) {
+    const fetchUserData = async (u: any) => {
+      if (!u) {
         setUserName('');
         setUserEmail('');
         return;
       }
 
-      setUserEmail(user.email || '');
-      setUserName(user.displayName);
+      setUserEmail(u.email || '');
+      setUserName(u.displayName);
 
 
-      if (!user.displayName)
+      if (!u.displayName)
         try {
-          const { getDoc, doc } = require('firebase/firestore');
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-
+          const userDoc = await getDoc(doc(db, 'users', u.uid));
+          const userData = userDoc.data();
           if (userDoc.exists()) {
-            const data = userDoc.data();
-            if (data.displayName) {
-              setUserName(data.displayName);
+            if (userData?.displayName) {
+              setUserName(userData.displayName);
             }
           }
         } catch (error) {
@@ -123,7 +121,7 @@ export default function SettingsScreen() {
         }
     };
 
-    const unsubscribe = auth.onAuthStateChanged((u: any) => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
       fetchUserData(u);
     });
 
@@ -246,7 +244,6 @@ export default function SettingsScreen() {
       "alert",
       async () => {
         try {
-          const { query, collection, where, getDocs, doc, deleteDoc } = require('firebase/firestore');
           const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
           const snapshot = await getDocs(q);
           for (const document of snapshot.docs) {
@@ -254,6 +251,7 @@ export default function SettingsScreen() {
           }
           showAlert("Success", "All transactions have been deleted.", "success");
         } catch (error) {
+          console.error("Clear transactions error:", error);
           showAlert("Error", "Could not clear transactions.", "alert");
         }
       },
@@ -270,7 +268,6 @@ export default function SettingsScreen() {
       "alert",
       async () => {
         try {
-          const { query, collection, where, getDocs, doc, deleteDoc } = require('firebase/firestore');
           const q = query(collection(db, 'loans'), where('userId', '==', user.uid));
           const snapshot = await getDocs(q);
           for (const document of snapshot.docs) {
@@ -278,6 +275,7 @@ export default function SettingsScreen() {
           }
           showAlert("Success", "All loans have been deleted.", "success");
         } catch (error) {
+          console.error("Clear loans error:", error);
           showAlert("Error", "Could not clear loans.", "alert");
         }
       },
@@ -294,20 +292,19 @@ export default function SettingsScreen() {
       "Are you sure you want to delete your account? This action cannot be undone.",
       "alert",
       async () => {
-        try {
-          const { query, collection, where, getDocs, doc, deleteDoc } = require('firebase/firestore');
+        try {       
           // Delete Transactions
-          const txQ = query(collection(db, 'transactions'), where('userId', '==', user.uid));
-          const txS = await getDocs(txQ);
-          for (const d of txS.docs) await deleteDoc(doc(db, 'transactions', d.id));
+          const txSnapshot = await getDocs(query(collection(db, 'transactions'), where('userId', '==', user.uid)));
+          for (const d of txSnapshot.docs) await deleteDoc(doc(db, 'transactions', d.id));
+          
           // Delete Loans
-          const lQ = query(collection(db, 'loans'), where('userId', '==', user.uid));
-          const lS = await getDocs(lQ);
-          for (const d of lS.docs) await deleteDoc(doc(db, 'loans', d.id));
+          const lSnapshot = await getDocs(query(collection(db, 'loans'), where('userId', '==', user.uid)));
+          for (const d of lSnapshot.docs) await deleteDoc(doc(db, 'loans', d.id));
+          
           // Delete Goals
-          const gQ = query(collection(db, 'goals'), where('userId', '==', user.uid));
-          const gS = await getDocs(gQ);
-          for (const d of gS.docs) await deleteDoc(doc(db, 'goals', d.id));
+          const gSnapshot = await getDocs(query(collection(db, 'goals'), where('userId', '==', user.uid)));
+          for (const d of gSnapshot.docs) await deleteDoc(doc(db, 'goals', d.id));
+          
           // Delete User Doc
           await deleteDoc(doc(db, "users", user.uid)).catch(() => { });
 

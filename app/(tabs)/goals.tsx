@@ -90,7 +90,7 @@ export default function GoalsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0c14ff',
+    backgroundColor: '#0b0c14',
   },
   scrollContent: {
     paddingHorizontal: horizontalScale(24),

@@ -1,4 +1,4 @@
-import firestore from '@react-native-firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, deleteDoc, serverTimestamp } from '@react-native-firebase/firestore';
 import { Calendar, TrendingDown, TrendingUp, Trophy } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -9,6 +9,7 @@ import { auth, db } from '../firebaseConfig';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 import { DatePicker } from './DatePicker';
 import { TargetInputModal } from './TargetInputModal';
+
 interface GoalsTabProps {
   localColors: {
     primary: string;
@@ -112,7 +113,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       };
 
       if (currentGoal) {
-        db.collection("goals").doc(currentGoal.id).update(updateData)
+        updateDoc(doc(db, "goals", currentGoal.id), updateData)
           .catch(err => console.error("Goal Update Error", err));
       } else {
         const newData = {
@@ -122,9 +123,9 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
           targetAmountUSD: 0,
           currency: currency,
           title: "My Saving Goal",
-          createdAt: firestore.FieldValue.serverTimestamp()
+          createdAt: serverTimestamp()
         };
-        db.collection("goals").add(newData)
+        addDoc(collection(db, "goals"), newData)
           .catch(err => console.error("Goal Create Error", err));
       }
     } catch (error) {
@@ -143,7 +144,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       };
 
       if (currentGoal) {
-        db.collection("goals").doc(currentGoal.id).update(updateData)
+        updateDoc(doc(db, "goals", currentGoal.id), updateData)
           .catch(err => console.error("Goal Update Error", err));
       } else {
         const start = new Date();
@@ -158,10 +159,10 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
           deadline: end,
           ...updateData,
           title: "My Saving Goal",
-          createdAt: firestore.FieldValue.serverTimestamp()
+          createdAt: serverTimestamp()
         };
 
-        db.collection("goals").add(newData)
+        addDoc(collection(db, "goals"), newData)
           .catch(err => console.error("Goal Create Error", err));
       }
     } catch (error) {
@@ -172,7 +173,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
   const handleResetGoal = () => {
     if (!currentGoal) return;
     try {
-      db.collection("goals").doc(currentGoal.id).delete()
+      deleteDoc(doc(db, "goals", currentGoal.id))
         .catch(err => console.error("Goal Delete Error", err));
       setCurrentGoal(null);
       setTotalProfit(0);
@@ -231,11 +232,10 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       setTodayProfit(todayInc - todayExp);
     };
 
-    const unsubscribe = db.collection("transactions")
-      .where("userId", "==", user.uid)
-      .onSnapshot(handleSnapshot, (error: any) => {
-        console.error("Goals Transactions Snapshot Error:", error);
-      });
+    const q = query(collection(db, "transactions"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, handleSnapshot, (error: any) => {
+      console.error("Goals Transactions Snapshot Error:", error);
+    });
 
     return () => unsubscribe();
   }, [currentGoal?.startDate, currency, user]);
@@ -248,8 +248,8 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
 
     const handleGoalSnapshot = (snapshot: any) => {
       if (!snapshot.empty) {
-        const doc = snapshot.docs[0];
-        const data = doc.data({ serverTimestamps: 'estimate' });
+        const goalDoc = snapshot.docs[0];
+        const data = goalDoc.data({ serverTimestamps: 'estimate' });
 
         const rawStart = data.startDate;
         const rawDeadline = data.deadline;
@@ -262,7 +262,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
         };
 
         setCurrentGoal({
-          id: doc.id,
+          id: goalDoc.id,
           title: data.title || 'My Saving Goal',
           targetAmount: data.targetAmount || 0,
           targetAmountUSD: data.targetAmountUSD || 0,
@@ -276,11 +276,10 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
       }
     };
 
-    const unsubscribe = db.collection("goals")
-      .where("userId", "==", user.uid)
-      .onSnapshot(handleGoalSnapshot, (error: any) => {
-        console.error("Goals Definition Snapshot Error:", error);
-      });
+    const q = query(collection(db, "goals"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, handleGoalSnapshot, (error: any) => {
+      console.error("Goals Definition Snapshot Error:", error);
+    });
 
     return () => unsubscribe();
   }, [user]);

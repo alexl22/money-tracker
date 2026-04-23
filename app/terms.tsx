@@ -229,7 +229,7 @@ export default function TermsOfUseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0c14ff',
+    backgroundColor: '#0b0c14',
   },
   content: {
     padding: 24,

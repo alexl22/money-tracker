@@ -1,7 +1,8 @@
 import { Colors } from '@/constants/DesignSystem';
+import { onAuthStateChanged } from '@react-native-firebase/auth';
+import { doc, getDoc } from '@react-native-firebase/firestore';
 import { BlurView } from 'expo-blur';
 import { Tabs, useRouter } from 'expo-router';
-// Removed firebase/firestore import for native SDK migration
 import { ArrowRightLeft, History, LayoutGrid, LogOut, Plus, Settings, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -17,13 +18,15 @@ export default function TabLayout() {
   const [userName, setUserName] = useState(auth.currentUser?.email?.split('@')[0] || 'User');
 
   useEffect(() => {
-    const fetchUserName = async () => {
-      const user = auth.currentUser;
-      if (user) {
+    const fetchUserName = async (u: any) => {
+      if (u) {
         try {
-          const userDoc = await db.collection('users').doc(user.uid).get();
-          if (userDoc.exists() && userDoc.data()?.displayName) {
-            setUserName(userDoc.data()?.displayName);
+          const userDoc = await getDoc(doc(db, 'users', u.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            if (data?.displayName) {
+              setUserName(data.displayName);
+            }
           }
         } catch (error) {
           console.error("Error fetching name:", error);
@@ -31,11 +34,11 @@ export default function TabLayout() {
       }
     };
 
-    fetchUserName();
+    if (auth.currentUser) fetchUserName(auth.currentUser);
 
     // Also listen for auth changes to re-fetch if user changes
-    const unsubscribe = auth.onAuthStateChanged((u: any) => {
-      if (u) fetchUserName();
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      if (u) fetchUserName(u);
       else setUserName('User');
     });
     return () => unsubscribe();
@@ -277,13 +280,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   centerButton: {
-    width: horizontalScale(60),
-    height: horizontalScale(60),
-    borderRadius: moderateScale(30),
-    backgroundColor: '#3b82f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    boxShadow: `0px ${horizontalScale(8)}px ${horizontalScale(24)}px rgba(59, 130, 246, 0.5)`,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: horizontalScale(8) },
+    shadowOpacity: 0.5,
+    shadowRadius: moderateScale(12),
     elevation: 10,
   },
   customHeader: {
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: horizontalScale(24),
-    backgroundColor: '#0b0c14ff',
+    backgroundColor: '#0b0c14',
     paddingTop: horizontalScale(15),
   },
   userInfo: {

@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
   },
   weekLabelText: {
     fontSize: 11,
-    color: '#fffdfd69',
+    color: 'rgba(255, 253, 253, 0.41)',
     width: '14.28%',
     textAlign: 'center',
     fontFamily: 'Inter_700Bold',
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   dimmedDay: {
-    backgroundColor: '#ffffff54',
+    backgroundColor: 'rgba(255, 255, 255, 0.33)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
     shadowOpacity: 0,
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
   },
   dayText: {
     fontSize: 16,
-    color: '#d6d4d4d2',
+    color: 'rgba(214, 212, 212, 0.82)',
     fontFamily: 'Inter_500Medium'
   },
   selectedDayText: {
