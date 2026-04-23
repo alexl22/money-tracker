@@ -24,6 +24,9 @@ import { CurrencyProvider } from '../context/CurrencyContext';
 import { onAuthChanged } from '../firebaseConfig';
 import { setupNotifications } from '../utils/notifications';
 
+import * as NavigationBar from 'expo-navigation-bar';
+import { Platform } from 'react-native';
+
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
@@ -51,6 +54,12 @@ export default function RootLayout() {
     if (loaded && isAuthReady) {
       setupNotifications();
       SplashScreen.hideAsync();
+
+      // Hide Android Navigation Bar
+      if (Platform.OS === 'android') {
+        NavigationBar.setVisibilityAsync('hidden');
+        NavigationBar.setBehaviorAsync('overlay-swipe');
+      }
     }
   }, [loaded, isAuthReady]);
 

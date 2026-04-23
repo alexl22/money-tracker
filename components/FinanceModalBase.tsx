@@ -118,102 +118,102 @@ export function FinanceModalBase({
                 styles.modalPositioner,
                 modalStep === 2 && styles.modalPositionerStep2
               ]}>
-              <Pressable style={styles.modalContent} onPress={Keyboard.dismiss}>
-                {modalStep === 1 ? (
-                  <View style={styles.step1Container}>
-                    <View style={styles.modalHeader}>
-                      <Text style={styles.modalTitle}>{titleStep1}</Text>
-                      <TouchableOpacity onPress={resetModal}>
-                        <X color="rgba(255,255,255,0.4)" size={24} />
-                      </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.amountDisplay}>
-                      <View style={styles.amountRow}>
-                        <Text style={styles.currencySymbol}>
-                          {getSymbol()}
-                        </Text>
-                        <Text style={styles.amountText} numberOfLines={1}
-                        adjustsFontSizeToFit = {true}
-                        >
-                          {Number(amount).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}
-                        </Text>
+                <Pressable style={styles.modalContent} onPress={Keyboard.dismiss}>
+                  {modalStep === 1 ? (
+                    <View style={styles.step1Container}>
+                      <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>{titleStep1}</Text>
+                        <TouchableOpacity onPress={resetModal}>
+                          <X color="rgba(255,255,255,0.4)" size={24} />
+                        </TouchableOpacity>
                       </View>
-                    </View>
 
-                    <View style={styles.dividerContainer}>
-                      <LinearGradient
-                        colors={["transparent", "#3b82f6", "transparent"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.fadedLine}
-                      />
-                    </View>
+                      <View style={styles.amountDisplay}>
+                        <View style={styles.amountRow}>
+                          <Text style={styles.currencySymbol}>
+                            {getSymbol()}
+                          </Text>
+                          <Text style={styles.amountText} numberOfLines={1}
+                            adjustsFontSizeToFit={true}
+                          >
+                            {Number(amount).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </Text>
+                        </View>
+                      </View>
 
-                    <View style={styles.keypadGrid}>
-                      {[
-                        "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "delete"
-                      ].map((key) =>
-                        renderKeypadButton(
-                          key,
-                          key === "delete" ? (
-                            <Delete
-                              color="rgba(255,255,255,0.8)"
-                              size={moderateScale(28)}
-                            />
-                          ) : undefined
-                        )
-                      )}
-                    </View>
+                      <View style={styles.dividerContainer}>
+                        <LinearGradient
+                          colors={["transparent", "#3b82f6", "transparent"]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.fadedLine}
+                        />
+                      </View>
 
-                    <TouchableOpacity
-                      style={styles.primaryButton}
-                      onPress={() => setModalStep(2)}
-                    >
-                      <Text style={styles.primaryButtonText}>CONTINUE</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.step2Container}>
-                    <View style={styles.modalHeader}>
-                      <Text style={styles.modalTitle}>{titleStep2}</Text>
-                      <TouchableOpacity onPress={resetModal}>
-                        <X color="rgba(255,255,255,0.4)" size={24} />
-                      </TouchableOpacity>
-                    </View>
+                      <View style={styles.keypadGrid}>
+                        {[
+                          "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "delete"
+                        ].map((key) =>
+                          renderKeypadButton(
+                            key,
+                            key === "delete" ? (
+                              <Delete
+                                color="rgba(255,255,255,0.8)"
+                                size={moderateScale(28)}
+                              />
+                            ) : undefined
+                          )
+                        )}
+                      </View>
 
-                    <View style={styles.pillContainer}>
                       <TouchableOpacity
-                        style={styles.amountPill}
-                        onPress={() => setModalStep(1)}
-                        
+                        style={styles.primaryButton}
+                        onPress={() => setModalStep(2)}
                       >
-                        <Text style={styles.amountPillText}
-                        numberOfLines={1}
-                        adjustsFontSizeToFit = {true}
-                        >
-                          {getSymbol()}{" "}
-                          {Number(amount).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}
-                        </Text>
-                        <View style={styles.pillDivider} />
-                        <Pencil color="#3b82f6" size={24} />
+                        <Text style={styles.primaryButtonText}>CONTINUE</Text>
                       </TouchableOpacity>
                     </View>
+                  ) : (
+                    <View style={styles.step2Container}>
+                      <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>{titleStep2}</Text>
+                        <TouchableOpacity onPress={resetModal}>
+                          <X color="rgba(255,255,255,0.4)" size={24} />
+                        </TouchableOpacity>
+                      </View>
 
-                    {renderStep2(amount, resetModal)}
-                  </View>
-                )}
-              </Pressable>
-            </View>
-          </Pressable>
-        </ScrollView>
-       </KeyboardAvoidingView>
+                      <View style={styles.pillContainer}>
+                        <TouchableOpacity
+                          style={styles.amountPill}
+                          onPress={() => setModalStep(1)}
+
+                        >
+                          <Text style={styles.amountPillText}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit={true}
+                          >
+                            {getSymbol()}{" "}
+                            {Number(amount).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </Text>
+                          <View style={styles.pillDivider} />
+                          <Pencil color="#3b82f6" size={24} />
+                        </TouchableOpacity>
+                      </View>
+
+                      {renderStep2(amount, resetModal)}
+                    </View>
+                  )}
+                </Pressable>
+              </View>
+            </Pressable>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );

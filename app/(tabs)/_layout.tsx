@@ -5,8 +5,9 @@ import { BlurView } from 'expo-blur';
 import { Tabs, useRouter } from 'expo-router';
 import { ArrowRightLeft, History, LayoutGrid, LogOut, Plus, Settings, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TabBarProvider, useTabBar } from '../../context/TabBarContext';
 import { auth, db, signOutUser } from '../../firebaseConfig';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
@@ -15,6 +16,7 @@ const { width } = Dimensions.get('window');
 
 export default function TabLayout() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [userName, setUserName] = useState(auth.currentUser?.email?.split('@')[0] || 'User');
 
   useEffect(() => {
@@ -95,7 +97,11 @@ export default function TabLayout() {
     }));
 
     return (
-      <Animated.View style={[styles.tabBarContainer, animatedContainerStyle]}>
+      <Animated.View style={[
+        styles.tabBarContainer, 
+        animatedContainerStyle, 
+        { bottom: Math.max(insets.bottom, horizontalScale(20)) }
+      ]}>
         <View style={styles.tabBarCapsule}>
           <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
 
@@ -164,22 +170,20 @@ export default function TabLayout() {
           screenOptions={{
             headerShown: true,
             header: () => (
-              <SafeAreaView style={{ backgroundColor: Colors.background }}>
-                <View style={styles.customHeader}>
-                  <View style={styles.userInfo}>
-                    <View style={styles.userAvatar}>
-                      <User color={Colors.white} size={moderateScale(16)} />
-                    </View>
-                    <Text style={styles.userName}>{userName}</Text>
+              <View style={[styles.customHeader, { paddingTop: Math.max(insets.top, horizontalScale(15)) }]}>
+                <View style={styles.userInfo}>
+                  <View style={styles.userAvatar}>
+                    <User color={Colors.white} size={moderateScale(16)} />
                   </View>
-                  <TouchableOpacity
-                    style={styles.logoutButton}
-                    onPress={handleLogout}
-                  >
-                    <LogOut color="rgba(255,255,255,0.6)" size={moderateScale(20)} />
-                  </TouchableOpacity>
+                  <Text style={styles.userName}>{userName}</Text>
                 </View>
-              </SafeAreaView>
+                <TouchableOpacity
+                  style={styles.logoutButton}
+                  onPress={handleLogout}
+                >
+                  <LogOut color="rgba(255,255,255,0.6)" size={moderateScale(20)} />
+                </TouchableOpacity>
+              </View>
             ),
           }}>
 
@@ -287,13 +291,12 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   customHeader: {
-    height: horizontalScale(90),
+    height: horizontalScale(80),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: horizontalScale(24),
     backgroundColor: '#0b0c14',
-    paddingTop: horizontalScale(15),
   },
   userInfo: {
     flexDirection: 'row',

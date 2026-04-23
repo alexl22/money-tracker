@@ -1,11 +1,12 @@
+import { updateProfile } from '@react-native-firebase/auth';
+import { doc, setDoc } from '@react-native-firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Eye, EyeOff, Lock, LogIn, Mail, User, UserPlus } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../context/AlertContext';
-import { collection, doc, setDoc } from '@react-native-firebase/firestore';
-import { updateProfile } from '@react-native-firebase/auth';
 import { db, signUp } from '../firebaseConfig';
 const BLUE = '#4A8AF4';
 const BG = '#101010';
@@ -64,9 +65,11 @@ export default function RegisterScreen() {
   };
 
 
+  const insets = useSafeAreaInsets();
+
   return (
     <LinearGradient colors={['#101010', '#020f22']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.container}>
-      <SafeAreaView style={{ flex: 1 }}>
+      <View style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
@@ -184,7 +187,7 @@ export default function RegisterScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     </LinearGradient>
   );
 }

@@ -1,20 +1,24 @@
-import { getAuth } from '@react-native-firebase/auth';
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  onAuthStateChanged,
+  sendPasswordResetEmail
+} from '@react-native-firebase/auth';
 import { getFirestore } from '@react-native-firebase/firestore';
 
 // Initialize Firestore and Auth instances using modular getters
 const db = getFirestore();
 const authInstance = getAuth();
 
-// Native SDK handles persistence automatically, no manual logic needed.
-
 // -- Platform Agnostic Auth Helpers --
 
 export const signIn = async (email: string, password: string) => {
-  return await authInstance.signInWithEmailAndPassword(email, password);
+  return await signInWithEmailAndPassword(authInstance, email, password);
 };
 
 export const signUp = async (email: string, password: string) => {
-  return await authInstance.createUserWithEmailAndPassword(email, password);
+  return await createUserWithEmailAndPassword(authInstance, email, password);
 };
 
 export const signOutUser = async () => {
@@ -34,11 +38,11 @@ export const deleteUserAccount = async () => {
 };
 
 export const sendPasswordReset = async (email: string) => {
-  return await authInstance.sendPasswordResetEmail(email);
+  return await sendPasswordResetEmail(authInstance, email);
 };
 
 export const onAuthChanged = (callback: any) => {
-  return authInstance.onAuthStateChanged(callback);
+  return onAuthStateChanged(authInstance, callback);
 };
 
 export { authInstance as auth, db };
