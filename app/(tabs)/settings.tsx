@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { onAuthStateChanged } from '@react-native-firebase/auth';
+import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, where } from '@react-native-firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeOff, Lock, Mail, RefreshCcw, Search, Shield, Trash2, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { deleteDoc, doc, getDoc, getDocs, query, where, orderBy, collection } from '@react-native-firebase/firestore';
-import { onAuthStateChanged } from '@react-native-firebase/auth';
 import { ActivityIndicator, FlatList, Linking, Modal, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { TimePickerModal } from '../../components/TimePickerModal';
@@ -18,11 +18,11 @@ import { checkNotificationPermission, requestNotificationPermission, updateNotif
 import { horizontalScale, moderateScale } from '../../utils/scaling';
 
 export default function SettingsScreen() {
-  const { currency, setCurrency, availableCurrencies, format } = useCurrency();
+  const { currency, setCurrency, availableCurrencies, format, rates } = useCurrency();
   const [isCurrencyPickerVisible, setIsCurrencyPickerVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [syncEnabled, setSyncEnabled] = useState(false);
-  const [exportFormat, setExportFormat] = useState('CSV');
+  const [exportFormat, setExportFormat] = useState('PDF');
   const [syncTime, setSyncTime] = useState({ hours: 23, minutes: 0 });
   const [isTimePickerVisible, setIsTimePickerVisible] = useState(false);
   const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
@@ -55,7 +55,7 @@ export default function SettingsScreen() {
         const d = doc.data();
         let finalDate: Date;
         const rawDate = d.date || d.createdAt;
-        
+
         if (rawDate && typeof rawDate.toDate === 'function') {
           finalDate = rawDate.toDate();
         } else if (rawDate instanceof Date) {
@@ -70,6 +70,8 @@ export default function SettingsScreen() {
           id: doc.id,
           title: d.title || 'Untitled',
           amount: d.amount || 0,
+          currency: d.currency || currency,
+          amountUSD: d.amountUSD || 0,
           type: d.type || 'expense',
           notes: d.notes || '',
           category: d.category || 'General',
@@ -83,9 +85,9 @@ export default function SettingsScreen() {
       }
 
       if (exportFormat === 'CSV') {
-        await exportToCSV(data, format);
+        await exportToCSV(data, format, currency, rates);
       } else {
-        await exportToPDF(data, format, userName);
+        await exportToPDF(data, format, currency, rates, userName);
       }
     } catch (error) {
       console.error("Export error:", error);
@@ -292,19 +294,19 @@ export default function SettingsScreen() {
       "Are you sure you want to delete your account? This action cannot be undone.",
       "alert",
       async () => {
-        try {       
+        try {
           // Delete Transactions
           const txSnapshot = await getDocs(query(collection(db, 'transactions'), where('userId', '==', user.uid)));
           for (const d of txSnapshot.docs) await deleteDoc(doc(db, 'transactions', d.id));
-          
+
           // Delete Loans
           const lSnapshot = await getDocs(query(collection(db, 'loans'), where('userId', '==', user.uid)));
           for (const d of lSnapshot.docs) await deleteDoc(doc(db, 'loans', d.id));
-          
+
           // Delete Goals
           const gSnapshot = await getDocs(query(collection(db, 'goals'), where('userId', '==', user.uid)));
           for (const d of gSnapshot.docs) await deleteDoc(doc(db, 'goals', d.id));
-          
+
           // Delete User Doc
           await deleteDoc(doc(db, "users", user.uid)).catch(() => { });
 

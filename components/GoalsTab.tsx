@@ -9,7 +9,7 @@ import { auth, db } from '../firebaseConfig';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 import { DatePicker } from './DatePicker';
 import { TargetInputModal } from './TargetInputModal';
-
+import { Plus } from 'lucide-react-native';
 interface GoalsTabProps {
   localColors: {
     primary: string;
@@ -324,7 +324,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
             activeOpacity={0.6}
           >
             <Text style={styles.ringGoalLabel}>GOAL</Text>
-            <Text style={styles.ringGoalValue}>NO TARGET</Text>
+            <Text style={styles.ringGoalValue}>ADD TARGET</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -369,10 +369,20 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
           </>
         )}
       </Text>
-
+      
       <TouchableOpacity
         style={styles.summaryRow}
-        onPress={() => setIsPickerVisible(true)}
+        onPress={() => {
+  if (currentGoal) {
+    setIsPickerVisible(true);
+  } else {
+    showAlert(
+      "Target Not Set", 
+      "Please set a target amount first by tapping the 'ADD TARGET' circle above.", 
+      "info"
+    );
+  }
+}}
         activeOpacity={0.7}
       >
         <View style={[
@@ -415,6 +425,9 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
         onSave={handleUpdateTarget}
         onReset={handleResetGoal}
       />
+
+
+      {currentGoal && (
       <TouchableOpacity onPress={() => showAlert("Goal Performance", `Today: ${format(todayProfit, { isConverted: true })}\nDaily Target: ${format(dailyTarget, { isConverted: true })}\nTotal Profit: ${format(totalProfit, { isConverted: true })}`, "info")}>
         <View style={styles.performanceCard}>
           <View style={styles.perfHeader}>
@@ -465,7 +478,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
           </View>
         </View>
       </TouchableOpacity>
-
+      )}
       {!isGoalReached && !isUpcoming && currentGoal && (
         <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: -8, marginBottom: 20, fontFamily: 'Inter_400Regular' }}>
           * Estimated based on daily average since goal start

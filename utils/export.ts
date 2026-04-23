@@ -1,11 +1,12 @@
 import { File, Paths } from 'expo-file-system';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-
 export interface ExportTransaction {
   id: string;
   title: string;
   amount: number;
+  amountUSD: number;
+  currency: string;
   type: 'income' | 'expense';
   createdAt: Date;
   notes?: string;
@@ -15,9 +16,12 @@ export interface ExportTransaction {
 /**
  * Generates a CSV string from transaction data and shares it.
  */
+
 export const exportToCSV = async (
   transactions: ExportTransaction[],
-  format: (amount: number, options?: any) => string
+  format: (amount: number, options?: any) => string,
+  currency: string,
+  rates?: any
 ) => {
   if (transactions.length === 0) throw new Error("No transactions to export.");
 
@@ -28,7 +32,9 @@ export const exportToCSV = async (
   const rows = transactions.map(t => {
     const date = t.createdAt.toLocaleDateString();
     const time = t.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const amount = format(t.type === 'income' ? t.amount : -t.amount, { showSign: true });
+    const isSameCurrency = t.currency === currency;
+    const displayValue = isSameCurrency ? t.amount : t.amountUSD;
+    const amount = format(t.type === 'income' ? displayValue : -displayValue, { showSign: true, isConverted: isSameCurrency });
 
     // Escape commas and quotes in strings
     const escapedTitle = t.title.includes(',') || t.title.includes('"') ? `"${t.title.replace(/"/g, '""')}"` : t.title;
@@ -58,12 +64,23 @@ export const exportToCSV = async (
 export const exportToPDF = async (
   transactions: ExportTransaction[],
   format: (amount: number, options?: any) => string,
-  userName?: string
+  currency: string,
+  rates: any,
+  userName?: string,
+  
 ) => {
   if (transactions.length === 0) throw new Error("No transactions to export.");
 
-  const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  
+
+  const totalIncome =  transactions.filter(t => t.type === 'income').reduce((sum, t) =>{
+    const actualValue = t.currency === currency ? t.amount : (t.amountUSD * (rates?.[currency] || 1));
+    return sum + actualValue;
+  }, 0);
+  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => {
+     const actualValue = t.currency === currency ? t.amount : (t.amountUSD * (rates?.[currency] || 1));
+    return sum + actualValue;
+  }, 0);
   const netBalance = totalIncome - totalExpense;
 
   const htmlContent = `
@@ -99,15 +116,15 @@ export const exportToPDF = async (
         <div class="summary">
           <div class="summary-item">
             <div class="label">Total Income</div>
-            <div class="value income">${format(totalIncome)}</div>
+            <div class="value income">${format(totalIncome, {isConverted: true})}</div>
           </div>
           <div class="summary-item">
             <div class="label">Total Expense</div>
-            <div class="value expense">${format(-totalExpense)}</div>
+            <div class="value expense">${format(-totalExpense, {isConverted: true})}</div>
           </div>
           <div class="summary-item">
             <div class="label">Net Balance</div>
-            <div class="value ${netBalance >= 0 ? 'income' : 'expense'}">${format(netBalance, { showSign: true })}</div>
+            <div class="value ${netBalance >= 0 ? 'income' : 'expense'}">${format(netBalance, { showSign: true, isConverted: true })}</div>
           </div>
         </div>
 
@@ -122,17 +139,20 @@ export const exportToPDF = async (
             </tr>
           </thead>
           <tbody>
-            ${transactions.map(t => `
+            ${transactions.map(t =>{
+              const isSameCurrency = t.currency === currency;
+              const displayValue = isSameCurrency ? t.amount : (t.amountUSD || t.amount);
+              return `
               <tr>
                 <td>${t.createdAt.toLocaleDateString()}</td>
                 <td>${t.title}</td>
                 <td>${t.notes || 'General'}</td>
                 <td style="color: ${t.type === 'income' ? '#10b981' : '#ef4444'}">${t.type.toUpperCase()}</td>
                 <td style="font-weight: bold; color: ${t.type === 'income' ? '#10b981' : '#ef4444'}">
-                  ${format(t.type === 'income' ? t.amount : -t.amount, { showSign: true })}
+                  ${format(t.type === 'income' ? displayValue : -displayValue, { showSign: true, isConverted: isSameCurrency })}
                 </td>
               </tr>
-            `).join('')}
+            `;}).join('')}
           </tbody>
         </table>
 

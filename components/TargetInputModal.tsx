@@ -28,8 +28,11 @@ export function TargetInputModal({
   }, [isVisible, initialAmount]);
 
   const handleKeyPress = (val: string) => {
+    const digitCount = amount.replace(".", "").length;
+
     if (val === '.') {
       if (amount.includes('.')) return;
+      if (digitCount >= 10) return;
       setAmount(amount + '.');
     } else if (val === 'delete') {
       if (amount.length <= 1) {
@@ -38,6 +41,7 @@ export function TargetInputModal({
         setAmount(amount.slice(0, -1));
       }
     } else {
+      if (digitCount >= 10) return;
       if (amount === '0') {
         setAmount(val);
       } else {
@@ -66,77 +70,87 @@ export function TargetInputModal({
 
   return (
     <Modal visible={isVisible} transparent onRequestClose={onClose} statusBarTranslucent={true}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <View style={styles.modalContent}>
-          <View style={styles.header}>
-            <View style={{ flex: 1, marginRight: 15 }}>
-              <Text style={styles.title}>SET GOAL TARGET</Text>
-              <Text style={styles.subtitle} numberOfLines={2}>How much do you want to save?</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <X color="rgba(255,255,255,0.4)" size={20} style={{ marginTop: 1 }} />
-            </TouchableOpacity>
-          </View>
+      <View style={styles.modalOverlay}>
+        <Pressable style={styles.dismissArea} onPress={onClose}>
+          <View style={styles.modalPositioner}>
+            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.header}>
+                <View style={{ flex: 1, marginRight: 15 }}>
+                  <Text style={styles.title}>SET GOAL TARGET</Text>
+                  <Text style={styles.subtitle} numberOfLines={2}>How much do you want to save?</Text>
+                </View>
+                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                  <X color="rgba(255,255,255,0.4)" size={20} style={{ marginTop: 1 }} />
+                </TouchableOpacity>
+              </View>
 
-          <View style={styles.amountDisplay}>
-            <View style={styles.amountRow}>
-              <Text style={[styles.currencySymbol, getSymbol().length > 1 && { fontSize: moderateScale(22) }]}>{getSymbol()}</Text>
-              <Text
-                style={styles.amountText}
-                numberOfLines={1}
-                adjustsFontSizeToFit={true}
-                minimumFontScale={0.5}
+              <View style={styles.amountDisplay}>
+                <View style={styles.amountRow}>
+                  <Text style={[styles.currencySymbol, getSymbol().length > 1 && { fontSize: moderateScale(22) }]}>{getSymbol()}</Text>
+                  <Text
+                    style={styles.amountText}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit={true}
+                    minimumFontScale={0.5}
+                  >
+                    {Number(amount).toLocaleString(undefined, {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 2
+                    })}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.dividerContainer}>
+                <LinearGradient
+                  colors={['transparent', '#3b82f6', 'transparent']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.fadedLine}
+                />
+              </View>
+
+              <View style={styles.keypadGrid}>
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'delete'].map((key) =>
+                  renderKeypadButton(key, key === 'delete' ? <Delete color="rgba(255,255,255,0.8)" size={moderateScale(28)} /> : undefined)
+                )}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.btnBase, amount === '0' ? styles.resetBtn : styles.confirmBtn]}
+                onPress={amount === '0' ? () => { onReset?.(); onClose(); } : handleSave}
               >
-                {Number(amount).toLocaleString(undefined, {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 2
-                })}
-              </Text>
-            </View>
+                <Text style={styles.saveBtnText}>
+                  {amount === '0' ? 'RESET GOAL' : 'Confirm Target'}
+                </Text>
+                {amount === '0' ? <Delete color="#fff" size={moderateScale(20)} /> : <Check color="#fff" size={moderateScale(20)} />}
+              </TouchableOpacity>
+            </Pressable>
           </View>
-
-          <View style={styles.dividerContainer}>
-            <LinearGradient
-              colors={['transparent', '#3b82f6', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.fadedLine}
-            />
-          </View>
-
-          <View style={styles.keypadGrid}>
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'delete'].map((key) =>
-              renderKeypadButton(key, key === 'delete' ? <Delete color="rgba(255,255,255,0.8)" size={moderateScale(28)} /> : undefined)
-            )}
-          </View>
-
-          <TouchableOpacity
-            style={[styles.btnBase, amount === '0' ? styles.resetBtn : styles.confirmBtn]}
-            onPress={amount === '0' ? () => { onReset?.(); onClose(); } : handleSave}
-          >
-            <Text style={styles.saveBtnText}>
-              {amount === '0' ? 'RESET GOAL' : 'Confirm Target'}
-            </Text>
-            {amount === '0' ? <Delete color="#fff" size={moderateScale(20)} /> : <Check color="#fff" size={moderateScale(20)} />}
-          </TouchableOpacity>
-        </View>
-      </Pressable>
+        </Pressable>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.85)',
+  },
+  dismissArea: {
+    flex: 1,
     paddingHorizontal: horizontalScale(24),
+  },
+  modalPositioner: {
+    marginTop: "40%",
+    marginBottom: horizontalScale(20),
   },
   modalContent: {
     backgroundColor: '#1C1D21',
     borderRadius: moderateScale(36),
     padding: horizontalScale(24),
-    paddingBottom: horizontalScale(32),
+    paddingBottom: horizontalScale(20),
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
   },
@@ -144,14 +158,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: horizontalScale(32),
+    marginBottom: horizontalScale(10),
   },
   title: {
     fontSize: moderateScale(10),
     color: '#3b82f6',
     letterSpacing: 2,
     fontFamily: 'Inter_700Bold',
-    marginBottom: horizontalScale(4),
+    marginBottom: horizontalScale(1),
   },
   subtitle: {
     fontSize: moderateScale(18),
@@ -167,7 +181,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   amountDisplay: {
-    marginBottom: horizontalScale(8),
+    marginBottom: horizontalScale(0),
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -180,16 +194,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: horizontalScale(10),
   },
   currencySymbol: {
-    fontSize: moderateScale(30),
+    fontSize: moderateScale(23),
     color: '#3b82f6',
     fontFamily: 'Manrope_700Bold',
     marginRight: horizontalScale(8),
   },
   amountText: {
-    fontSize: moderateScale(45),
+    fontSize: moderateScale(43),
     color: '#FFFFFF',
     fontFamily: 'Manrope_700Bold',
     letterSpacing: -1,
+    flexShrink: 1,
   },
   dividerContainer: {
     height: horizontalScale(3),

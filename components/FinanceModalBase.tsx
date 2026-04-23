@@ -133,7 +133,9 @@ export function FinanceModalBase({
                         <Text style={styles.currencySymbol}>
                           {getSymbol()}
                         </Text>
-                        <Text style={styles.amountText} numberOfLines={1}>
+                        <Text style={styles.amountText} numberOfLines={1}
+                        adjustsFontSizeToFit = {true}
+                        >
                           {Number(amount).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2
@@ -187,8 +189,12 @@ export function FinanceModalBase({
                       <TouchableOpacity
                         style={styles.amountPill}
                         onPress={() => setModalStep(1)}
+                        
                       >
-                        <Text style={styles.amountPillText}>
+                        <Text style={styles.amountPillText}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit = {true}
+                        >
                           {getSymbol()}{" "}
                           {Number(amount).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
@@ -248,7 +254,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: horizontalScale(20),
+    marginBottom: horizontalScale(18),
   },
   modalTitle: {
     fontSize: moderateScale(13),
@@ -270,16 +276,17 @@ export const styles = StyleSheet.create({
     paddingHorizontal: horizontalScale(10),
   },
   currencySymbol: {
-    fontSize: moderateScale(30),
+    fontSize: moderateScale(23),
     color: '#3b82f6',
     fontFamily: 'Manrope_700Bold',
     marginRight: horizontalScale(8),
   },
   amountText: {
-    fontSize: moderateScale(45),
+    fontSize: moderateScale(43),
     color: '#FFFFFF',
     fontFamily: 'Manrope_700Bold',
     letterSpacing: -1,
+    flexShrink: 1,
   },
   dividerContainer: {
     height: horizontalScale(3),
