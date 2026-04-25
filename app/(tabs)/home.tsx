@@ -200,7 +200,10 @@ export default function DashboardScreen() {
               <View style={styles.calendarIconContainer}>
                 <Calendar color="#3b82f6" size={20} fill="rgba(59, 130, 246, 0.1)" strokeWidth={2.5} />
               </View>
-              <Text style={styles.dateSelectorText}>
+              <Text style={styles.dateSelectorText}
+                numberOfLines={1}
+                adjustsFontSizeToFit={true}
+              >
                 {LUNI.find(l => l.value === selectedMonth)?.label} {selectedYear}
               </Text>
               <View style={styles.chevronIconContainer}>
@@ -220,7 +223,11 @@ export default function DashboardScreen() {
               <View style={styles.calendarIconContainer}>
                 <Calendar color="#3b82f6" size={20} fill="rgba(59, 130, 246, 0.1)" strokeWidth={2.5} />
               </View>
-              <Text style={styles.dateSelectorText}>
+              <Text 
+                style={styles.dateSelectorText}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 {rangeStart.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} — {rangeEnd.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
               </Text>
               <View style={styles.chevronIconContainer}>
@@ -279,8 +286,8 @@ export default function DashboardScreen() {
             style={styles.largeCard}
           >
             <View style={styles.cardHeader}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(226, 88, 34, 0.1)' }]}>
-                <Receipt color="#e25822" size={22} strokeWidth={2.5} />
+              <View style={[styles.iconCircle, { backgroundColor: 'rgba(235, 86, 86, 0.1)' }]}>
+                <Receipt color="#eb5656" size={22} strokeWidth={2.5} />
               </View>
             </View>
 
@@ -288,7 +295,7 @@ export default function DashboardScreen() {
               <View style={styles.statColumn}>
                 <Text style={styles.cardLabel}>TOTAL EXPENSES</Text>
                 <Text
-                  style={[styles.cardAmount, { color: '#e25822' }]}
+                  style={[styles.cardAmount, { color: '#eb5656' }]}
                   numberOfLines={1}
                   adjustsFontSizeToFit
                   minimumFontScale={0.5}
@@ -302,7 +309,7 @@ export default function DashboardScreen() {
               <View style={styles.statColumn}>
                 <Text style={styles.footerLabel}>{viewMode === 'month' ? 'Daily' : 'Monthly'}</Text>
                 <Text
-                  style={[styles.footerValue, { color: '#e25822' }]}
+                  style={[styles.footerValue, { color: '#eb5656' }]}
                   numberOfLines={1}
                   adjustsFontSizeToFit
                   minimumFontScale={0.5}
@@ -324,7 +331,7 @@ export default function DashboardScreen() {
             </Text>
           </View>
           <Text
-            style={[styles.totalBalanceAmount, { color: (totalIncome - totalExpenses) >= 0 ? '#10b981' : '#e25822' }]}
+            style={[styles.totalBalanceAmount, { color: (totalIncome - totalExpenses) >= 0 ? '#10b981' : '#eb5656' }]}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.5}

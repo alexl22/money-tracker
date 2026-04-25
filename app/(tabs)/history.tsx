@@ -1,6 +1,6 @@
 import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
 import { collection, query, where, onSnapshot, doc, deleteDoc } from '@react-native-firebase/firestore';
-import { Calendar, ChevronDown, ShoppingBag, Trash2, Wallet } from 'lucide-react-native';
+import { Calendar, ChevronDown, ShoppingBag, SlidersHorizontal, Trash2, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
@@ -80,6 +80,7 @@ export default function HistoryScreen() {
   const [weekIncome, setWeekIncome] = useState(0);
 
   const [transactions, setTransactions] = useState<TransactionGroup[]>([]);
+  const [filterMode, setFilterMode] = useState<'all' | 'income' | 'expense'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const { format, currency } = useCurrency();
   const user = auth.currentUser;
@@ -143,7 +144,9 @@ export default function HistoryScreen() {
 
       const weekFilteredList = rawList.filter(t => {
         const txDate = t.createdAt.getTime();
-        return txDate >= currentWeek.start.getTime() && txDate <= currentWeek.end.getTime();
+        const dateMatch = txDate >= currentWeek.start.getTime() && txDate <= currentWeek.end.getTime();
+        const filterMatch = filterMode === 'all' || t.type === filterMode;
+        return dateMatch && filterMatch;
       });
 
       weekFilteredList.forEach((t) => {
@@ -204,7 +207,7 @@ export default function HistoryScreen() {
 
 
     return () => unsubscribe && unsubscribe();
-  }, [selectedMonth, selectedYear, selectedWeekIndex, currency, user]);
+  }, [selectedMonth, selectedYear, selectedWeekIndex, filterMode, currency, user]);
 
   const { tabBarOffset } = useTabBar();
   const lastScrollY = useSharedValue(0);
@@ -288,9 +291,9 @@ export default function HistoryScreen() {
               </View>
               <View style={styles.verticalDivider} />
               <View style={styles.summaryMetric}>
-                <Text style={[styles.summaryLabel, { color: 'rgba(230, 80, 21, 0.68)' }]}>TOTAL EXPENSE</Text>
+                <Text style={[styles.summaryLabel, { color: 'rgba(235, 86, 86, 0.68)' }]}>TOTAL EXPENSE</Text>
                 <Text
-                  style={[styles.summaryValue, { color: '#e25822' }]}
+                  style={[styles.summaryValue, { color: '#eb5656' }]}
                   numberOfLines={1}
                   adjustsFontSizeToFit
                   minimumFontScale={0.5}
@@ -305,7 +308,7 @@ export default function HistoryScreen() {
             <View style={styles.summaryBottom}>
               <Text style={styles.profitLabel}>NET PROFIT / LOSS</Text>
               <Text
-                style={[styles.profitValue, { color: monthProfit >= 0 ? '#10b981' : '#e25822' }]}
+                style={[styles.profitValue, { color: monthProfit >= 0 ? '#10b981' : '#eb5656' }]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.5}
@@ -340,10 +343,33 @@ export default function HistoryScreen() {
         </View>
 
         <View style={styles.weekHeader}>
-          <Text style={styles.weekTitle}>Week {weeks[selectedWeekIndex]?.label}</Text>
+          <View style={styles.weekTitleRow}>
+            <Text style={styles.weekTitle}>Week {weeks[selectedWeekIndex]?.label}</Text>
+            <TouchableOpacity 
+              style={[
+                styles.filterIconButton,
+                filterMode !== 'all' && styles.filterIconButtonActive,
+                {borderColor: filterMode === 'all' ? 'rgba(255,255,255,0.2)' : ( filterMode === 'income' ? 'rgba(16, 183, 127, 0.4)' : 'rgba(235, 86, 86, 0.4)')}
+              ]}
+              onPress={() => {
+                const modes: ('all' | 'income' | 'expense')[] = ['all', 'income', 'expense'];
+                const nextMode = modes[(modes.indexOf(filterMode) + 1) % modes.length];
+                setFilterMode(nextMode);
+              }}
+            >
+              <SlidersHorizontal 
+                color={filterMode === 'all' ? 'rgba(255,255,255,0.4)' : ( filterMode === 'income' ? '#10b981' : '#eb5656')} 
+                size={16} 
+                strokeWidth={2.5} 
+              />
+                <Text style={[styles.filterModeLabel, { color: filterMode !== 'all' ? ( filterMode === 'income' ? '#10b981' : '#eb5656') : 'rgba(255,255,255,0.4)' }]}>
+                  {filterMode.toUpperCase()}
+                </Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.weekIncomeLabelSmall}>
             WEEK BALANCE: <Text
-              style={[styles.weekIncomeValueSmall, { color: weekIncome >= 0 ? '#10b981' : '#e25822' }]}
+              style={[styles.weekIncomeValueSmall, { color: weekIncome >= 0 ? '#10b981' : '#eb5656' }]}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.6}
@@ -368,7 +394,7 @@ export default function HistoryScreen() {
                   <Text
                     style={[
                       styles.dailyTotalValue,
-                      { color: group.dailyTotal.includes('+') ? '#10b981' : '#e25822' }
+                      { color: group.dailyTotal.includes('+') ? '#10b981' : '#eb5656' }
                     ]}
                     numberOfLines={1}
                     adjustsFontSizeToFit={true}
@@ -388,23 +414,23 @@ export default function HistoryScreen() {
                       onPress={() => setExpandedId(isExpanded ? null : item.id)}
                       style={[
                         styles.transactionCard,
-                        { borderColor: item.type === 'income' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(226, 88, 34, 0.4)' },
+                        { borderColor: item.type === 'income' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(235, 86, 86, 0.4)' },
                         isExpanded && styles.transactionCardExpanded
                       ]}
                     >
                       <View style={styles.cardMainRow}>
                         <View style={[
                           styles.iconCircle,
-                          { backgroundColor: item.type === 'income' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(226, 88, 34, 0.1)' }
+                          { backgroundColor: item.type === 'income' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(235, 86, 86, 0.1)' }
                         ]}>
-                          <item.icon color={item.type === 'income' ? '#10b981' : '#e25822'} size={22} strokeWidth={2.5} />
+                          <item.icon color={item.type === 'income' ? '#10b981' : '#eb5656'} size={22} strokeWidth={2.5} />
                         </View>
                         <View style={styles.transactionInfo}>
                           <Text style={styles.transactionTitle} numberOfLines={1}>{item.title}</Text>
                           <Text style={styles.transactionSub} numberOfLines={isExpanded ? undefined : 1}>{item.sub}</Text>
                         </View>
                         <Text
-                          style={[styles.transactionAmount, { color: item.type === 'income' ? '#10b981' : '#e25822' }]}
+                          style={[styles.transactionAmount, { color: item.type === 'income' ? '#10b981' : '#eb5656' }]}
                           numberOfLines={1}
                           adjustsFontSizeToFit
                           minimumFontScale={0.7}
@@ -425,7 +451,7 @@ export default function HistoryScreen() {
                               <View style={styles.detailInfo}>
                                 <Text style={styles.detailLabel}>EXACT AMOUNT</Text>
                                 <Text
-                                  style={[styles.detailValueLarge, { color: item.type === 'income' ? '#10b981' : '#e25822' }]}
+                                  style={[styles.detailValueLarge, { color: item.type === 'income' ? '#10b981' : '#eb5656' }]}
                                   numberOfLines={1}
                                   adjustsFontSizeToFit
                                 >
@@ -441,7 +467,7 @@ export default function HistoryScreen() {
                               onPress={() => handleDeleteTransaction(item.id, item.title)}
                               activeOpacity={0.7}
                             >
-                              <Trash2 color="#e25822" size={20} strokeWidth={2} />
+                              <Trash2 color="#eb5656" size={20} strokeWidth={2} />
                               <Text style={styles.inlineDeleteText}>Delete</Text>
                             </TouchableOpacity>
                           </View>

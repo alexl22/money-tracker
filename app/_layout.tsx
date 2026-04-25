@@ -25,7 +25,22 @@ import { onAuthChanged } from '../firebaseConfig';
 import { setupNotifications } from '../utils/notifications';
 
 import * as NavigationBar from 'expo-navigation-bar';
-import { Platform } from 'react-native';
+import { Platform, Text, TextInput } from 'react-native';
+
+// Disable font scaling globally to maintain design integrity across all devices
+if ((Text as any).defaultProps) {
+  (Text as any).defaultProps.allowFontScaling = true;
+  (Text as any).defaultProps.maxFontSizeMultiplier = 1.2;
+} else {
+  (Text as any).defaultProps = { allowFontScaling: true, maxFontSizeMultiplier: 1.2 };
+}
+
+if ((TextInput as any).defaultProps) {
+  (TextInput as any).defaultProps.allowFontScaling = true;
+  (TextInput as any).defaultProps.maxFontSizeMultiplier = 1.2;
+} else {
+  (TextInput as any).defaultProps = { allowFontScaling: true, maxFontSizeMultiplier: 1.2 };
+}
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();

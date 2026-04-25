@@ -8,17 +8,19 @@ import React, { useEffect, useState } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAlert } from '../../context/AlertContext';
 import { TabBarProvider, useTabBar } from '../../context/TabBarContext';
 import { auth, db, signOutUser } from '../../firebaseConfig';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
 import { TransactionModal } from './speedEntry';
+
 const { width } = Dimensions.get('window');
 
 export default function TabLayout() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [userName, setUserName] = useState(auth.currentUser?.email?.split('@')[0] || 'User');
-
+  const { showAlert } = useAlert();
   useEffect(() => {
     const fetchUserName = async (u: any) => {
       if (u) {
@@ -98,9 +100,9 @@ export default function TabLayout() {
 
     return (
       <Animated.View style={[
-        styles.tabBarContainer, 
-        animatedContainerStyle, 
-        { bottom: Math.max(insets.bottom, horizontalScale(20)) }
+        styles.tabBarContainer,
+        animatedContainerStyle,
+        { bottom: 5 + Math.max(insets.bottom, horizontalScale(20)) }
       ]}>
         <View style={styles.tabBarCapsule}>
           <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
@@ -179,7 +181,7 @@ export default function TabLayout() {
                 </View>
                 <TouchableOpacity
                   style={styles.logoutButton}
-                  onPress={handleLogout}
+                  onPress={() => showAlert("Logout", "Are you sure you want to logout?", "alert", handleLogout,true)}
                 >
                   <LogOut color="rgba(255,255,255,0.6)" size={moderateScale(20)} />
                 </TouchableOpacity>

@@ -30,7 +30,7 @@ interface Goals {
 }
 
 export function GoalsTab({ localColors }: GoalsTabProps) {
-  const radius = moderateScale(85);
+  const radius = moderateScale(90);
   const strokeWidth = moderateScale(12);
   const circumference = 2 * Math.PI * radius;
   const [currentGoal, setCurrentGoal] = useState<Goals | null>(null);
@@ -292,18 +292,18 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
 
 
       <View style={styles.ringContainer}>
-        <Svg width={moderateScale(220)} height={moderateScale(220)} viewBox="0 0 200 200">
-          <G rotation="-90" origin="100, 100">
-            <Circle cx="100" cy="100" r={radius} stroke={'rgba(255,255,255,0.05)'} strokeWidth={strokeWidth} fill="none" />
+        <Svg width={moderateScale(230)} height={moderateScale(230)} viewBox="0 0 220 220">
+          <G rotation="-90" origin="110, 110">
+            <Circle cx="110" cy="110" r={radius} stroke={'rgba(255,255,255,0.05)'} strokeWidth={strokeWidth} fill="none" />
 
             {/* Soft Outer Glow Layers */}
-            <Circle cx="100" cy="100" r={radius} stroke={'#67E8F9'} strokeWidth={strokeWidth + moderateScale(20)} strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" fill="none" opacity={0.03} />
-            <Circle cx="100" cy="100" r={radius} stroke={'#67E8F9'} strokeWidth={strokeWidth + moderateScale(14)} strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" fill="none" opacity={0.05} />
-            <Circle cx="100" cy="100" r={radius} stroke={'#67E8F9'} strokeWidth={strokeWidth + moderateScale(8)} strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" fill="none" opacity={0.1} />
-            <Circle cx="100" cy="100" r={radius} stroke={'#67E8F9'} strokeWidth={strokeWidth + moderateScale(4)} strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" fill="none" opacity={0.2} />
+            <Circle cx="110" cy="110" r={radius} stroke={'#67E8F9'} strokeWidth={strokeWidth + moderateScale(20)} strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" fill="none" opacity={0.03} />
+            <Circle cx="110" cy="110" r={radius} stroke={'#67E8F9'} strokeWidth={strokeWidth + moderateScale(14)} strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" fill="none" opacity={0.05} />
+            <Circle cx="110" cy="110" r={radius} stroke={'#67E8F9'} strokeWidth={strokeWidth + moderateScale(8)} strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" fill="none" opacity={0.1} />
+            <Circle cx="110" cy="110" r={radius} stroke={'#67E8F9'} strokeWidth={strokeWidth + moderateScale(4)} strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" fill="none" opacity={0.2} />
 
             {/* Main Progress Ring */}
-            <Circle cx="100" cy="100" r={radius} stroke={'#67E8F9'} strokeWidth={strokeWidth} strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" fill="none" />
+            <Circle cx="110" cy="110" r={radius} stroke={'#67E8F9'} strokeWidth={strokeWidth} strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" fill="none" />
           </G>
         </Svg>
         {currentGoal && (currentGoal.targetAmount > 0 || currentGoal.targetAmountUSD > 0) ? (
@@ -313,7 +313,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
             activeOpacity={0.6}
           >
             <Text style={styles.ringGoalLabel}>TARGET</Text>
-            <Text style={styles.ringGoalValue}>{format(stableTarget, { isConverted: true, compact: true, threshold: 1000000 })}</Text>
+            <Text style={styles.ringGoalValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{format(stableTarget, { isConverted: true, compact: true, threshold: 1000000 })}</Text>
             <Text style={styles.ringPercent}>{Math.round(clampedProgress)}%</Text>
           </TouchableOpacity>
         ) : (
@@ -432,7 +432,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
           <View style={styles.performanceCard}>
             <View style={styles.perfHeader}>
               <View style={{ flex: 1.4 }}>
-                <Text style={styles.perfLabel} numberOfLines={1}>TODAY'S PERFORMANCE</Text>
+                <Text style={styles.perfLabel} numberOfLines={1} adjustsFontSizeToFit>TODAY'S PERFORMANCE</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
                   <Text
                     style={[styles.perfValue, { color: todayProfit < 0 ? '#ff4d4d' : '#6ee591', flexShrink: 1 }]}
@@ -450,7 +450,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
                 </View>
               </View>
               <View style={{ alignItems: 'flex-end', flex: 0.9, marginLeft: 10 }}>
-                <Text style={styles.perfTargetLabel} numberOfLines={1}>DAILY TARGET</Text>
+                <Text style={styles.perfTargetLabel} numberOfLines={1} adjustsFontSizeToFit>DAILY TARGET</Text>
                 <Text
                   style={[styles.perfTargetValue, { flexShrink: 1 }]}
                   numberOfLines={1}
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: horizontalScale(20),
-    height: horizontalScale(220),
+    height: horizontalScale(230),
   },
   ringCenterText: {
     position: 'absolute',
@@ -523,7 +523,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   ringGoalValue: {
-    fontSize: moderateScale(24),
+    fontSize: moderateScale(28),
+    width: moderateScale(165),
+    textAlign: 'center',
     marginVertical: horizontalScale(2),
     fontFamily: 'Manrope_800ExtraBold',
     color: '#FFFFFF',

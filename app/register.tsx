@@ -170,7 +170,7 @@ export default function RegisterScreen() {
         </KeyboardAvoidingView>
 
         {/* Auth Bottom Tab Navigation */}
-        <View style={styles.bottomNavContainer}>
+        <View style={[styles.bottomNavContainer, { bottom: 5 + insets.bottom }]}>
           <View style={styles.bottomNav}>
             <TouchableOpacity style={styles.navItem} onPress={() => router.push('/login')}>
               <View style={styles.navItemContent}>
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   navItemGlow: {
     width: 85,
     height: 65,
-    borderRadius: 30,
+    borderRadius: 35,
     backgroundColor: 'rgba(74, 138, 244, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',

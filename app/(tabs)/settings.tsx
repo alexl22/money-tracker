@@ -1,13 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged } from '@react-native-firebase/auth';
 import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, where } from '@react-native-firebase/firestore';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeOff, Lock, Mail, RefreshCcw, Search, Shield, Trash2, X } from 'lucide-react-native';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, Modal, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
-import { useFocusEffect } from '@react-navigation/native';
 import { TimePickerModal } from '../../components/TimePickerModal';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -365,7 +365,7 @@ export default function SettingsScreen() {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <RefreshCcw color="#3b82f6" size={moderateScale(20)} style={{ marginRight: horizontalScale(12) }} />
-              <Text style={styles.currencySelectorText}>
+              <Text style={styles.currencySelectorText} >
                 {currency}{currency === 'USD' ? ' - US Dollar' : currency === 'EUR' ? ' - Euro' : currency === 'RON' ? ' - Romanian Leu' : ''}
               </Text>
             </View>
@@ -558,7 +558,7 @@ export default function SettingsScreen() {
                 <Download color="#3b82f6" size={20} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text 
+                <Text
                   style={styles.softCardTitleNoMargin}
                   numberOfLines={1}
                   adjustsFontSizeToFit

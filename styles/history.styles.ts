@@ -27,9 +27,9 @@ const styles = StyleSheet.create({
   },
   summaryCardLarge: {
     backgroundColor: '#1C1D1F',
-    borderRadius: moderateScale(28),
-    padding: moderateScale(20),
-    marginBottom: horizontalScale(24),
+    borderRadius: moderateScale(24),
+    padding: moderateScale(16),
+    marginBottom: horizontalScale(20),
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
     shadowColor: '#000',
@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: moderateScale(16),
+    marginBottom: moderateScale(12),
   },
   largeCard: {
     backgroundColor: '#1C1D1F',
@@ -58,19 +58,19 @@ const styles = StyleSheet.create({
   },
   verticalDivider: {
     width: 1,
-    height: moderateScale(35),
+    height: moderateScale(30),
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   horizontalDivider: {
     height: 1,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    marginBottom: moderateScale(16),
+    marginBottom: moderateScale(12),
   },
   summaryBottom: {
     alignItems: 'center',
   },
   profitLabel: {
-    fontSize: moderateScale(10),
+    fontSize: moderateScale(11),
     color: 'rgba(255,255,255,0.3)',
     letterSpacing: 2,
     marginBottom: horizontalScale(4),
@@ -78,17 +78,17 @@ const styles = StyleSheet.create({
   },
   profitValue: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: moderateScale(28),
+    fontSize: moderateScale(26),
   },
   summaryLabel: {
-    fontSize: moderateScale(9),
+    fontSize: moderateScale(10),
     letterSpacing: 1.5,
     marginBottom: horizontalScale(4),
     fontFamily: 'Inter_700Bold',
   },
   summaryValue: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: moderateScale(18),
+    fontSize: moderateScale(22),
   },
 
   weekSelectorScroll: {
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.03)',
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   weekCardActive: {
     backgroundColor: '#3b82f6',
@@ -121,23 +121,24 @@ const styles = StyleSheet.create({
   weekLabel: {
     fontFamily: 'Inter_700Bold',
     fontSize: moderateScale(9),
-    color: 'rgba(255,255,255,0.3)',
+    color: 'rgba(255,255,255,0.6)',
     letterSpacing: 1,
     marginBottom: horizontalScale(4),
     textTransform: 'uppercase',
+
   },
   weekLabelActive: { color: 'rgba(255,255,255,0.8)' },
   weekNumber: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: moderateScale(22),
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.6)',
     lineHeight: moderateScale(26),
   },
   weekNumberActive: { color: '#FFFFFF' },
   weekRange: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: moderateScale(9),
-    color: 'rgba(255,255,255,0.2)',
+    color: 'rgba(255,255,255,0.4)',
     marginTop: horizontalScale(2),
   },
   weekRangeActive: {
@@ -162,13 +163,13 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     marginBottom: horizontalScale(24),
   },
   dayGroup: { marginBottom: horizontalScale(32) },
   daySeparator: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     marginTop: horizontalScale(16),
   },
   dayHeader: {
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1B1E',
     borderRadius: moderateScale(30),
     borderWidth: 1,
-    borderStyle: 'dashed',
+    borderStyle: 'solid',
     borderColor: 'rgba(255,255,255,0.05)',
   },
   emptyStateTitle: {
@@ -348,18 +349,44 @@ const styles = StyleSheet.create({
   inlineDeleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(226, 88, 34, 0.1)',
+    backgroundColor: 'rgba(235, 86, 86, 0.1)',
     paddingVertical: horizontalScale(8),
     paddingHorizontal: horizontalScale(12),
     borderRadius: moderateScale(12),
     borderWidth: 1,
-    borderColor: 'rgba(226, 88, 34, 0.2)',
+    borderColor: 'rgba(235, 86, 86, 0.2)',
     gap: horizontalScale(6),
   },
   inlineDeleteText: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: moderateScale(13),
-    color: '#e25822',
+    color: '#eb5656',
+  },
+  weekTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  filterIconButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1C1D1F',
+    paddingVertical: horizontalScale(8),
+    paddingHorizontal: horizontalScale(12),
+    borderRadius: moderateScale(12),
+    gap: horizontalScale(8),
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  filterIconButtonActive: {
+    borderColor: 'rgba(59, 130, 246, 0.4)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  filterModeLabel: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: moderateScale(11),
+    letterSpacing: 0.5,
   },
 
 });

@@ -123,7 +123,7 @@ export default function LoginScreen() {
         </KeyboardAvoidingView>
 
         {/* Auth Bottom Tab Navigation */}
-        <View style={styles.bottomNavContainer}>
+        <View style={[styles.bottomNavContainer, { bottom: 5 + insets.bottom }]}>
           <View style={styles.bottomNav}>
             <TouchableOpacity style={styles.navItem}>
               <View style={styles.navItemGlow}>
@@ -220,9 +220,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   navItemGlow: {
-    width: 85,
-    height: 65,
-    borderRadius: 30,
+    width: 86,
+    height: 66,
+    borderRadius: 33,
     backgroundColor: 'rgba(74, 138, 244, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',

@@ -129,10 +129,14 @@ export function LoansTab({ localColors }: LoansTabProps) {
       <View style={styles.summaryRow}>
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => showAlert(activeTab === 'active' ? 'They Owe Me' : 'Total Received', `Exact amount: ${format(totalLent, { isConverted: true })}`, 'info')}
+          onPress={() => showAlert(activeTab === 'active' ? 'They Owe Me' : 'TOTAL RECEIVED', `Exact amount: ${format(totalLent, { isConverted: true })}`, 'info')}
           style={[styles.summaryCard, { borderLeftColor: '#6ee591' }]}
         >
-          <Text style={styles.summaryLabel}>
+          <Text 
+            style={styles.summaryLabel}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
             {activeTab === 'active' ? 'THEY OWE ME' : 'TOTAL RECEIVED'}
           </Text>
           {(() => {
@@ -169,7 +173,11 @@ export function LoansTab({ localColors }: LoansTabProps) {
           onPress={() => showAlert(activeTab === 'active' ? 'I Owe Them' : 'Total Sent', `Exact amount: ${format(totalBorrowed, { isConverted: true })}`, 'info')}
           style={[styles.summaryCard, { borderLeftColor: '#eb5656' }]}
         >
-          <Text style={styles.summaryLabel}>
+          <Text 
+            style={styles.summaryLabel}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
             {activeTab === 'active' ? 'I OWE THEM' : 'TOTAL SENT'}
           </Text>
           {(() => {
