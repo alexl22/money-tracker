@@ -222,7 +222,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
           </Svg>
           <TouchableOpacity style={styles.ringCenterText} onPress={() => setIsTargetModalVisible(true)}>
             <Text style={styles.ringGoalLabel}>TARGET</Text>
-            <Text style={styles.ringGoalValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>{iIsTargetSet ? format(iTarget, { compact: true, isConverted: true }) : "ADD TARGET"}</Text>
+            <Text style={{ ...styles.ringGoalValue, fontSize: iIsTargetSet ? 28 : 26 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>{iIsTargetSet ? format(iTarget, { compact: true, isConverted: true }) : "SET TARGET"}</Text>
             {iIsTargetSet && <Text style={styles.ringPercent}>{Math.round(iProgress)}%</Text>}
           </TouchableOpacity>
         </View>
@@ -238,6 +238,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
           </Text>
         )}
 
+       
         <TouchableOpacity 
           style={styles.summaryRow} 
           onPress={() => {
@@ -253,6 +254,7 @@ export function GoalsTab({ localColors }: GoalsTabProps) {
             <View style={styles.goalStatusIconContainer}><View style={styles.goalStatusIconCircle}>{iIsGoalReached ? <Trophy color="#6ee591" size={28} /> : <Calendar color="#67E8F9" size={24} />}</View></View>
           </View>
         </TouchableOpacity>
+       
 
         {iIsTargetSet && (
           <TouchableOpacity onPress={() => showAlert("Performance", `Today: ${format(todayProfit, { isConverted: true })}\nTarget: ${format(iDailyTarget, { isConverted: true })}`, "info")}>

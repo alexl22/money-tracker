@@ -1,15 +1,17 @@
-import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
-import { collection, query, where, onSnapshot, doc, deleteDoc } from '@react-native-firebase/firestore';
-import { Calendar, ChevronDown, ShoppingBag, SlidersHorizontal, Trash2, Wallet } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
-import { Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { collection, deleteDoc, doc, onSnapshot, query, where } from '@react-native-firebase/firestore';
+import { useFocusEffect } from 'expo-router';
+import { Calendar, CalendarDays, ChevronDown, ShoppingBag, SlidersHorizontal, Wallet } from 'lucide-react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Pressable, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import { DatePicker } from '../../components/DatePicker';
+import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
 import { auth, db } from '../../firebaseConfig';
 import styles from '../../styles/history.styles';
-
+import { horizontalScale } from '../../utils/scaling';
 interface TransactionItem {
   id: string;
   title: string;
@@ -82,6 +84,25 @@ export default function HistoryScreen() {
   const [transactions, setTransactions] = useState<TransactionGroup[]>([]);
   const [filterMode, setFilterMode] = useState<'all' | 'income' | 'expense'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setExpandedId(null);
+      };
+    }, [])
+  );
+
+
+
+
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [isRangePickerVisible, setIsRangePickerVisible] = useState(false);
+  const [customRange, setCustomRange] = useState<{ start: Date, end: Date } | null>(null);
+  const [isCustomRangeActive, setIsCustomRangeActive] = useState(false);
+
+  const scrollRef = React.useRef<Animated.ScrollView>(null);
+  const transactionsListY = React.useRef(0);
+  const [weeksWithData, setWeeksWithData] = useState<Record<number, boolean>>({});
   const { format, currency } = useCurrency();
   const user = auth.currentUser;
   const weeks = getWeeksOfMonth(selectedYear, Number(selectedMonth));
@@ -94,8 +115,13 @@ export default function HistoryScreen() {
   useEffect(() => {
     if (!user) return;
 
-    const startOfMonth = new Date(selectedYear, Number(selectedMonth), 1);
-    const endOfMonth = new Date(selectedYear, Number(selectedMonth) + 1, 0, 23, 59, 59);
+    let startOfMonth = new Date(selectedYear, Number(selectedMonth), 1);
+    let endOfMonth = new Date(selectedYear, Number(selectedMonth) + 1, 0, 23, 59, 59);
+
+    if (showAllHistory && isCustomRangeActive && customRange) {
+      startOfMonth = customRange.start;
+      endOfMonth = customRange.end;
+    }
 
     const q = query(collection(db, "transactions"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot: any) => {
@@ -129,6 +155,7 @@ export default function HistoryScreen() {
           createdAt: finalDate,
         } as RawTransaction;
       }).filter((t: RawTransaction) => {
+        if (showAllHistory && !isCustomRangeActive) return true;
         return t.createdAt >= startOfMonth && t.createdAt <= endOfMonth;
       }).sort((a: RawTransaction, b: RawTransaction) => b.createdAt.getTime() - a.createdAt.getTime());
 
@@ -143,9 +170,11 @@ export default function HistoryScreen() {
       const dayTotals: Record<string, number> = {};
 
       const weekFilteredList = rawList.filter(t => {
+        const filterMatch = filterMode === 'all' || t.type === filterMode;
+        if (showAllHistory) return filterMatch;
+
         const txDate = t.createdAt.getTime();
         const dateMatch = txDate >= currentWeek.start.getTime() && txDate <= currentWeek.end.getTime();
-        const filterMatch = filterMode === 'all' || t.type === filterMode;
         return dateMatch && filterMatch;
       });
 
@@ -173,10 +202,15 @@ export default function HistoryScreen() {
           : (t.type === 'income' ? (t.amountUSD || t.amount) : -(t.amountUSD || t.amount));
 
 
+        const dateStr = t.createdAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        const timeStr = t.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
         dayGroup.data.push({
           id: t.id,
           title: t.title,
-          sub: `${t.notes || 'General'} • ${t.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+          sub: showAllHistory
+            ? `${dateStr} • ${timeStr} • ${t.notes || 'General'}`
+            : `${t.notes || 'General'} • ${timeStr}`,
           amount: format(displayValue, { compact: true, showSign: true, isConverted: isSameCurrency }),
           icon: t.type === 'income' ? Wallet : ShoppingBag,
           rawAmount: t.amount,
@@ -184,7 +218,7 @@ export default function HistoryScreen() {
           currency: t.currency || 'USD',
           type: t.type,
           notes: t.notes,
-          time: t.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          time: timeStr
         });
 
         const valForTotal = (t.amountUSD || t.amount || 0);
@@ -198,6 +232,12 @@ export default function HistoryScreen() {
         g.dailyTotal = format(total, { compact: true, showSign: true, threshold: 1000000000 });
       });
 
+      const weeksStatus: Record<number, boolean> = {};
+      weeks.forEach((w, i) => {
+        weeksStatus[i] = rawList.some(t => t.createdAt.getTime() >= w.start.getTime() && t.createdAt.getTime() <= w.end.getTime());
+      });
+      setWeeksWithData(weeksStatus);
+
       setTransactions(grouped);
       setMonthIncome(grossIncome);
       setMonthExpense(grossExpense);
@@ -207,7 +247,7 @@ export default function HistoryScreen() {
 
 
     return () => unsubscribe && unsubscribe();
-  }, [selectedMonth, selectedYear, selectedWeekIndex, filterMode, currency, user]);
+  }, [selectedMonth, selectedYear, selectedWeekIndex, filterMode, currency, user, showAllHistory, isCustomRangeActive, customRange]);
 
   const { tabBarOffset } = useTabBar();
   const lastScrollY = useSharedValue(0);
@@ -231,45 +271,57 @@ export default function HistoryScreen() {
   });
 
   const handleDeleteTransaction = (transactionId: string, title: string) => {
-    showAlert(
-      'Delete Trasaction?',
-      `Are you sure you want to delete the transaction? This action cannot be undone.`,
-      'alert',
-      () => {
-        try {
-          // OPTIMISTIC DELETE: Don't await
-          deleteDoc(doc(db, "transactions", transactionId))
-            .catch(err => console.error("History Delete Error", err));
-          
-          showAlert('Action Recorded', 'The transaction is being deleted and will sync soon.', 'success');
-        } catch (error) {
-          console.error("Error deleting transaction: ", error);
-          showAlert('Error', 'We could not delete the transaction. Please try again.', 'alert');
-        }
-      }
-    );
+    try {
+      // OPTIMISTIC DELETE: Don't await
+      deleteDoc(doc(db, "transactions", transactionId))
+        .catch(err => console.error("History Delete Error", err));
+
+      showAlert('Action Recorded', 'The transaction is being deleted and will sync soon.', 'success');
+    } catch (error) {
+      console.error("Error deleting transaction: ", error);
+      showAlert('Error', 'We could not delete the transaction. Please try again.', 'alert');
+    }
+
+
   };
 
   return (
     <View style={styles.container}>
       <Animated.ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
       >
 
-        <Pressable style={styles.monthSelector} onPress={() => setIsPickerVisible(true)}>
-          <View style={styles.calendarIconContainer}>
-            <Calendar color="#3b82f6" size={20} fill="rgba(59, 130, 246, 0.1)" strokeWidth={2.5} />
+        <View style={styles.headerRow}>
+          <View style={styles.splitHeaderContainer}>
+            <Pressable style={styles.monthSelectorPart} onPress={() => setIsPickerVisible(true)}>
+              <View style={styles.calendarIconContainer}>
+                <Calendar color="#3b82f6" size={20} fill="rgba(59, 130, 246, 0.1)" strokeWidth={2.5} />
+              </View>
+              <Text style={styles.monthText} numberOfLines={1} adjustsFontSizeToFit>
+                {showAllHistory
+                  ? "ALL TRANSACTIONS"
+                  : `${LUNI.find(l => l.value === selectedMonth)?.label} ${selectedYear}`}
+              </Text>
+              <View style={styles.chevronIconContainer}>
+                <ChevronDown color="#3b82f6" size={18} strokeWidth={2.5} />
+              </View>
+            </Pressable>
+
+            <TouchableOpacity
+              style={[styles.historyTogglePart, showAllHistory && styles.historyTogglePartActive]}
+              onPress={() => {
+                setShowAllHistory(!showAllHistory);
+                setIsCustomRangeActive(false);
+              }}
+            >
+              <Text style={[styles.historyToggleText, showAllHistory && styles.historyToggleTextActive]}>ALL</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.monthText}>
-            {LUNI.find(l => l.value === selectedMonth)?.label} {selectedYear}
-          </Text>
-          <View style={styles.chevronIconContainer}>
-            <ChevronDown color="#3b82f6" size={20} strokeWidth={3} />
-          </View>
-        </Pressable>
+        </View>
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => showAlert('Total Income Details', `Total Income: ${format(monthIncome)}\nTotal Expense: ${format(-monthExpense)}\nNet Profit/Loss: ${format(monthProfit)}`, 'info')}
@@ -320,55 +372,88 @@ export default function HistoryScreen() {
         </TouchableOpacity>
 
 
-        <View style={styles.weekSelectorScroll}>
-          <View style={styles.weekContainer}>
-            {['01', '02', '03', '04'].map((weekLabel, index) => (
-              <Pressable
-                key={index}
-                onPress={() => setSelectedWeekIndex(index)}
-                style={[
-                  styles.weekCard,
-                  selectedWeekIndex === index && styles.weekCardActive
-                ]}
-              >
-                <Text style={[styles.weekLabel, selectedWeekIndex === index && styles.weekLabelActive]}>WEEK</Text>
-                <Text style={[styles.weekNumber, selectedWeekIndex === index && styles.weekNumberActive]}>{weekLabel}</Text>
-                <Text style={[styles.weekRange, selectedWeekIndex === index && styles.weekRangeActive]}>
-                  {weeks[index]?.range || ''}
-                </Text>
+        {!showAllHistory && (
+          <View 
+            style={styles.weekSelectorScroll}
+            onLayout={(e) => {
+              transactionsListY.current = e.nativeEvent.layout.y;
+            }}
+          >
+            <View style={styles.weekContainer}>
+              {['01', '02', '03', '04'].map((weekLabel, index) => (
+                <Pressable
+                  key={index}
+                  onPress={() => {
+                    setSelectedWeekIndex(index);
+                    // Animated scroll ONLY if the week has transactions
+                    if (weeksWithData[index]) {
+                      scrollRef.current?.scrollTo({
+                        y: transactionsListY.current - 10,
+                        animated: true
+                      });
+                    }
+                  }}
+                  style={[
+                    styles.weekCard,
+                    selectedWeekIndex === index && styles.weekCardActive
+                  ]}
+                >
+                  <Text style={[styles.weekLabel, selectedWeekIndex === index && styles.weekLabelActive]}>WEEK</Text>
+                  <Text style={[styles.weekNumber, selectedWeekIndex === index && styles.weekNumberActive]}>{weekLabel}</Text>
+                  <Text style={[styles.weekRange, selectedWeekIndex === index && styles.weekRangeActive]}>
+                    {weeks[index]?.range || ''}
+                  </Text>
 
-              </Pressable>
-            ))}
+                </Pressable>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         <View style={styles.weekHeader}>
           <View style={styles.weekTitleRow}>
-            <Text style={styles.weekTitle}>Week {weeks[selectedWeekIndex]?.label}</Text>
-            <TouchableOpacity 
-              style={[
-                styles.filterIconButton,
-                filterMode !== 'all' && styles.filterIconButtonActive,
-                {borderColor: filterMode === 'all' ? 'rgba(255,255,255,0.2)' : ( filterMode === 'income' ? 'rgba(16, 183, 127, 0.4)' : 'rgba(235, 86, 86, 0.4)')}
-              ]}
-              onPress={() => {
-                const modes: ('all' | 'income' | 'expense')[] = ['all', 'income', 'expense'];
-                const nextMode = modes[(modes.indexOf(filterMode) + 1) % modes.length];
-                setFilterMode(nextMode);
-              }}
-            >
-              <SlidersHorizontal 
-                color={filterMode === 'all' ? 'rgba(255,255,255,0.4)' : ( filterMode === 'income' ? '#10b981' : '#eb5656')} 
-                size={16} 
-                strokeWidth={2.5} 
-              />
-                <Text style={[styles.filterModeLabel, { color: filterMode !== 'all' ? ( filterMode === 'income' ? '#10b981' : '#eb5656') : 'rgba(255,255,255,0.4)' }]}>
-                  {filterMode.toUpperCase()}
+            <Text style={styles.weekTitle} numberOfLines={1} adjustsFontSizeToFit>
+              {showAllHistory
+                ? (isCustomRangeActive && customRange ? `${customRange.start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - ${customRange.end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}` : "All History")
+                : `Week ${weeks[selectedWeekIndex]?.label}`}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: horizontalScale(8) }}>
+              {showAllHistory && (
+                <TouchableOpacity
+                  style={[styles.filterIconButton, isCustomRangeActive && styles.filterIconButtonActive]}
+                  onPress={() => setIsRangePickerVisible(true)}
+                >
+                  <CalendarDays color={isCustomRangeActive ? "#3b82f6" : "rgba(255,255,255,0.4)"} size={14} strokeWidth={2.5} />
+                  <Text style={[styles.filterModeLabel, { color: isCustomRangeActive ? "#3b82f6" : "rgba(255,255,255,0.4)" }]}>RANGE</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[
+                  styles.filterIconButton,
+                  filterMode !== 'all' && styles.filterIconButtonActive,
+                  { borderColor: filterMode === 'all' ? 'rgba(255,255,255,0.2)' : (filterMode === 'income' ? 'rgba(16, 183, 127, 0.4)' : 'rgba(235, 86, 86, 0.4)') }
+                ]}
+                onPress={() => {
+                  const modes: ('all' | 'income' | 'expense')[] = ['all', 'income', 'expense'];
+                  const nextMode = modes[(modes.indexOf(filterMode) + 1) % modes.length];
+                  setFilterMode(nextMode);
+                }}
+              >
+                {filterMode === 'all' && (
+                  <SlidersHorizontal
+                    color='rgba(255,255,255,0.4)'
+                    size={14}
+                    strokeWidth={2.5}
+                  />
+                )}
+                <Text style={[styles.filterModeLabel, { color: filterMode !== 'all' ? (filterMode === 'income' ? '#10b981' : '#eb5656') : 'rgba(255,255,255,0.4)' }]}>
+                  {filterMode === 'all' ? 'ALL TYPES' : filterMode.toUpperCase()}
                 </Text>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
           </View>
           <Text style={styles.weekIncomeLabelSmall}>
-            WEEK BALANCE: <Text
+            {showAllHistory ? 'TOTAL BALANCE: ' : 'WEEK BALANCE: '}<Text
               style={[styles.weekIncomeValueSmall, { color: weekIncome >= 0 ? '#10b981' : '#eb5656' }]}
               numberOfLines={1}
               adjustsFontSizeToFit
@@ -383,26 +468,28 @@ export default function HistoryScreen() {
 
         {transactions.length > 0 ? (
           transactions.map((group, idx) => (
-            <View key={idx} style={styles.dayGroup}>
-              <View style={styles.dayHeader}>
-                <View>
-                  <Text style={styles.dayName}>{group.date}</Text>
-                  <Text style={styles.dayDate}>{group.fullDate}</Text>
+            <View key={idx} style={[styles.dayGroup, showAllHistory && { marginBottom: horizontalScale(10) }]}>
+              {!showAllHistory && (
+                <View style={styles.dayHeader}>
+                  <View>
+                    <Text style={styles.dayName}>{group.date}</Text>
+                    <Text style={styles.dayDate}>{group.fullDate}</Text>
+                  </View>
+                  <View style={styles.dayHeaderRight}>
+                    <Text style={styles.dailyTotalLabel}>DAILY TOTAL</Text>
+                    <Text
+                      style={[
+                        styles.dailyTotalValue,
+                        { color: group.dailyTotal.includes('+') ? '#10b981' : '#eb5656' }
+                      ]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit={true}
+                    >
+                      {group.dailyTotal}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.dayHeaderRight}>
-                  <Text style={styles.dailyTotalLabel}>DAILY TOTAL</Text>
-                  <Text
-                    style={[
-                      styles.dailyTotalValue,
-                      { color: group.dailyTotal.includes('+') ? '#10b981' : '#eb5656' }
-                    ]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit={true}
-                  >
-                    {group.dailyTotal}
-                  </Text>
-                </View>
-              </View>
+              )}
 
               <View style={styles.transactionsContainerLegacy}>
                 {group.data.map((item: TransactionItem) => {
@@ -412,6 +499,16 @@ export default function HistoryScreen() {
                       key={item.id}
                       activeOpacity={0.7}
                       onPress={() => setExpandedId(isExpanded ? null : item.id)}
+                      onLongPress={() => showAlert(
+                        'Delete Transaction',
+                        'Are you sure you want to delete this transaction?',
+                        'alert',
+                        async () => { handleDeleteTransaction(item.id, item.title) },
+                        true,
+                        true
+
+                      )}
+                      delayLongPress={300}
                       style={[
                         styles.transactionCard,
                         { borderColor: item.type === 'income' ? 'rgba(16, 185, 129, 0.6)' : 'rgba(235, 86, 86, 0.6)' },
@@ -443,11 +540,8 @@ export default function HistoryScreen() {
                         <View style={styles.expandedContent}>
                           {(item.amount.includes('M') || item.amount.includes('K') || item.amount.includes('B')) && <View style={styles.detailDivider} />}
 
-                          <View style={[
-                            styles.detailSectionRow,
-                            !(item.amount.includes('M') || item.amount.includes('K') || item.amount.includes('B')) && styles.detailSectionRowRight
-                          ]}>
-                            {(item.amount.includes('M') || item.amount.includes('K') || item.amount.includes('B')) && (
+                          {(item.amount.includes('M') || item.amount.includes('K') || item.amount.includes('B')) && (
+                            <View style={[styles.detailSectionRow, { marginBottom: horizontalScale(8) }]}>
                               <View style={styles.detailInfo}>
                                 <Text style={styles.detailLabel}>EXACT AMOUNT</Text>
                                 <Text
@@ -461,23 +555,15 @@ export default function HistoryScreen() {
                                   )}
                                 </Text>
                               </View>
-                            )}
-                            <TouchableOpacity
-                              style={styles.inlineDeleteButton}
-                              onPress={() => handleDeleteTransaction(item.id, item.title)}
-                              activeOpacity={0.7}
-                            >
-                              <Trash2 color="#eb5656" size={20} strokeWidth={2} />
-                              <Text style={styles.inlineDeleteText}>Delete</Text>
-                            </TouchableOpacity>
-                          </View>
+                            </View>
+                          )}
                         </View>
                       )}
                     </TouchableOpacity>
                   );
                 })}
               </View>
-              {idx < transactions.length - 1 && (
+              {!showAllHistory && idx < transactions.length - 1 && (
                 <View style={styles.daySeparator} />
               )}
             </View>
@@ -485,7 +571,9 @@ export default function HistoryScreen() {
         ) : (
           <View style={styles.emptyState}>
             <Wallet size={48} color="rgba(255,255,255,0.1)" strokeWidth={1} />
-            <Text style={styles.emptyStateTitle}>Nothing found for Week {weeks[selectedWeekIndex]?.label}</Text>
+            <Text style={styles.emptyStateTitle}>
+              {showAllHistory ? "No transactions found" : `Nothing found for Week ${weeks[selectedWeekIndex]?.label}`}
+            </Text>
             <Text style={styles.emptyStateText}>Try selecting another week or add a new transaction.</Text>
           </View>
         )}
@@ -497,9 +585,31 @@ export default function HistoryScreen() {
         onClose={() => setIsPickerVisible(false)}
         selectedMonth={selectedMonth}
         selectedYear={selectedYear}
-        onSelectMonth={setSelectedMonth}
-        onSelectYear={setSelectedYear}
+        isAllSelected={showAllHistory}
+        onSelectMonth={(m) => {
+          setSelectedMonth(m);
+          setShowAllHistory(false);
+          setIsCustomRangeActive(false);
+        }}
+        onSelectYear={(y) => {
+          setSelectedYear(y);
+          setShowAllHistory(false);
+          setIsCustomRangeActive(false);
+        }}
+      />
+
+      <DatePicker
+        isVisible={isRangePickerVisible}
+        onClose={() => setIsRangePickerVisible(false)}
+        title="HISTORY FILTER"
+        subtitle="Select a custom range"
+        onSave={(start, end) => {
+          setCustomRange({ start, end });
+          setIsCustomRangeActive(true);
+        }}
+        initialStartDate={customRange?.start}
+        initialDeadline={customRange?.end}
       />
     </View>
   );
-}
+};

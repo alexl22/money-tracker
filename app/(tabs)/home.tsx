@@ -136,6 +136,11 @@ export default function DashboardScreen() {
         const daysInSelectedMonth = new Date(selectedYear, parseInt(selectedMonth) + 1, 0).getDate();
         setAverageIncome(currentTotalIncome / daysInSelectedMonth);
         setAverageExpenses(currentTotalExpenses / daysInSelectedMonth);
+      } else if (viewMode === 'range') {
+        const diffTime = Math.abs(rangeEnd.getTime() - rangeStart.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        setAverageIncome(currentTotalIncome / diffDays);
+        setAverageExpenses(currentTotalExpenses / diffDays);
       } else {
         const now = new Date();
         const startYear = earliestDate.getFullYear();
@@ -266,7 +271,7 @@ export default function DashboardScreen() {
               <View style={styles.vDivider} />
 
               <View style={styles.statColumn}>
-                <Text style={styles.footerLabel}>{viewMode === 'month' ? 'Daily' : 'Monthly'}</Text>
+                <Text style={styles.footerLabel}>{viewMode === 'lifetime' ? 'Monthly' : 'Daily'}</Text>
                 <Text
                   style={[styles.footerValue, { color: '#10b981' }]}
                   numberOfLines={1}
@@ -307,7 +312,7 @@ export default function DashboardScreen() {
               <View style={styles.vDivider} />
 
               <View style={styles.statColumn}>
-                <Text style={styles.footerLabel}>{viewMode === 'month' ? 'Daily' : 'Monthly'}</Text>
+                <Text style={styles.footerLabel}>{viewMode === 'lifetime' ? 'Monthly' : 'Daily'}</Text>
                 <Text
                   style={[styles.footerValue, { color: '#eb5656' }]}
                   numberOfLines={1}
@@ -355,6 +360,7 @@ export default function DashboardScreen() {
         onClose={() => setIsRangePickerVisible(false)}
         initialStartDate={rangeStart}
         initialDeadline={rangeEnd}
+        title = {"SELECT RANGE"}
         onSave={(start, end) => {
           setRangeStart(start);
           setRangeEnd(end);

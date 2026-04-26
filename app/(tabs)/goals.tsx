@@ -13,12 +13,12 @@ export default function GoalsScreen() {
   const padding = horizontalScale(3);
   const tabWidth = (toggleWidth - padding * 2) / 2;
 
-  const [viewMode, setViewMode] = useState<'loans' | 'goals'>('loans');
+  const [viewMode, setViewMode] = useState<'goals' | 'loans'>('goals');
   const translateX = useSharedValue(0);
 
-  const toggleView = (mode: 'loans' | 'goals') => {
+  const toggleView = (mode: 'goals' | 'loans') => {
     setViewMode(mode);
-    translateX.value = withSpring(mode === 'loans' ? 0 : tabWidth, {
+    translateX.value = withSpring(mode === 'goals' ? 0 : tabWidth, {
       stiffness: 400,
       damping: 30,
       mass: 0.5,
@@ -67,18 +67,19 @@ export default function GoalsScreen() {
         <View style={styles.headerSpacer} />
         <View style={[styles.toggleContainer, { width: toggleWidth }]}>
           <Animated.View style={[styles.activeHighlight, { width: tabWidth - 6 }, animatedToggleStyle]} />
-          <Pressable style={styles.toggleTab} onPress={() => toggleView('loans')}>
-            <Text style={[styles.toggleText, viewMode === 'loans' && styles.toggleTextActive]}>LOANS</Text>
-          </Pressable>
+          
           <Pressable style={styles.toggleTab} onPress={() => toggleView('goals')}>
             <Text style={[styles.toggleText, viewMode === 'goals' && styles.toggleTextActive]}>GOALS</Text>
           </Pressable>
+          <Pressable style={styles.toggleTab} onPress={() => toggleView('loans')}>
+            <Text style={[styles.toggleText, viewMode === 'loans' && styles.toggleTextActive]}>LOANS</Text>
+          </Pressable>
         </View>
 
-        {viewMode === 'loans' ? (
-          <LoansTab localColors={localColors} />
-        ) : (
+        {viewMode === 'goals' ? (
           <GoalsTab localColors={localColors} />
+        ) : (
+          <LoansTab localColors={localColors} />
         )}
 
         <View style={{ height: 120 }} />

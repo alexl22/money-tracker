@@ -102,7 +102,7 @@ export default function TabLayout() {
       <Animated.View style={[
         styles.tabBarContainer,
         animatedContainerStyle,
-        { bottom: 5 + Math.max(insets.bottom, horizontalScale(20)) }
+        { bottom: 5 + Math.max(insets.bottom, horizontalScale(10)) }
       ]}>
         <View style={styles.tabBarCapsule}>
           <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />

@@ -1,15 +1,17 @@
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 interface DatePickerProps {
   isVisible: boolean;
   onClose: () => void;
   onSave: (startDate: Date, deadline: Date) => void;
-  initialStartDate ?: Date;
-  initialDeadline ?: Date;
+  initialStartDate?: Date;
+  initialDeadline?: Date;
+  title?: string;
+  subtitle?: string;
 }
 
 const DAYS_OF_WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -23,7 +25,9 @@ export function DatePicker({
   onClose,
   onSave,
   initialStartDate,
-  initialDeadline
+  initialDeadline,
+  title = "GOAL PERIOD",
+  subtitle = "Select your dates below"
 }: DatePickerProps) {
   const [activeMode, setActiveMode] = useState<'start' | 'deadline'>('start');
   const [tempStart, setTempStart] = useState(new Date(initialStartDate || new Date()));
@@ -155,8 +159,8 @@ export function DatePicker({
 
             <View style={styles.header}>
               <View>
-                <Text style={styles.headerTitle}>GOAL PERIOD</Text>
-                <Text style={styles.headerSubtitle}>Select your dates below</Text>
+                <Text style={styles.headerTitle}>{title}</Text>
+                <Text style={styles.headerSubtitle}>{subtitle}</Text>
               </View>
               <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                 <X color="rgba(255,255,255,0.4)" size={22} />
@@ -246,7 +250,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 20,
+    paddingBottom: 12,
     backgroundColor: 'rgba(15,15,17,0.95)'
   },
   modalHandle: {
@@ -255,13 +259,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: 20
+    marginBottom: 12
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
     paddingHorizontal: 4
   },
   headerTitle: {
@@ -281,14 +285,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 20,
     padding: 4,
-    marginBottom: 20,
+    marginBottom: 12,
     gap: 6,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
   },
   modeBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 6,
     alignItems: 'center',
     borderRadius: 16,
   },
@@ -311,7 +315,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
   },
   modeDate: {
-    fontSize: 17,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.4)',
     fontFamily: 'Manrope_700Bold',
   },
@@ -334,7 +338,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.04)',
-    marginBottom: 20
+    marginBottom: 12
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -348,7 +352,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 12,
+    borderRadius: 10,
   },
   monthDisplay: {
     alignItems: 'center',
@@ -365,7 +369,7 @@ const styles = StyleSheet.create({
   },
   weekLabels: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   weekLabelText: {
     fontSize: 11,
@@ -380,16 +384,16 @@ const styles = StyleSheet.create({
   },
   dayItem: {
     width: '14.28%',
-    height: 50,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
     marginVertical: 1,
   },
   dayCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
@@ -444,8 +448,8 @@ const styles = StyleSheet.create({
     bottom: 4
   },
   confirmBtn: {
-    height: 54,
-    borderRadius: 20,
+    height: 48,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   btnGradient: {

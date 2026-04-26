@@ -12,6 +12,7 @@ interface MonthYearPickerProps {
     selectedYear: number;
     onSelectMonth: (month: string) => void;
     onSelectYear: (year: number) => void;
+    isAllSelected?: boolean;
 }
 
 
@@ -30,7 +31,7 @@ export const LUNI = [
     { value: '11', sub: 'DEC', label: 'DECEMBER' },
 ];
 
-export default function MonthYearPicker({ isVisible, onClose, selectedMonth, selectedYear, onSelectMonth, onSelectYear }: MonthYearPickerProps) {
+export default function MonthYearPicker({ isVisible, onClose, selectedMonth, selectedYear, onSelectMonth, onSelectYear, isAllSelected }: MonthYearPickerProps) {
 
     const currentYear = new Date().getFullYear();
     const currentDate = new Date();
@@ -81,7 +82,7 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
                     <View style={styles.monthGrid}>
                         {LUNI.map((item) => {
                             const isFutureMonth = viewYear === currentYear && parseInt(item.value) > currentDate.getMonth();
-                            const isActive = selectedMonth === item.value && viewYear === selectedYear;
+                            const isActive = !isAllSelected && selectedMonth === item.value && viewYear === selectedYear;
 
                             return (
                                 <TouchableOpacity
@@ -140,7 +141,7 @@ const styles = StyleSheet.create({
         borderRadius: moderateScale(28),
         paddingHorizontal: horizontalScale(24),
         paddingVertical: horizontalScale(24),
-        width: '94%',
+        width: '93%',
         borderWidth: 1.5,
         borderColor: 'rgba(255, 255, 255, 0.05)',
         shadowColor: '#000',
@@ -156,8 +157,8 @@ const styles = StyleSheet.create({
         marginBottom: horizontalScale(20),
     },
     navButton: {
-        width: horizontalScale(44),
-        height: horizontalScale(44),
+        width: horizontalScale(40),
+        height: horizontalScale(40),
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: moderateScale(14),
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     yearText: {
-        fontSize: moderateScale(32),
+        fontSize: moderateScale(30),
         color: '#FFFFFF',
         fontFamily: 'Manrope_800ExtraBold',
         letterSpacing: 2,
@@ -177,7 +178,7 @@ const styles = StyleSheet.create({
     dividerContainer: {
         height: horizontalScale(1),
         width: '100%',
-        marginBottom: horizontalScale(24),
+        marginBottom: horizontalScale(20),
         justifyContent: 'center',
     },
     fadedLine: {
@@ -193,11 +194,11 @@ const styles = StyleSheet.create({
     },
     gridMonthItem: {
         width: '31%',
-        height: horizontalScale(56),
+        height: horizontalScale(50),
         justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: moderateScale(16),
-        marginBottom: horizontalScale(12),
+        borderRadius: moderateScale(14),
+        marginBottom: horizontalScale(10),
         backgroundColor: '#1A1B21', // Dark Slate
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.03)',
