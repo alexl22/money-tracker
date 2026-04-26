@@ -33,7 +33,7 @@ export default function CustomAlert() {
     }
     if (type === 'info')
       return <Info color="#ff05c9" size={size} strokeWidth={strokeWidth} />;
-
+    
     return <AlertTriangle color="#ef4444" size={size} strokeWidth={strokeWidth} />;
   };
 

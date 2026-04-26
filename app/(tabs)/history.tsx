@@ -414,7 +414,7 @@ export default function HistoryScreen() {
                       onPress={() => setExpandedId(isExpanded ? null : item.id)}
                       style={[
                         styles.transactionCard,
-                        { borderColor: item.type === 'income' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(235, 86, 86, 0.4)' },
+                        { borderColor: item.type === 'income' ? 'rgba(16, 185, 129, 0.6)' : 'rgba(235, 86, 86, 0.6)' },
                         isExpanded && styles.transactionCardExpanded
                       ]}
                     >

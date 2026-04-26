@@ -121,7 +121,7 @@ export function TargetInputModal({
                 onPress={amount === '0' ? () => { onReset?.(); onClose(); } : handleSave}
               >
                 <Text style={styles.saveBtnText}>
-                  {amount === '0' ? 'RESET GOAL' : 'Confirm Target'}
+                  {amount === '0' ? 'DELETE GOAL' : 'Confirm Target'}
                 </Text>
                 {amount === '0' ? <Delete color="#fff" size={moderateScale(20)} /> : <Check color="#fff" size={moderateScale(20)} />}
               </TouchableOpacity>

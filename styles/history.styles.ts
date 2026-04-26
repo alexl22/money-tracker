@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
     padding: moderateScale(16),
     marginBottom: horizontalScale(20),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.07)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.2,
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.07)',
   },
   weekCardActive: {
     backgroundColor: '#3b82f6',
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(30),
     borderWidth: 1,
     borderStyle: 'solid',
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.07)',
   },
   emptyStateTitle: {
     fontFamily: 'Manrope_700Bold',

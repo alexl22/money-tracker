@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
     minHeight: horizontalScale(115),
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.07)',
     borderLeftWidth: 4,
   },
 

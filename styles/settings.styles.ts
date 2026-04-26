@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: horizontalScale(24),
     minHeight: horizontalScale(68),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.03)',
+    borderColor: 'rgba(255,255,255,0.07)',
   },
   inputIconCircle: {
     width: horizontalScale(44),
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: horizontalScale(20),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.03)',
+    borderColor: 'rgba(255,255,255,0.07)',
   },
   actionCardExpanded: {
     borderBottomLeftRadius: 0,
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: horizontalScale(20),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.03)',
+    borderColor: 'rgba(255,255,255,0.07)',
   },
   softCardTitle: {
     fontSize: moderateScale(20),
