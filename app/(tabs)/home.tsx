@@ -1,10 +1,11 @@
-import { DatePicker } from '../../components/DatePicker';
-import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
-import { collection, query, where, onSnapshot } from '@react-native-firebase/firestore';
+import { collection, onSnapshot, query, where } from '@react-native-firebase/firestore';
 import { Calendar, ChevronDown, Receipt, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { DatePicker } from '../../components/DatePicker';
+import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
+import { Colors } from '../../constants/DesignSystem';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
@@ -80,10 +81,10 @@ export default function DashboardScreen() {
 
     const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        handleSnapshot(snapshot);
-      }, (error) => {
-        console.error("Firestore Error:", error);
-      });
+      handleSnapshot(snapshot);
+    }, (error) => {
+      console.error("Firestore Error:", error);
+    });
 
     function handleSnapshot(snapshot: any) {
       let currentTotalIncome = 0;
@@ -228,7 +229,7 @@ export default function DashboardScreen() {
               <View style={styles.calendarIconContainer}>
                 <Calendar color="#3b82f6" size={20} fill="rgba(59, 130, 246, 0.1)" strokeWidth={2.5} />
               </View>
-              <Text 
+              <Text
                 style={styles.dateSelectorText}
                 numberOfLines={1}
                 adjustsFontSizeToFit
@@ -360,7 +361,7 @@ export default function DashboardScreen() {
         onClose={() => setIsRangePickerVisible(false)}
         initialStartDate={rangeStart}
         initialDeadline={rangeEnd}
-        title = {"SELECT RANGE"}
+        title={"SELECT RANGE"}
         onSave={(start, end) => {
           setRangeStart(start);
           setRangeEnd(end);
@@ -373,7 +374,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0c14',
+    backgroundColor: Colors.background,
   },
   scrollContent: {
     paddingHorizontal: horizontalScale(24),

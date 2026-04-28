@@ -1,17 +1,18 @@
 import { StyleSheet } from 'react-native';
+import { Colors } from '../constants/DesignSystem';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0b0c14' },
+  container: { flex: 1, backgroundColor: Colors.background },
   scrollContent: {
     paddingHorizontal: horizontalScale(24),
-    paddingTop: horizontalScale(28)
+    paddingTop: horizontalScale(20)
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: horizontalScale(12),
-    marginBottom: horizontalScale(32),
+    marginBottom: horizontalScale(20),
     width: '100%',
   },
   monthSelector: {
@@ -53,9 +54,9 @@ const styles = StyleSheet.create({
     height: horizontalScale(44),
     paddingHorizontal: horizontalScale(16),
     borderRadius: moderateScale(22),
-    backgroundColor: 'rgba(26, 27, 30, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.01)',
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: 'rgba(255, 255, 255, 0.07)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: horizontalScale(8),
@@ -67,7 +68,7 @@ const styles = StyleSheet.create({
   historyToggleText: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: moderateScale(15),
-    color: 'rgba(255,255,255,1)',
+    color: 'rgba(255,255,255,0.8)',
     letterSpacing: 0.8,
   },
   historyToggleTextActive: {
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
   },
 
   weekSelectorScroll: {
-    marginBottom: horizontalScale(24),
+    marginBottom: horizontalScale(22),
   },
   weekContainer: {
     flexDirection: 'row',
@@ -451,12 +452,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1C1D1F',
-    paddingVertical: horizontalScale(6),
-    paddingHorizontal: horizontalScale(10),
     borderRadius: moderateScale(10),
-    gap: horizontalScale(6),
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.07)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: horizontalScale(3) },
+    shadowOpacity: 0.2,
+    shadowRadius: moderateScale(15),
+    elevation: 8,
   },
   filterIconButtonActive: {
     borderColor: 'rgba(59, 130, 246, 0.4)',
@@ -467,30 +470,7 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(11),
     letterSpacing: 0.5,
   },
-  hintRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: horizontalScale(6),
-    marginTop: horizontalScale(12),
-    paddingTop: horizontalScale(8),
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.03)',
-  },
-  hintText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: moderateScale(11),
-    color: 'rgba(255,255,255,0.3)',
-    letterSpacing: 0.5,
-  },
-  headerHint: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: moderateScale(10),
-    color: 'rgba(255,255,255,0.2)',
-    marginTop: horizontalScale(4),
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
+
   allHistoryLongButton: {
     marginTop: horizontalScale(12),
     flexDirection: 'row',

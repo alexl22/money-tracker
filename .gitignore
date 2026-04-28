@@ -44,6 +44,6 @@ app-example
 /android
 
 # Firebase config files
-google-services.json
-GoogleService-Info.plist
+#google-services.json
+#GoogleService-Info.plist
 firebaseConfig.ts.local

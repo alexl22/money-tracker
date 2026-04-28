@@ -1,7 +1,7 @@
 import { horizontalScale, moderateScale } from '../utils/scaling';
 
 export const Colors = {
-  background: '#131313',
+  background: '#0b0c14',
   primary: '#6ee591',
   primaryContainer: '#50c878',
   onPrimary: '#003919',
@@ -19,7 +19,7 @@ export const Colors = {
   surfaceContainerHigh: '#2a2a2a',
   surfaceContainerHighest: '#353534',
   surfaceVariant: '#353534',
-  outlineVariant: 'rgba(62, 74, 63, 0.2)', // Ghost border
+  outlineVariant: 'rgba(62, 74, 63, 0.2)', 
   white: '#FFFFFF',
 };
 

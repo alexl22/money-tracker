@@ -7,16 +7,15 @@
     "icon": "./assets/images/icon.png",
     "scheme": "moneytracker",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "androidNavigationBar": {
-      "visible": "visible",
+      "visible": "always",
       "backgroundColor": "#00000000"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.alex.moneytracker",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "itsAppUsesNonExemptEncryption": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -29,7 +28,7 @@
         "POST_NOTIFICATIONS"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#0b0c14",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/adaptive-icon.png"
       },
       "edgeToEdgeEnabled": true,
@@ -55,12 +54,17 @@
             "backgroundColor": "#0b0c14"
           }
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static",
+            "modularHeaders": true
+          }
+        }
       ]
     ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    },
     "extra": {
       "router": {},
       "eas": {

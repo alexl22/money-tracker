@@ -1,6 +1,6 @@
 import { collection, deleteDoc, doc, onSnapshot, query, where } from '@react-native-firebase/firestore';
 import { useFocusEffect } from 'expo-router';
-import { Calendar, CalendarDays, ChevronDown, ShoppingBag, SlidersHorizontal, Wallet } from 'lucide-react-native';
+import { Calendar, CalendarDays, ChevronDown, ShoppingBag, SlidersHorizontal, Wallet, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
@@ -11,7 +11,7 @@ import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
 import { auth, db } from '../../firebaseConfig';
 import styles from '../../styles/history.styles';
-import { horizontalScale } from '../../utils/scaling';
+import { horizontalScale, moderateScale } from '../../utils/scaling';
 interface TransactionItem {
   id: string;
   title: string;
@@ -373,7 +373,7 @@ export default function HistoryScreen() {
 
 
         {!showAllHistory && (
-          <View 
+          <View
             style={styles.weekSelectorScroll}
             onLayout={(e) => {
               transactionsListY.current = e.nativeEvent.layout.y;
@@ -412,26 +412,59 @@ export default function HistoryScreen() {
 
         <View style={styles.weekHeader}>
           <View style={styles.weekTitleRow}>
-            <Text style={styles.weekTitle} numberOfLines={1} adjustsFontSizeToFit>
+            <Text style={[styles.weekTitle, showAllHistory && { fontSize: moderateScale(24) }]} numberOfLines={1} adjustsFontSizeToFit>
               {showAllHistory
                 ? (isCustomRangeActive && customRange ? `${customRange.start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - ${customRange.end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}` : "All History")
                 : `Week ${weeks[selectedWeekIndex]?.label}`}
             </Text>
-            <View style={{ flexDirection: 'row', gap: horizontalScale(8) }}>
+            <View style={{ flexDirection: 'row', gap: horizontalScale(5), alignItems: 'center', flexShrink: 0 }}>
               {showAllHistory && (
-                <TouchableOpacity
-                  style={[styles.filterIconButton, isCustomRangeActive && styles.filterIconButtonActive]}
-                  onPress={() => setIsRangePickerVisible(true)}
-                >
-                  <CalendarDays color={isCustomRangeActive ? "#3b82f6" : "rgba(255,255,255,0.4)"} size={14} strokeWidth={2.5} />
-                  <Text style={[styles.filterModeLabel, { color: isCustomRangeActive ? "#3b82f6" : "rgba(255,255,255,0.4)" }]}>RANGE</Text>
-                </TouchableOpacity>
+                <View style={[styles.filterIconButton, isCustomRangeActive && styles.filterIconButtonActive, { overflow: 'hidden' }]}>
+                  <Pressable
+                    onPress={() => setIsRangePickerVisible(true)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: horizontalScale(6),
+                      paddingVertical: horizontalScale(7),
+                      paddingLeft: horizontalScale(9),
+                      paddingRight: isCustomRangeActive ? horizontalScale(4) : horizontalScale(10)
+                    }}
+                  >
+                    <CalendarDays color={isCustomRangeActive ? "#3b82f6" : "rgba(255,255,255,0.4)"} size={14} strokeWidth={2.5} />
+                    <Text style={[styles.filterModeLabel, { color: isCustomRangeActive ? "#3b82f6" : "rgba(255,255,255,0.4)" }]}>RANGE</Text>
+                  </Pressable>
+
+                  {isCustomRangeActive && (
+                    <Pressable
+                      onPress={() => {
+                        setIsCustomRangeActive(false);
+                        setCustomRange(null);
+                      }}
+                      style={{
+                        paddingHorizontal: horizontalScale(8),
+                        borderLeftWidth: 1,
+                        borderLeftColor: 'rgba(59, 130, 246, 0.3)',
+                        height: horizontalScale(20), // Înălțime crescută proporțional
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <X color="#3b82f6" size={14} strokeWidth={3} />
+                    </Pressable>
+                  )}
+                </View>
               )}
               <TouchableOpacity
                 style={[
                   styles.filterIconButton,
                   filterMode !== 'all' && styles.filterIconButtonActive,
-                  { borderColor: filterMode === 'all' ? 'rgba(255,255,255,0.2)' : (filterMode === 'income' ? 'rgba(16, 183, 127, 0.4)' : 'rgba(235, 86, 86, 0.4)') }
+                  {
+                    borderColor: filterMode === 'all' ? 'rgba(255,255,255,0.07)' : (filterMode === 'income' ? 'rgba(16, 183, 127, 0.4)' : 'rgba(235, 86, 86, 0.4)'),
+                    paddingVertical: horizontalScale(7),
+                    paddingHorizontal: horizontalScale(9),
+                    gap: horizontalScale(6)
+                  }
                 ]}
                 onPress={() => {
                   const modes: ('all' | 'income' | 'expense')[] = ['all', 'income', 'expense'];
@@ -447,7 +480,7 @@ export default function HistoryScreen() {
                   />
                 )}
                 <Text style={[styles.filterModeLabel, { color: filterMode !== 'all' ? (filterMode === 'income' ? '#10b981' : '#eb5656') : 'rgba(255,255,255,0.4)' }]}>
-                  {filterMode === 'all' ? 'ALL TYPES' : filterMode.toUpperCase()}
+                  {filterMode === 'all' ? 'ANY' : filterMode.toUpperCase()}
                 </Text>
               </TouchableOpacity>
             </View>

@@ -1,10 +1,11 @@
 import { StyleSheet } from 'react-native';
 import { horizontalScale, moderateScale } from '../utils/scaling';
+import { Colors } from '../constants/DesignSystem';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0c14',
+    backgroundColor: Colors.background,
   },
   scrollContent: {
     padding: horizontalScale(24),

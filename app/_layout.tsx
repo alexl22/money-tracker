@@ -26,6 +26,7 @@ import { setupNotifications } from '../utils/notifications';
 
 import * as NavigationBar from 'expo-navigation-bar';
 import { Platform, Text, TextInput } from 'react-native';
+import { Colors } from '../constants/DesignSystem';
 
 // Disable font scaling globally to maintain design integrity across all devices
 if ((Text as any).defaultProps) {
@@ -90,7 +91,7 @@ export default function RootLayout() {
               screenOptions={{
                 headerShown: false,
                 animation: 'fade',
-                contentStyle: { backgroundColor: '#101010' },
+                contentStyle: { backgroundColor: Colors.background },
               }}
             >
               <Stack.Screen name="login" />

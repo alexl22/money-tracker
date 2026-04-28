@@ -177,11 +177,13 @@ export default function TabLayout() {
                   <View style={styles.userAvatar}>
                     <User color={Colors.white} size={moderateScale(16)} />
                   </View>
-                  <Text style={styles.userName}>{userName}</Text>
+                  <Text style={styles.userName} numberOfLines={1}>
+                    {userName.charAt(0).toUpperCase() + userName.slice(1)}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.logoutButton}
-                  onPress={() => showAlert("Logout", "Are you sure you want to logout?", "alert", handleLogout,true)}
+                  onPress={() => showAlert("Logout", "Are you sure you want to logout?", "alert", handleLogout, true)}
                 >
                   <LogOut color="rgba(255,255,255,0.6)" size={moderateScale(20)} />
                 </TouchableOpacity>
@@ -298,7 +300,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: horizontalScale(24),
-    backgroundColor: '#0b0c14',
+    backgroundColor: Colors.background,
   },
   userInfo: {
     flexDirection: 'row',
