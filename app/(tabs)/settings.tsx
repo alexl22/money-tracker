@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged } from '@react-native-firebase/auth';
-import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, where } from '@react-native-firebase/firestore';
+import { collection, doc, getDoc, getDocs, orderBy, query, where, writeBatch } from '@react-native-firebase/firestore';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -33,7 +33,6 @@ export default function SettingsScreen() {
   const [userEmail, setUserEmail] = useState('');
   const [isExporting, setIsExporting] = useState(false);
 
-  // Temporary selection state for the modal
   const [tempHours, setTempHours] = useState(23);
   const [tempMinutes, setTempMinutes] = useState(0);
   const [newPassword, setNewPassword] = useState('');
@@ -42,9 +41,10 @@ export default function SettingsScreen() {
   const { showAlert } = useAlert();
   const user = auth.currentUser;
 
-  // Reset states when leaving the screen
+
   useFocusEffect(
     useCallback(() => {
+
       return () => {
         setIsSecurityExpanded(false);
         setIsDataExpanded(false);
@@ -142,7 +142,7 @@ export default function SettingsScreen() {
       fetchUserData(u);
     });
 
-    // Load Notification Settings
+
     const loadNotificationSettings = async () => {
       try {
         const savedEnabled = await AsyncStorage.getItem('notifications_enabled');
@@ -150,7 +150,7 @@ export default function SettingsScreen() {
 
         let isActuallyEnabled = savedEnabled !== null ? JSON.parse(savedEnabled) : false;
 
-        // VERIFICARE REALĂ: Chiar dacă am salvat "true", verificăm dacă sistemul încă ne dă voie
+       
         if (isActuallyEnabled) {
           const hasPermission = await checkNotificationPermission();
           if (!hasPermission) {
@@ -169,9 +169,6 @@ export default function SettingsScreen() {
 
     return () => unsubscribe();
   }, []);
-
-
-
 
   const formatTime = (h: number, m: number) => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
@@ -216,10 +213,8 @@ export default function SettingsScreen() {
       if (currentY <= 0) {
         tabBarOffset.value = 0;
       } else if (deltaY > 2 && currentY > 10) {
-        // Scroll Down -> Hide Tab Bar (More sensitive)
         tabBarOffset.value = 150;
       } else if (deltaY < -2) {
-        // Scroll Up -> Show Tab Bar (More sensitive)
         tabBarOffset.value = 0;
       }
       lastScrollY.value = currentY;
@@ -241,7 +236,6 @@ export default function SettingsScreen() {
     setSyncTime(newTime);
     setIsTimePickerVisible(false);
 
-    // Salvăm și programăm imediat
     try {
       await AsyncStorage.setItem('notifications_time', JSON.stringify(newTime));
       if (syncEnabled) {
@@ -263,9 +257,22 @@ export default function SettingsScreen() {
         try {
           const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
           const snapshot = await getDocs(q);
-          for (const document of snapshot.docs) {
-            await deleteDoc(doc(db, 'transactions', document.id));
+
+          if (snapshot.empty) {
+            showAlert("Success", "All transactions have been deleted.", "success");
+            return;
           }
+
+          const batchSize = 500;
+          const totalDocs = snapshot.docs.length;
+
+          for (let i = 0; i < totalDocs; i += batchSize) {
+            const batch = writeBatch(db);
+            const chunk = snapshot.docs.slice(i, i + batchSize);
+            chunk.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+          }
+
           showAlert("Success", "All transactions have been deleted.", "success");
         } catch (error) {
           console.error("Clear transactions error:", error);
@@ -287,9 +294,22 @@ export default function SettingsScreen() {
         try {
           const q = query(collection(db, 'loans'), where('userId', '==', user.uid));
           const snapshot = await getDocs(q);
-          for (const document of snapshot.docs) {
-            await deleteDoc(doc(db, 'loans', document.id));
+
+          if (snapshot.empty) {
+            showAlert("Success", "All loans have been deleted.", "success");
+            return;
           }
+
+          const batchSize = 500;
+          const totalDocs = snapshot.docs.length;
+
+          for (let i = 0; i < totalDocs; i += batchSize) {
+            const batch = writeBatch(db);
+            const chunk = snapshot.docs.slice(i, i + batchSize);
+            chunk.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+          }
+
           showAlert("Success", "All loans have been deleted.", "success");
         } catch (error) {
           console.error("Clear loans error:", error);
@@ -310,22 +330,32 @@ export default function SettingsScreen() {
       "alert",
       async () => {
         try {
-          // Delete Transactions
           const txSnapshot = await getDocs(query(collection(db, 'transactions'), where('userId', '==', user.uid)));
-          for (const d of txSnapshot.docs) await deleteDoc(doc(db, 'transactions', d.id));
+          for (let i = 0; i < txSnapshot.docs.length; i += 500) {
+            const batch = writeBatch(db);
+            const chunk = txSnapshot.docs.slice(i, i + 500);
+            chunk.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+          }
 
-          // Delete Loans
           const lSnapshot = await getDocs(query(collection(db, 'loans'), where('userId', '==', user.uid)));
-          for (const d of lSnapshot.docs) await deleteDoc(doc(db, 'loans', d.id));
+          for (let i = 0; i < lSnapshot.docs.length; i += 500) {
+            const batch = writeBatch(db);
+            const chunk = lSnapshot.docs.slice(i, i + 500);
+            chunk.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+          }
 
-          // Delete Goals
           const gSnapshot = await getDocs(query(collection(db, 'goals'), where('userId', '==', user.uid)));
-          for (const d of gSnapshot.docs) await deleteDoc(doc(db, 'goals', d.id));
+          for (let i = 0; i < gSnapshot.docs.length; i += 500) {
+            const batch = writeBatch(db);
+            const chunk = gSnapshot.docs.slice(i, i + 500);
+            chunk.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+          }
 
-          // Delete User Doc
-          await deleteDoc(doc(db, "users", user.uid)).catch(() => { });
+          await writeBatch(db).delete(doc(db, "users", user.uid)).commit();
 
-          // Delete Auth User
           await helperDeleteAccount();
           router.replace("/login");
         } catch (error: any) {
@@ -340,10 +370,7 @@ export default function SettingsScreen() {
       },
       true
     );
-
   }
-
-
 
   return (
     <View style={styles.container}>
@@ -355,7 +382,6 @@ export default function SettingsScreen() {
       >
         <Text style={styles.headerTitle}>Settings</Text>
 
-        {/* Display Currency Section */}
         <View style={[styles.softCard, { height: undefined, paddingVertical: horizontalScale(24) }]}>
           <Text style={styles.softCardTitle}>Display Currency</Text>
           <TouchableOpacity
@@ -375,7 +401,7 @@ export default function SettingsScreen() {
 
 
         <View style={styles.sectionGroup}>
-          <Text style={styles.sectionLabel}>EMAIL ADDRESS</Text>
+
           <View style={styles.inputCard}>
             <View style={styles.inputIconCircle}>
               <Mail color="#3b82f6" size={20} />
@@ -389,9 +415,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-
-
-        {/* Security Section */}
         <View style={styles.securityWrapper}>
           <TouchableOpacity
             style={[styles.actionCard, isSecurityExpanded && styles.actionCardExpanded]}
@@ -463,9 +486,6 @@ export default function SettingsScreen() {
           )}
         </View>
 
-
-
-        {/* Notifications Section */}
         <View style={styles.softCard}>
           <View style={styles.cardHeader}>
             <View style={styles.cardHeaderLeft}>
@@ -487,19 +507,15 @@ export default function SettingsScreen() {
             <Switch
               value={syncEnabled}
               onValueChange={async (newValue) => {
-                // 1. Mutăm butonul INSTANTANEU pentru animație smooth
                 setSyncEnabled(newValue);
 
                 try {
                   if (newValue) {
-                    // Cerem permisiunea
                     const { granted, canAskAgain } = await requestNotificationPermission();
                     if (granted) {
-                      // Salvăm și programăm notificarea
                       await AsyncStorage.setItem('notifications_enabled', JSON.stringify(true));
                       await updateNotification(true, syncTime.hours, syncTime.minutes);
                     } else {
-                      // Dacă n-avem voie, sărim înapoi pe OFF
                       setSyncEnabled(false);
                       await AsyncStorage.setItem('notifications_enabled', JSON.stringify(false));
 
@@ -514,7 +530,6 @@ export default function SettingsScreen() {
                       }
                     }
                   } else {
-                    // Oprim totul
                     await AsyncStorage.setItem('notifications_enabled', JSON.stringify(false));
                     await updateNotification(false, 0, 0);
                   }
@@ -528,7 +543,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Time Picker Modal */}
         <TimePickerModal
           isVisible={isTimePickerVisible}
           onClose={() => setIsTimePickerVisible(false)}
@@ -540,7 +554,6 @@ export default function SettingsScreen() {
           styles={styles}
         />
 
-        {/* Information Export Section */}
         <TouchableOpacity
           style={styles.softCard}
           onPress={handleExportAudit}
@@ -589,11 +602,8 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-
-
         </TouchableOpacity>
 
-        {/* Data Management Section */}
         <View style={styles.securityWrapper}>
           <TouchableOpacity
             style={[styles.actionCard, isDataExpanded && styles.actionCardExpanded]}
@@ -642,8 +652,6 @@ export default function SettingsScreen() {
           )}
         </View>
 
-
-
         <TouchableOpacity
           style={styles.deleteAccountBtn}
           onPress={deleteAccount}
@@ -664,13 +672,8 @@ export default function SettingsScreen() {
 
         <View style={{ height: 120 }} />
 
-
-
-
-
       </Animated.ScrollView>
 
-      {/* Currency Selection Modal */}
       <Modal
         visible={isCurrencyPickerVisible}
         animationType="slide"
@@ -744,5 +747,3 @@ export default function SettingsScreen() {
     </View>
   );
 }
-
-

@@ -1,7 +1,8 @@
-import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, getDoc, serverTimestamp, or, and } from '@react-native-firebase/firestore';
+import { addDoc, and, collection, deleteDoc, doc, getDoc, onSnapshot, or, query, serverTimestamp, updateDoc, where } from '@react-native-firebase/firestore';
 import { AlignLeft, CheckCircle2, Mail, Plus, TrendingUp, Type, Wallet } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
-import { Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Animated, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import Reanimated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useAlert } from '../context/AlertContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { auth, db } from '../firebaseConfig';
@@ -34,15 +35,83 @@ interface Loan {
 
 export function LoansTab({ localColors }: LoansTabProps) {
   const { showAlert } = useAlert();
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [totalLent, setTotalLent] = useState(0);
   const [totalBorrowed, setTotalBorrowed] = useState(0);
   const [activeTab, setActiveTab] = useState<'active' | 'settled'>('active');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(auth.currentUser?.uid || null);
-  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(auth.currentUser?.email || null);
+  const isFirstRender = useRef(true);
+
+  const [containerWidth, setContainerWidth] = useState(0);
+  const tabWidth = horizontalScale(100);
+  const gap = horizontalScale(16);
+
+  const activeStart = containerWidth > 0 ? (containerWidth / 2) - (gap / 2) - tabWidth : 0;
+  const settledStart = containerWidth > 0 ? (containerWidth / 2) + (gap / 2) : 0;
+
+  const translateX = useSharedValue(0);
+  const indicatorOpacity = useSharedValue(0);
+
+  const activeScale = useRef(new Animated.Value(activeTab === 'active' ? 1 : 0.9)).current;
+  const settledScale = useRef(new Animated.Value(activeTab === 'settled' ? 1 : 0.9)).current;
+
+  useEffect(() => {
+    if (containerWidth === 0) return;
+
+    const targetX = activeTab === 'active' ? activeStart : settledStart;
+
+    if (isFirstRender.current) {
+      translateX.value = targetX;
+      activeScale.setValue(activeTab === 'active' ? 1 : 0.9);
+      settledScale.setValue(activeTab === 'settled' ? 1 : 0.9);
+      isFirstRender.current = false;
+      return;
+    }
+
+    translateX.value = withSpring(targetX, {
+      damping: 25,
+      stiffness: 200,
+    });
+
+    Animated.parallel([
+      Animated.spring(activeScale, {
+        toValue: activeTab === 'active' ? 1 : 0.9,
+        useNativeDriver: true,
+        friction: 6,
+        tension: 100,
+      }),
+      Animated.spring(settledScale, {
+        toValue: activeTab === 'settled' ? 1 : 0.9,
+        useNativeDriver: true,
+        friction: 6,
+        tension: 100,
+      }),
+    ]).start();
+
+    indicatorOpacity.value = 1;
+    const timeout = setTimeout(() => {
+      indicatorOpacity.value = withTiming(0, { duration: 400 });
+    }, 600);
+    return () => clearTimeout(timeout);
+  }, [activeTab, containerWidth, activeStart, settledStart]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+    opacity: indicatorOpacity.value,
+  }));
   const user = auth.currentUser;
+  const [currentUserId, setCurrentUserId] = useState<string | null>(user?.uid || null);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(user?.email || null);
+
+  useEffect(() => {
+    if (user) {
+      setCurrentUserId(user.uid);
+      setCurrentUserEmail(user.email);
+    }
+  }, [user]);
+
   const { format, currency, rates, getSymbol } = useCurrency();
   useEffect(() => {
     if (!user) return;
@@ -68,6 +137,7 @@ export function LoansTab({ localColors }: LoansTabProps) {
           date: date
         };
       }) as Loan[];
+      loansData.sort((a, b) => b.date.getTime() - a.date.getTime());
       setLoans(loansData);
 
       let sumLent = 0;
@@ -113,6 +183,10 @@ export function LoansTab({ localColors }: LoansTabProps) {
   }, [activeTab, currency, user]);
 
   const handleAddLoan = () => {
+    if (loans.length >= 30) {
+      showAlert("Limit Reached", "You can have a maximum of 30 active/settled loans. Please settle or remove old ones first.", "alert");
+      return;
+    }
     setIsModalVisible(true);
   };
   const toggleLoanStatus = async (id: string, currentStatus: 'active' | 'settled') => {
@@ -123,16 +197,33 @@ export function LoansTab({ localColors }: LoansTabProps) {
       console.error("Error toggling loan status:", error);
     }
   };
+
+  const handleDeleteLoan = (id: string, name: string) => {
+    showAlert(
+      'Delete Loan',
+      `Are you sure you want to delete the loan with ${name}?`,
+      'alert',
+      async () => {
+        try {
+          await deleteDoc(doc(db, 'loans', id));
+        } catch (error) {
+          console.error("Error deleting loan:", error);
+          showAlert('Error', 'Could not delete the loan. Please try again.', 'alert');
+        }
+      },
+      true,
+      false
+    );
+  };
   return (
     <View style={styles.viewContainer}>
-      {/* Summary Row */}
       <View style={styles.summaryRow}>
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => showAlert(activeTab === 'active' ? 'They Owe Me' : 'TOTAL RECEIVED', `Exact amount: ${format(totalLent, { isConverted: true })}`, 'info')}
           style={[styles.summaryCard, { borderLeftColor: '#6ee591' }]}
         >
-          <Text 
+          <Text
             style={styles.summaryLabel}
             numberOfLines={1}
             adjustsFontSizeToFit
@@ -173,7 +264,7 @@ export function LoansTab({ localColors }: LoansTabProps) {
           onPress={() => showAlert(activeTab === 'active' ? 'I Owe Them' : 'Total Sent', `Exact amount: ${format(totalBorrowed, { isConverted: true })}`, 'info')}
           style={[styles.summaryCard, { borderLeftColor: '#eb5656' }]}
         >
-          <Text 
+          <Text
             style={styles.summaryLabel}
             numberOfLines={1}
             adjustsFontSizeToFit
@@ -210,27 +301,68 @@ export function LoansTab({ localColors }: LoansTabProps) {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.secondarySwitch}>
+      <TouchableOpacity style={styles.addLoanSlim} onPress={handleAddLoan}>
+        <Plus color="#ffffffff" size={moderateScale(16)} strokeWidth={3} />
+        <Text style={styles.addLoanSlimText}>NEW LOAN</Text>
+      </TouchableOpacity>
+
+      <View
+        style={styles.secondarySwitch}
+        onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+      >
+        <View style={styles.indicatorTrack}>
+          <Reanimated.View
+            style={[
+              styles.indicatorBar,
+              indicatorStyle
+            ]}
+          />
+        </View>
+
         <TouchableOpacity
-          style={[styles.secondaryTab, activeTab === 'active' && styles.secondaryTabActive]}
           onPress={() => setActiveTab('active')}
+          activeOpacity={0.9}
         >
-          <Text style={activeTab === 'active' ? styles.secondaryTabTextActive : styles.secondaryTabText}>Active Loans</Text>
+          <Animated.View style={[
+            styles.bubbleTab,
+            {
+              transform: [{ scale: activeScale }],
+              backgroundColor: activeTab === 'active' ? '#3b82f6ff' : '#1C1D1F',
+              borderColor: activeTab === 'active' ? 'rgba(59, 130, 246, 1)' : 'rgba(255,255,255,0.12)',
+              opacity: activeTab === 'active' ? 1 : 0.6,
+              shadowColor: activeTab === 'active' ? 'rgba(59, 130, 246, 1)' : '#000',
+              shadowOpacity: activeTab === 'active' ? 0.7 : 0,
+              shadowRadius: activeTab === 'active' ? 15 : 0,
+              elevation: activeTab === 'active' ? 10 : 0,
+            }
+          ]}>
+            <Text style={activeTab === 'active' ? styles.secondaryTabTextActive : styles.secondaryTabText}>ACTIVE</Text>
+          </Animated.View>
         </TouchableOpacity>
+
         <TouchableOpacity
-          style={[styles.secondaryTab, activeTab === 'settled' && styles.secondaryTabActive]}
           onPress={() => setActiveTab('settled')}
+          activeOpacity={0.9}
         >
-          <Text style={activeTab === 'settled' ? styles.secondaryTabTextActive : styles.secondaryTabText}>Settled (History)</Text>
+          <Animated.View style={[
+            styles.bubbleTab,
+            {
+              transform: [{ scale: settledScale }],
+              backgroundColor: activeTab === 'settled' ? 'rgba(59, 130, 246, 1)' : '#1C1D1F',
+              borderColor: activeTab === 'settled' ? 'rgba(59, 130, 246, 1)' : 'rgba(255,255,255,0.12)',
+              opacity: activeTab === 'settled' ? 1 : 0.6,
+              shadowColor: activeTab === 'settled' ? 'rgba(59, 130, 246, 1)' : '#000',
+              shadowOpacity: activeTab === 'settled' ? 0.7 : 0,
+              shadowRadius: activeTab === 'settled' ? 15 : 0,
+              elevation: activeTab === 'settled' ? 6 : 0,
+            }
+          ]}>
+            <Text style={activeTab === 'settled' ? styles.secondaryTabTextActive : styles.secondaryTabText}>SETTLED</Text>
+          </Animated.View>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.addLoanButton} onPress={handleAddLoan}>
-        <Plus color={localColors.white} size={moderateScale(19)} strokeWidth={3} />
-        <Text style={styles.addLoanText}>ADD NEW LOAN</Text>
-      </TouchableOpacity>
 
-      {/* List */}
       <View style={styles.listContainer}>
         {loans.length > 0 ? (
           loans.map((loan) => {
@@ -254,7 +386,9 @@ export function LoansTab({ localColors }: LoansTabProps) {
                 key={loan.id}
                 activeOpacity={0.8}
                 onPress={() => setExpandedLoanId(isExpanded ? null : loan.id)}
-                style={[styles.loanCard, { borderColor: effectiveType === 'lent' ? 'rgba(231, 57, 57, 0.2)' : 'rgba(84, 216, 124, 0.2)' }]}
+                onLongPress={() => handleDeleteLoan(loan.id, displayName)}
+                delayLongPress={300}
+                style={[styles.loanCard, { borderColor: effectiveType === 'lent' ? 'rgba(235, 86, 86, 0.6)' : 'rgba(16, 185, 129, 0.6)' }]}
               >
                 <View style={styles.loanMainContent}>
                   <View style={styles.loanLeft}>
@@ -345,6 +479,7 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [personEmail, setPersonEmail] = useState('');
+  const [isLoanModalVisible, setIsLoanModalVisible] = useState(false);
   const { showAlert } = useAlert();
   const { convertToBase, currency } = useCurrency();
   const handleSave = async (amount: string, resetModal: () => void) => {
@@ -369,7 +504,6 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
 
     setIsSaving(true);
     try {
-      // Fetch user data (this is okay to await as it's a read, though offline it might use cache)
       let finalOwnerName = user.displayName || user.email?.split('@')[0] || 'A user';
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -380,7 +514,7 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
           }
         }
       } catch (e) {
-        console.warn("Could not fetch owner name, using default", e);
+        console.warn("Could not fetch owner name from server (likely offline), using fallback", e);
       }
 
       const loanData = {
@@ -394,23 +528,22 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
         note: notes,
         status: 'active',
         date: new Date(),
-        createdAt: serverTimestamp(), // Use server time
+        createdAt: serverTimestamp(),
         ownerName: finalOwnerName,
         ownerEmail: user.email || '',
       };
 
-      // OPTIMISTIC UI: Don't 'await' the write
       addDoc(collection(db, 'loans'), loanData)
         .catch(err => console.error("Loan Save Error", err));
 
-      // UI cleanup - HAPPENS IMMEDIATELY
       setLoanType(null);
       setPersonName('');
       setPersonEmail('');
       setNotes('');
       resetModal();
-      onClose();
-      showAlert('Success', 'Loan added successfully!', 'success');
+      setTimeout(() => {
+        showAlert('Success', 'Loan added successfully!', 'success');
+      }, Platform.OS === 'ios' ? 100 : 100);
     } catch (error) {
       console.error("Error while saving!", error);
       showAlert('Error', 'We could not process the loan. Please try again.', 'alert');
@@ -425,6 +558,7 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
       onClose={onClose}
       titleStep1="New loan"
       titleStep2="Loan details"
+      marginTopStep2="20%"
       renderStep2={(amount, resetModal) => (
         <View>
           <View style={baseStyles.typeSelectorRow}>
@@ -478,6 +612,7 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
               placeholderTextColor="rgba(255,255,255,0.1)"
               value={personName}
               onChangeText={setPersonName}
+              maxLength={25}
             />
           </View>
           <View style={baseStyles.inputSection}>
@@ -540,14 +675,18 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: '#1C1D1F',
+    backgroundColor: 'rgba(28, 29, 31, 0.9)',
     borderRadius: moderateScale(16),
     padding: horizontalScale(16),
     minHeight: horizontalScale(115),
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-    borderLeftWidth: 4,
+    borderTopWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderLeftWidth: 5,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+    borderRightColor: 'rgba(255,255,255,0.12)',
+    borderBottomColor: 'rgba(255,255,255,0.12)',
   },
 
   summaryLabel: {
@@ -556,7 +695,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     fontFamily: 'Inter_700Bold',
     letterSpacing: 0.5,
-    height: moderateScale(26), // Fixed height to stabilize layout regardless of content string height
+    height: moderateScale(26),
   },
   summaryValue: {
     fontSize: moderateScale(24),
@@ -571,66 +710,93 @@ const styles = StyleSheet.create({
   },
   secondarySwitch: {
     flexDirection: 'row',
-    backgroundColor: '#1C1D1F',
-    borderRadius: moderateScale(9999),
-    padding: horizontalScale(4),
+    justifyContent: 'center',
+    gap: horizontalScale(16),
     marginBottom: horizontalScale(24),
-    width: '90%',
-    alignSelf: 'center',
+    width: '100%',
+    position: 'relative',
+    paddingBottom: horizontalScale(10),
   },
-  secondaryTab: {
-    flex: 1,
-    paddingVertical: horizontalScale(12),
-    alignItems: 'center',
+  indicatorTrack: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    height: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 1,
+  },
+  indicatorBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: horizontalScale(100),
+    height: 2,
+    backgroundColor: 'rgba(255, 255, 255, 1)',
+    borderRadius: 1,
+    shadowColor: '#ffffffff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+  bubbleTab: {
+    width: horizontalScale(100),
+    paddingVertical: horizontalScale(10),
     borderRadius: moderateScale(9999),
-  },
-  secondaryTabActive: {
-    backgroundColor: '#333333',
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 4,
   },
   secondaryTabText: {
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(13),
     color: 'rgba(255,255,255,0.4)',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Manrope_700Bold',
+    letterSpacing: 1,
   },
   secondaryTabTextActive: {
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(13),
     color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Manrope_800ExtraBold',
+    letterSpacing: 1,
   },
-  addLoanButton: {
-    backgroundColor: '#3b82f6',
+  addLoanSlim: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: horizontalScale(11),
-    paddingHorizontal: horizontalScale(21),
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    paddingVertical: horizontalScale(10),
     borderRadius: moderateScale(9999),
-    gap: horizontalScale(10),
     marginBottom: horizontalScale(24),
+    width: '45%',
     alignSelf: 'center',
+    gap: horizontalScale(8),
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
     shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: horizontalScale(6) },
-    shadowOpacity: 0.3,
-    shadowRadius: moderateScale(12),
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  addLoanText: {
-    fontSize: moderateScale(12),
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontFamily: 'Manrope_700Bold',
-    
+  addLoanSlimText: {
+    fontSize: moderateScale(11),
+    color: '#ffffffff',
+    fontFamily: 'Manrope_800ExtraBold',
+    letterSpacing: 1.2,
   },
   listContainer: {
     gap: horizontalScale(12),
   },
   loanCard: {
     flexDirection: 'column',
-    backgroundColor: '#1A1B1E',
+    backgroundColor: 'rgba(28, 29, 31, 0.9)',
     padding: horizontalScale(14),
-    borderRadius: moderateScale(20),
-    borderWidth: 2,
+    borderRadius: moderateScale(16),
+    borderWidth: 1.5,
     marginBottom: horizontalScale(10),
   },
   loanMainContent: {

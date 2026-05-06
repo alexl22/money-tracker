@@ -28,7 +28,7 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { Platform, Text, TextInput } from 'react-native';
 import { Colors } from '../constants/DesignSystem';
 
-// Disable font scaling globally to maintain design integrity across all devices
+
 if ((Text as any).defaultProps) {
   (Text as any).defaultProps.allowFontScaling = true;
   (Text as any).defaultProps.maxFontSizeMultiplier = 1.2;
@@ -43,7 +43,7 @@ if ((TextInput as any).defaultProps) {
   (TextInput as any).defaultProps = { allowFontScaling: true, maxFontSizeMultiplier: 1.2 };
 }
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
+
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -71,9 +71,12 @@ export default function RootLayout() {
       setupNotifications();
       SplashScreen.hideAsync();
 
-      // Ensure Android Navigation Bar is Visible and Transparent
+    
       if (Platform.OS === 'android') {
-        NavigationBar.setVisibilityAsync('visible');
+        NavigationBar.setPositionAsync('absolute');
+        NavigationBar.setBehaviorAsync('overlay-swipe');
+        NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0)');
+        NavigationBar.setButtonStyleAsync('light');
       }
     }
   }, [loaded, isAuthReady]);
@@ -83,7 +86,7 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.background }}>
       <ThemeProvider value={DarkTheme}>
         <CurrencyProvider>
           <AlertProvider>

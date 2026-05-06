@@ -1,9 +1,11 @@
 import { LinearGradient } from "expo-linear-gradient";
+import * as NavigationBar from "expo-navigation-bar";
 import { Check, Delete, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCurrency } from '../context/CurrencyContext';
 import { horizontalScale, moderateScale } from '../utils/scaling';
+
 interface TargetInputModalProps {
   isVisible: boolean;
   onClose: () => void;
@@ -23,55 +25,75 @@ export function TargetInputModal({
   const { getSymbol } = useCurrency();
   useEffect(() => {
     if (isVisible) {
-      setAmount(initialAmount ? initialAmount.toString() : '0');
+      setAmount(initialAmount ? Math.floor(initialAmount).toString() : '0');
     }
   }, [isVisible, initialAmount]);
 
-  const handleKeyPress = (val: string) => {
-    const digitCount = amount.replace(".", "").length;
-
-    if (val === '.') {
-      if (amount.includes('.')) return;
-      if (digitCount >= 10) return;
-      setAmount(amount + '.');
-    } else if (val === 'delete') {
-      if (amount.length <= 1) {
-        setAmount('0');
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (isVisible) {
+        NavigationBar.setBackgroundColorAsync('rgba(0, 0, 0, 0.85)');
       } else {
-        setAmount(amount.slice(0, -1));
-      }
-    } else {
-      if (digitCount >= 10) return;
-      if (amount === '0') {
-        setAmount(val);
-      } else {
-        setAmount(amount + val);
+        NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0)');
       }
     }
-  };
+  }, [isVisible]);
 
+  const handleKeyPress = (val: string) => {
+    if (val === ".") return;
+
+    let newAmount = amount;
+
+    if (val === "delete") {
+      if (newAmount.length <= 1) {
+        newAmount = "0";
+      } else {
+        newAmount = newAmount.slice(0, -1);
+      }
+    } else {
+      if (newAmount === "0") {
+        newAmount = val;
+      } else if (newAmount.length < 8) {
+        newAmount += val;
+      }
+    }
+
+    setAmount(newAmount);
+  };
   const handleSave = () => {
-    const numAmount = parseFloat(amount);
+    const numAmount = Math.round(parseFloat(amount));
     if (!isNaN(numAmount) && numAmount > 0) {
       onSave(numAmount);
-      onClose();
+      resetModal();
     }
   };
 
   const renderKeypadButton = (val: string, icon?: any) => (
     <TouchableOpacity
       key={val}
-      style={styles.keypadButton}
+      style={[styles.keypadButton, val === "." && { opacity: 0.3 }]}
       onPress={() => handleKeyPress(val)}
+      disabled={val === "."}
     >
-      {icon ? icon : <Text style={styles.keypadButtonText}>{val}</Text>}
+      {icon ? icon : <Text style={[styles.keypadButtonText, val === "." && { color: 'rgba(255,255,255,0.3)' }]}>{val}</Text>}
     </TouchableOpacity>
   );
 
+  const resetModal = () => {
+    onClose();
+    setTimeout(() => {
+      setAmount("0");
+    }, 250);
+  };
+
+  if (!isVisible) return null;
+
+  const displayInteger = amount.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
   return (
-    <Modal visible={isVisible} transparent onRequestClose={onClose} statusBarTranslucent={true}>
+    <Modal visible={isVisible} transparent onRequestClose={resetModal} statusBarTranslucent={true}>
       <View style={styles.modalOverlay}>
-        <Pressable style={styles.dismissArea} onPress={onClose}>
+        <Pressable style={styles.dismissArea} onPress={resetModal}>
           <View style={styles.modalPositioner}>
             <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
               <View style={styles.header}>
@@ -79,7 +101,7 @@ export function TargetInputModal({
                   <Text style={styles.title}>SET GOAL TARGET</Text>
                   <Text style={styles.subtitle} numberOfLines={2}>How much do you want to save?</Text>
                 </View>
-                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <TouchableOpacity onPress={resetModal} style={styles.closeBtn}>
                   <X color="rgba(255,255,255,0.4)" size={20} style={{ marginTop: 1 }} />
                 </TouchableOpacity>
               </View>
@@ -88,15 +110,12 @@ export function TargetInputModal({
                 <View style={styles.amountRow}>
                   <Text style={[styles.currencySymbol, getSymbol().length > 1 && { fontSize: moderateScale(22) }]}>{getSymbol()}</Text>
                   <Text
-                    style={styles.amountText}
                     numberOfLines={1}
                     adjustsFontSizeToFit={true}
-                    minimumFontScale={0.5}
+                    minimumFontScale={0.4}
+                    style={styles.unifiedAmountText}
                   >
-                    {Number(amount).toLocaleString(undefined, {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 2
-                    })}
+                    {displayInteger}
                   </Text>
                 </View>
               </View>
@@ -118,7 +137,7 @@ export function TargetInputModal({
 
               <TouchableOpacity
                 style={[styles.btnBase, amount === '0' ? styles.resetBtn : styles.confirmBtn]}
-                onPress={amount === '0' ? () => { onReset?.(); onClose(); } : handleSave}
+                onPress={amount === '0' ? () => { onReset?.(); resetModal(); } : handleSave}
               >
                 <Text style={styles.saveBtnText}>
                   {amount === '0' ? 'DELETE GOAL' : 'Confirm Target'}
@@ -199,13 +218,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope_700Bold',
     marginRight: horizontalScale(8),
   },
-  amountText: {
-    fontSize: moderateScale(43),
-    color: '#FFFFFF',
-    fontFamily: 'Manrope_700Bold',
-    letterSpacing: -1,
-    flexShrink: 1,
-  },
   dividerContainer: {
     height: horizontalScale(3),
     width: '100%',
@@ -265,5 +277,18 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(18),
     color: '#fff',
     fontFamily: 'Manrope_700Bold',
-  }
+  },
+  unifiedAmountText: {
+    fontSize: moderateScale(43),
+    fontFamily: 'Manrope_700Bold',
+    letterSpacing: -1,
+    color: '#FFFFFF',
+    flexShrink: 1,
+  },
+  activeAmountPart: {
+    color: '#FFFFFF',
+  },
+  inactiveAmountPart: {
+    color: 'rgba(255,255,255,0.4)',
+  },
 });

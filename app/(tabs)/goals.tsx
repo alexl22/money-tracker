@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import { useTabBar } from '../../context/TabBarContext';
-import { horizontalScale, moderateScale } from '../../utils/scaling';
+import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { GoalsTab } from '../../components/GoalsTab';
 import { LoansTab } from '../../components/LoansTab';
 import { Colors } from '../../constants/DesignSystem';
+import { useTabBar } from '../../context/TabBarContext';
+import { horizontalScale, moderateScale } from '../../utils/scaling';
 
 export default function GoalsScreen() {
   const { width: SCREEN_WIDTH } = useWindowDimensions();
@@ -14,6 +14,7 @@ export default function GoalsScreen() {
   const tabWidth = (toggleWidth - padding * 2) / 2;
 
   const [viewMode, setViewMode] = useState<'goals' | 'loans'>('goals');
+  const [isScrollEnabled, setIsScrollEnabled] = useState(true);
   const translateX = useSharedValue(0);
 
   const toggleView = (mode: 'goals' | 'loans') => {
@@ -36,10 +37,8 @@ export default function GoalsScreen() {
       if (currentY <= 0) {
         tabBarOffset.value = 0;
       } else if (deltaY > 2 && currentY > 10) {
-        // Scroll Down -> Hide Tab Bar
         tabBarOffset.value = 150;
       } else if (deltaY < -2) {
-        // Scroll Up -> Show Tab Bar
         tabBarOffset.value = 0;
       }
       lastScrollY.value = currentY;
@@ -56,18 +55,28 @@ export default function GoalsScreen() {
     background: Colors?.background || '#131313',
   };
 
+  const scrollRef = useRef<Animated.ScrollView>(null);
+
+  useEffect(() => {
+    if (!isScrollEnabled) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  }, [isScrollEnabled]);
+
   return (
     <View style={styles.container}>
-      <Animated.ScrollView 
-        contentContainerStyle={styles.scrollContent} 
+      <Animated.ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        scrollEnabled={isScrollEnabled}
       >
         <View style={styles.headerSpacer} />
         <View style={[styles.toggleContainer, { width: toggleWidth }]}>
           <Animated.View style={[styles.activeHighlight, { width: tabWidth - 6 }, animatedToggleStyle]} />
-          
+
           <Pressable style={styles.toggleTab} onPress={() => toggleView('goals')}>
             <Text style={[styles.toggleText, viewMode === 'goals' && styles.toggleTextActive]}>GOALS</Text>
           </Pressable>
@@ -77,7 +86,15 @@ export default function GoalsScreen() {
         </View>
 
         {viewMode === 'goals' ? (
-          <GoalsTab localColors={localColors} />
+          <GoalsTab
+            localColors={localColors}
+            onScrollEnableChange={setIsScrollEnabled}
+            onTargetUpdated={() => {
+              setTimeout(() => {
+                scrollRef.current?.scrollTo({ y: horizontalScale(175), animated: true });
+              }, 300);
+            }}
+          />
         ) : (
           <LoansTab localColors={localColors} />
         )}

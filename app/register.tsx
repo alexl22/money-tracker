@@ -8,6 +8,8 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../context/AlertContext';
 import { db, signUp } from '../firebaseConfig';
+import { moderateScale, horizontalScale } from '../utils/scaling';
+
 const BLUE = '#4A8AF4';
 const BG = '#101010';
 const INPUT_BG = '#1A1A1A';
@@ -24,7 +26,7 @@ export default function RegisterScreen() {
   const { showAlert } = useAlert();
 
   const handleRegister = async () => {
-    if (!email || !password || !confirmPassword) {
+    if (!name || !email || !password || !confirmPassword) {
       showAlert("Incomplete Form", "Please fill in all the required fields to create your account.", "alert");
       return;
     }
@@ -42,13 +44,12 @@ export default function RegisterScreen() {
 
       await updateProfile(user, { displayName: name });
 
-      // Create user document in Firestore
       const userData = {
         uid: user.uid,
         displayName: name,
         email: email,
         createdAt: new Date(),
-        baseCurrency: ''
+        baseCurrency: 'USD'
       };
 
       await setDoc(doc(db, 'users', user.uid), userData);
@@ -69,8 +70,12 @@ export default function RegisterScreen() {
 
   return (
     <LinearGradient colors={['#101010', '#020f22']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.container}>
-      <View style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+      <View style={{ flex: 1, paddingTop: insets.top }}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={styles.keyboardView}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 10}
+        >
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
             <View style={styles.header}>
@@ -78,7 +83,6 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.form}>
-              {/* Full Name Field */}
               <View style={styles.fieldWrapper}>
                 <Text style={styles.label}>FULL NAME</Text>
                 <View style={styles.inputContainer}>
@@ -94,7 +98,6 @@ export default function RegisterScreen() {
                 </View>
               </View>
 
-              {/* Email Field */}
               <View style={styles.fieldWrapper}>
                 <Text style={styles.label}>EMAIL ADDRESS</Text>
                 <View style={styles.inputContainer}>
@@ -111,7 +114,6 @@ export default function RegisterScreen() {
                 </View>
               </View>
 
-              {/* Secure Password Field */}
               <View style={styles.fieldWrapper}>
                 <Text style={styles.label}>SECURE PASSWORD</Text>
                 <View style={styles.inputContainer}>
@@ -130,7 +132,6 @@ export default function RegisterScreen() {
                 </View>
               </View>
 
-              {/* Confirm Password Field */}
               <View style={styles.fieldWrapper}>
                 <Text style={styles.label}>CONFIRM PASSWORD</Text>
                 <View style={styles.inputContainer}>
@@ -152,12 +153,10 @@ export default function RegisterScreen() {
                 )}
               </View>
 
-              {/* Register Button */}
               <TouchableOpacity onPress={handleRegister} style={styles.signInButton}>
                 <Text style={styles.signInText}>REGISTER</Text>
               </TouchableOpacity>
 
-              {/* Login Link */}
               <View style={styles.registerLinkContainer}>
                 <Text style={styles.registerText}>Already have an account? </Text>
                 <TouchableOpacity onPress={() => router.push('/login')}>
@@ -169,7 +168,6 @@ export default function RegisterScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* Auth Bottom Tab Navigation */}
         <View style={[styles.bottomNavContainer, { bottom: 5 + insets.bottom }]}>
           <View style={styles.bottomNav}>
             <TouchableOpacity style={styles.navItem} onPress={() => router.push('/login')}>
@@ -202,25 +200,20 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 80,
-    paddingBottom: 150, // Space for bottom nav
+    paddingTop: moderateScale(40),
+    paddingBottom: moderateScale(80),
   },
   header: {
-    marginBottom: 48,
+    marginBottom: moderateScale(30),
   },
   title: {
     fontFamily: 'Manrope_700Bold',
-    fontSize: 42,
+    fontSize: moderateScale(42),
     color: TEXT_WHITE,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 16,
-    color: '#CCCCCC',
+    marginBottom: 4,
   },
   form: {
-    gap: 24,
+    gap: moderateScale(22),
   },
   fieldWrapper: {
     gap: 8,
@@ -233,8 +226,8 @@ const styles = StyleSheet.create({
   },
   matchText: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 11,
+    marginTop: 2,
     marginLeft: 4,
   },
   inputContainer: {
@@ -242,7 +235,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: INPUT_BG,
     borderRadius: 20,
-    height: 60,
+    height: moderateScale(60),
     paddingHorizontal: 16,
   },
   inputIcon: {
@@ -278,10 +271,10 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   signInButton: {
-    marginTop: 16,
+    marginTop: 8,
     backgroundColor: BLUE,
-    height: 60,
-    borderRadius: 30,
+    height: moderateScale(55),
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: 'rgba(74, 138, 244, 0.5)',
@@ -301,7 +294,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 5,
   },
   registerText: {
     fontFamily: 'Inter_400Regular',
@@ -315,7 +308,7 @@ const styles = StyleSheet.create({
   },
   bottomNavContainer: {
     position: 'absolute',
-    bottom: 32,
+    bottom: 20,
     left: 24,
     right: 24,
     alignItems: 'center',
@@ -342,4 +335,4 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginTop: 4,
   }
-}); 
+});

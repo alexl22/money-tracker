@@ -2,7 +2,16 @@ import { collection, onSnapshot, query, where } from '@react-native-firebase/fir
 import { Calendar, ChevronDown, Receipt, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
-import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, {
+  LinearTransition,
+  runOnJS,
+  useAnimatedReaction,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming
+} from 'react-native-reanimated';
 import { DatePicker } from '../../components/DatePicker';
 import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
 import { Colors } from '../../constants/DesignSystem';
@@ -11,6 +20,30 @@ import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
 import { auth, db } from '../../firebaseConfig';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
+
+const AnimatedAmount = ({ value, format, style, options = {} }: { value: number, format: any, style?: any, options?: any }) => {
+  const [displayValue, setDisplayValue] = useState(value);
+  const animatedValue = useSharedValue(value);
+
+  useEffect(() => {
+    animatedValue.value = withTiming(value, { duration: 400 });
+  }, [value]);
+
+  useAnimatedReaction(
+    () => animatedValue.value,
+    (current, previous) => {
+      if (current !== previous) {
+        runOnJS(setDisplayValue)(current);
+      }
+    }
+  );
+
+  return (
+    <Text style={style} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+      {format(displayValue, options)}
+    </Text>
+  );
+};
 
 export default function DashboardScreen() {
   const { width: SCREEN_WIDTH } = useWindowDimensions();
@@ -40,10 +73,8 @@ export default function DashboardScreen() {
       if (currentY <= 0) {
         tabBarOffset.value = 0;
       } else if (deltaY > 2 && currentY > 10) {
-        // Scroll Down -> Hide Tab Bar (More sensitive)
         tabBarOffset.value = 150;
       } else if (deltaY < -2) {
-        // Scroll Up -> Show Tab Bar (More sensitive)
         tabBarOffset.value = 0;
       }
       lastScrollY.value = currentY;
@@ -54,8 +85,6 @@ export default function DashboardScreen() {
     transform: [{ translateX: translateX.value }],
   }));
 
-  const cardWidth = Math.floor((SCREEN_WIDTH - horizontalScale(48) - horizontalScale(16)) / 2);
-
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [averageIncome, setAverageIncome] = useState(0);
@@ -63,13 +92,11 @@ export default function DashboardScreen() {
   const { showAlert } = useAlert();
   const user = auth.currentUser;
 
-
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth().toString());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [isPickerVisible, setIsPickerVisible] = useState(false);
 
-  // Range-specific state
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(currentDate.getDate() - 7);
   const [rangeStart, setRangeStart] = useState(sevenDaysAgo);
@@ -96,12 +123,13 @@ export default function DashboardScreen() {
         const data = doc.data();
         let transactionDate: Date;
 
-        // Unified date handling for both SDKs
         const rawDate = data.date || data.createdAt;
         if (rawDate && typeof rawDate.toDate === 'function') {
           transactionDate = rawDate.toDate();
         } else if (rawDate instanceof Date) {
           transactionDate = rawDate;
+        } else if (rawDate && typeof rawDate.seconds === 'number') {
+          transactionDate = new Date(rawDate.seconds * 1000);
         } else if (rawDate) {
           transactionDate = new Date(rawDate);
         } else {
@@ -155,8 +183,7 @@ export default function DashboardScreen() {
     }
 
     return () => unsubscribe && unsubscribe();
-  }, [viewMode, selectedMonth, selectedYear, rangeStart, rangeEnd, currency, user]);
-
+  }, [viewMode, selectedMonth, selectedYear, rangeStart, rangeEnd, currency, user, rates]);
 
   return (
     <View style={styles.container}>
@@ -167,7 +194,6 @@ export default function DashboardScreen() {
         scrollEventThrottle={16}
       >
 
-        {/* Animated Toggle Controls */}
         <View style={[styles.toggleContainer, { width: toggleWidth }]}>
           <Animated.View style={[styles.activeHighlight, { width: tabWidth }, animatedToggleStyle]} />
           <Pressable
@@ -196,7 +222,6 @@ export default function DashboardScreen() {
           </Pressable>
         </View>
 
-        {/* Date Selector (Only shown on Monthly mode) */}
         {viewMode === 'month' && (
           <View style={styles.dateSelectorContainer}>
             <Pressable
@@ -219,7 +244,6 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Range Selector */}
         {viewMode === 'range' && (
           <View style={styles.dateSelectorContainer}>
             <Pressable
@@ -243,108 +267,103 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        <View style={styles.summaryContainer}>
-          {/* Card 1: Total Income */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => showAlert('Total Income Details', `Total: ${format(totalIncome, { isConverted: true })}\n${viewMode === 'month' ? 'Daily' : 'Monthly'}: ${format(averageIncome, { isConverted: true })}`, 'info')}
-            style={styles.largeCard}
-          >
-            <View style={styles.cardHeader}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                <Wallet color="#10b981" size={22} strokeWidth={2.5} />
-              </View>
-            </View>
-
-            <View style={styles.statsRow}>
-              <View style={styles.statColumn}>
-                <Text style={styles.cardLabel}>TOTAL INCOME</Text>
-                <Text
-                  style={[styles.cardAmount, { color: '#10b981' }]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.5}
-                >
-                  {format(totalIncome, { compact: true, isConverted: true })}
-                </Text>
+        <Animated.View style={styles.summaryContainer} layout={LinearTransition}>
+          <View>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => showAlert('Total Income Details', `Total: ${format(totalIncome, { isConverted: true })}\n${viewMode === 'month' ? 'Daily' : 'Monthly'}: ${format(averageIncome, { isConverted: true })}`, 'info')}
+              style={styles.largeCard}
+            >
+              <View style={styles.cardHeader}>
+                <View style={[styles.iconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                  <Wallet color="#10b981" size={22} strokeWidth={2.5} />
+                </View>
               </View>
 
-              <View style={styles.vDivider} />
+              <View style={styles.statsRow}>
+                <View style={styles.statColumn}>
+                  <Text style={styles.cardLabel}>TOTAL INCOME</Text>
+                  <AnimatedAmount
+                    value={totalIncome}
+                    format={format}
+                    style={[styles.cardAmount, { color: '#10b981' }]}
+                    options={{ compact: true, isConverted: true }}
+                  />
+                </View>
 
-              <View style={styles.statColumn}>
-                <Text style={styles.footerLabel}>{viewMode === 'lifetime' ? 'Monthly' : 'Daily'}</Text>
-                <Text
-                  style={[styles.footerValue, { color: '#10b981' }]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.5}
-                >
-                  {format(averageIncome, { compact: true, isConverted: true })}
-                </Text>
+                <View style={styles.vDivider} />
+
+                <View style={styles.statColumn}>
+                  <Text style={styles.footerLabel}>{viewMode === 'lifetime' ? 'Monthly' : 'Daily'}</Text>
+                  <AnimatedAmount
+                    value={averageIncome}
+                    format={format}
+                    style={[styles.footerValue, { color: '#10b981' }]}
+                    options={{ compact: true, isConverted: true }}
+                  />
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
-
-          {/* Card 2: Total Expenses */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => showAlert('Total Expenses Details', `Total: ${format(totalExpenses, { isConverted: true })}\n${viewMode === 'month' ? 'Daily' : 'Monthly'}: ${format(averageExpenses, { isConverted: true })}`, 'info')}
-            style={styles.largeCard}
-          >
-            <View style={styles.cardHeader}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(235, 86, 86, 0.1)' }]}>
-                <Receipt color="#eb5656" size={22} strokeWidth={2.5} />
-              </View>
-            </View>
-
-            <View style={styles.statsRow}>
-              <View style={styles.statColumn}>
-                <Text style={styles.cardLabel}>TOTAL EXPENSES</Text>
-                <Text
-                  style={[styles.cardAmount, { color: '#eb5656' }]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.5}
-                >
-                  {format(totalExpenses, { compact: true, isConverted: true })}
-                </Text>
-              </View>
-
-              <View style={styles.vDivider} />
-
-              <View style={styles.statColumn}>
-                <Text style={styles.footerLabel}>{viewMode === 'lifetime' ? 'Monthly' : 'Daily'}</Text>
-                <Text
-                  style={[styles.footerValue, { color: '#eb5656' }]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.5}
-                >
-                  {format(averageExpenses, { compact: true, isConverted: true })}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => showAlert(viewMode === 'lifetime' ? 'Total Profit Details' : 'Period Profit Details', `Period Profit: ${format(totalIncome - totalExpenses, { isConverted: true, showSign: true })}`, 'info')}
-          style={styles.totalBalanceCard}
-        >
-          <View style={styles.totalBalanceHeader}>
-            <Text style={[styles.totalBalanceLabel, { color: '#ffffffc7', opacity: 0.8 }]}>
-              {viewMode === 'lifetime' ? 'TOTAL PROFIT' : 'PERIOD PROFIT'}
-            </Text>
+            </TouchableOpacity>
           </View>
-          <Text
-            style={[styles.totalBalanceAmount, { color: (totalIncome - totalExpenses) >= 0 ? '#10b981' : '#eb5656' }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.5}
-          >
-            {format(totalIncome - totalExpenses, { compact: true, isConverted: true, showSign: true })}
-          </Text>
-        </TouchableOpacity>
+
+          <View>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => showAlert('Total Expenses Details', `Total: ${format(totalExpenses, { isConverted: true })}\n${viewMode === 'month' ? 'Daily' : 'Monthly'}: ${format(averageExpenses, { isConverted: true })}`, 'info')}
+              style={styles.largeCard}
+            >
+              <View style={styles.cardHeader}>
+                <View style={[styles.iconCircle, { backgroundColor: 'rgba(235, 86, 86, 0.1)' }]}>
+                  <Receipt color="#eb5656" size={22} strokeWidth={2.5} />
+                </View>
+              </View>
+
+              <View style={styles.statsRow}>
+                <View style={styles.statColumn}>
+                  <Text style={styles.cardLabel}>TOTAL EXPENSES</Text>
+                  <AnimatedAmount
+                    value={totalExpenses}
+                    format={format}
+                    style={[styles.cardAmount, { color: '#eb5656' }]}
+                    options={{ compact: true, isConverted: true }}
+                  />
+                </View>
+
+                <View style={styles.vDivider} />
+
+                <View style={styles.statColumn}>
+                  <Text style={styles.footerLabel}>{viewMode === 'lifetime' ? 'Monthly' : 'Daily'}</Text>
+                  <AnimatedAmount
+                    value={averageExpenses}
+                    format={format}
+                    style={[styles.footerValue, { color: '#eb5656' }]}
+                    options={{ compact: true, isConverted: true }}
+                  />
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          <View>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => showAlert(viewMode === 'lifetime' ? 'Total Profit Details' : 'Period Profit Details', `Period Profit: ${format(totalIncome - totalExpenses, { isConverted: true, showSign: true })}`, 'info')}
+              style={styles.totalBalanceCard}
+            >
+              <View style={styles.totalBalanceHeader}>
+                <Text style={[styles.totalBalanceLabel, { color: '#ffffffc7', opacity: 0.8 }]}>
+                  {viewMode === 'lifetime' ? 'TOTAL PROFIT' : 'PERIOD PROFIT'}
+                </Text>
+              </View>
+              <AnimatedAmount
+                value={totalIncome - totalExpenses}
+                format={format}
+                style={[styles.totalBalanceAmount, { color: (totalIncome - totalExpenses) >= 0 ? '#10b981' : '#eb5656' }]}
+                options={{ compact: true, isConverted: true, showSign: true }}
+              />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
 
         <View style={{ height: 120 }} />
       </Animated.ScrollView>
@@ -465,13 +484,12 @@ const styles = StyleSheet.create({
   summaryContainer: {
     gap: horizontalScale(16),
   },
-
   largeCard: {
     backgroundColor: '#1C1D1F',
     borderRadius: moderateScale(28),
     padding: horizontalScale(18),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.15)',
     marginBottom: horizontalScale(4),
   },
   cardHeader: {
@@ -496,7 +514,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     fontSize: moderateScale(11),
   },
-
   cardLabel: {
     fontSize: moderateScale(10),
     color: 'rgba(255, 255, 255, 0.78)',
@@ -510,11 +527,9 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(20),
     letterSpacing: -0.5,
   },
-
-
   footerLabel: {
     fontSize: moderateScale(13),
-    color: 'rgba(255, 255, 255, 0.78)',
+    color: 'rgba(255, 255, 255, 0.9)',
     fontFamily: 'Inter_500Medium',
   },
   footerValue: {
@@ -539,9 +554,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1C1D1F',
     borderRadius: moderateScale(22),
     padding: horizontalScale(10),
-    marginTop: horizontalScale(16),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
   },
   totalBalanceHeader: {

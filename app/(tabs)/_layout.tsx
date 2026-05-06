@@ -5,7 +5,7 @@ import { BlurView } from 'expo-blur';
 import { Tabs, useRouter } from 'expo-router';
 import { ArrowRightLeft, History, LayoutGrid, LogOut, Plus, Settings, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Keyboard, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../../context/AlertContext';
@@ -21,6 +21,16 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const [userName, setUserName] = useState(auth.currentUser?.email?.split('@')[0] || 'User');
   const { showAlert } = useAlert();
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
   useEffect(() => {
     const fetchUserName = async (u: any) => {
       if (u) {
@@ -40,7 +50,6 @@ export default function TabLayout() {
 
     if (auth.currentUser) fetchUserName(auth.currentUser);
 
-    // Also listen for auth changes to re-fetch if user changes
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       if (u) fetchUserName(u);
       else setUserName('User');
@@ -62,18 +71,15 @@ export default function TabLayout() {
 
   const CustomTabBar = ({ state, descriptors, navigation }: any) => {
     const navBarWidth = width * 0.95;
-    const padding = horizontalScale(10); // total horizontal padding of the capsule
+    const padding = horizontalScale(10); 
     const innerWidth = navBarWidth - padding;
     const tabWidth = innerWidth / 5;
 
-    // We want the indicator to be slightly smaller than the tab area
     const indicatorWidth = tabWidth - horizontalScale(4);
     const indicatorHeight = horizontalScale(50);
     const centerOffset = (tabWidth - indicatorWidth) / 2 + padding / 2;
 
     const translateX = useSharedValue(state.index * tabWidth + centerOffset);
-    // Fixed: Removed the local signOut that was causing infinite recursion and scoping issues.
-
 
     useEffect(() => {
       const isSpeedEntry = state.routes[state.index].name === 'speedEntry';
@@ -91,10 +97,10 @@ export default function TabLayout() {
     }));
 
     const { tabBarOffset } = useTabBar();
+    if (isKeyboardVisible) return null;
 
     const animatedContainerStyle = useAnimatedStyle(() => ({
       transform: [{ translateY: withTiming(tabBarOffset.value, { duration: 300 }) }],
-      // Optional: add opacity fade for an extra touch of premium
       opacity: withTiming(tabBarOffset.value > 0 ? 0 : 1, { duration: 300 }),
     }));
 
@@ -107,7 +113,6 @@ export default function TabLayout() {
         <View style={styles.tabBarCapsule}>
           <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
 
-          {/* Animated Indicator */}
           <Animated.View style={[
             styles.tabIndicator,
             { width: indicatorWidth, height: indicatorHeight, borderRadius: indicatorHeight / 2 },
@@ -130,7 +135,7 @@ export default function TabLayout() {
               }
             };
 
-            // Custom logic for the center "Add" button
+           
             if (route.name === 'speedEntry') {
               return (
                 <View key={route.key} style={{ width: tabWidth, alignItems: 'center', justifyContent: 'center' }}>
@@ -241,7 +246,7 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  // Custom Tab Bar Styles
+
   tabBarContainer: {
     position: 'absolute',
     bottom: horizontalScale(25),

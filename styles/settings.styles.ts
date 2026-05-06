@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
-import { horizontalScale, moderateScale } from '../utils/scaling';
 import { Colors } from '../constants/DesignSystem';
+import { horizontalScale, moderateScale } from '../utils/scaling';
 
 const styles = StyleSheet.create({
   container: {
@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: horizontalScale(24),
     minHeight: horizontalScale(68),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   inputIconCircle: {
     width: horizontalScale(44),
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: horizontalScale(20),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   actionCardExpanded: {
     borderBottomLeftRadius: 0,
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     paddingBottom: horizontalScale(40),
     borderWidth: 1,
     borderTopWidth: 0,
-    borderColor: 'rgba(255,255,255,0.03)',
+    borderColor: 'rgba(255,255,255,0.12)',
     marginBottom: horizontalScale(20),
   },
   innerSectionGroup: {
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: horizontalScale(20),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   softCardTitle: {
     fontSize: moderateScale(20),

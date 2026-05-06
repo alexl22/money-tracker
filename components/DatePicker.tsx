@@ -1,8 +1,11 @@
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as NavigationBar from 'expo-navigation-bar';
 import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+const { width, height: screenHeight } = Dimensions.get('screen');
 
 interface DatePickerProps {
   isVisible: boolean;
@@ -34,6 +37,17 @@ export function DatePicker({
   const [tempDeadline, setTempDeadline] = useState(new Date(initialDeadline || new Date()));
   const [cursor, setCursor] = useState(new Date(tempStart));
 
+  
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (isVisible) {
+        NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0.9)');
+      } else {
+        NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0)');
+      }
+    }
+  }, [isVisible]);
+
   useEffect(() => {
     if (isVisible) {
       const s = new Date(initialStartDate || new Date());
@@ -45,7 +59,6 @@ export function DatePicker({
     }
   }, [isVisible]);
 
-  // Sync cursor with mode changes
   useEffect(() => {
     if (activeMode === 'start') {
       setCursor(new Date(tempStart));
@@ -66,13 +79,13 @@ export function DatePicker({
   const firstDay = getFirstDayOfMonth(year, month);
 
   const prevMonth = () => {
+    if (year <= 1900) return;
     setCursor(new Date(year, month - 1, 1));
-
   };
 
   const nextMonth = () => {
+    if (year >= 2100) return;
     setCursor(new Date(year, month + 1, 1));
-
   };
 
   const handleDayPress = (day: number) => {
@@ -151,7 +164,7 @@ export function DatePicker({
   }
 
   return (
-    <Modal visible={isVisible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent={true}>
+    <Modal visible={isVisible} transparent onRequestClose={onClose} statusBarTranslucent={true}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <BlurView intensity={60} tint="dark" style={styles.blurContainer}>
           <Pressable style={styles.content} onPress={e => e.stopPropagation()}>
@@ -167,7 +180,6 @@ export function DatePicker({
               </TouchableOpacity>
             </View>
 
-            {/* Mode Switcher */}
             <View style={styles.modeSwitcher}>
               <TouchableOpacity
                 activeOpacity={0.8}
@@ -236,7 +248,8 @@ export function DatePicker({
 
 const styles = StyleSheet.create({
   overlay: {
-    flex: 1,
+    width: width,
+    height: screenHeight,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.9)'

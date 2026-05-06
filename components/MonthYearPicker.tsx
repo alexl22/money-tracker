@@ -1,7 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import * as NavigationBar from 'expo-navigation-bar';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 
 
@@ -38,7 +39,17 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
     const [viewYear, setViewYear] = useState(selectedYear);
 
     useEffect(() => {
-        if(isVisible){
+        if (Platform.OS === 'android') {
+            if (isVisible) {
+                NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0.88)');
+            } else {
+                NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0)');
+            }
+        }
+    }, [isVisible]);
+
+    useEffect(() => {
+        if (isVisible) {
             setViewYear(selectedYear);
         }
     }, [isVisible]);
@@ -46,7 +57,6 @@ export default function MonthYearPicker({ isVisible, onClose, selectedMonth, sel
         <Modal
             visible={isVisible}
             transparent={true}
-            animationType='fade'
             onRequestClose={onClose}
             statusBarTranslucent={true}
         >
@@ -137,7 +147,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: horizontalScale(20),
     },
     modalContent: {
-        backgroundColor: '#0F1014', // Jet Black
+        backgroundColor: '#0F1014', 
         borderRadius: moderateScale(28),
         paddingHorizontal: horizontalScale(24),
         paddingVertical: horizontalScale(24),
@@ -199,7 +209,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: moderateScale(14),
         marginBottom: horizontalScale(10),
-        backgroundColor: '#1A1B21', // Dark Slate
+        backgroundColor: '#1A1B21', 
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.03)',
     },

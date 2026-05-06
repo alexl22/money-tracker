@@ -1,10 +1,10 @@
-import React, { useRef, useEffect } from 'react';
-import { Modal, Pressable, View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { X, Check } from 'lucide-react-native';
-import { horizontalScale } from '../utils/scaling';
+import { Check, X } from 'lucide-react-native';
+import React, { useEffect, useRef } from 'react';
+import { Modal, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { horizontalScale } from '../utils/scaling';
 
 interface TimePickerModalProps {
   isVisible: boolean;
@@ -14,7 +14,7 @@ interface TimePickerModalProps {
   tempMinutes: number;
   setTempHours: (h: number) => void;
   setTempMinutes: (m: number) => void;
-  styles: any; // Passing styles from the main styles file for consistency
+  styles: any; 
 }
 
 export const TimePickerModal: React.FC<TimePickerModalProps> = ({
@@ -31,17 +31,17 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
   const hoursScrollRef = useRef<ScrollView>(null);
   const minutesScrollRef = useRef<ScrollView>(null);
 
-  // Auto-scroll logic when modal opens
+
   useEffect(() => {
     if (isVisible) {
       setTimeout(() => {
-        hoursScrollRef.current?.scrollTo({ 
-          y: tempHours * horizontalScale(50), 
-          animated: true 
+        hoursScrollRef.current?.scrollTo({
+          y: tempHours * horizontalScale(50),
+          animated: true
         });
-        minutesScrollRef.current?.scrollTo({ 
-          y: tempMinutes * horizontalScale(50), 
-          animated: true 
+        minutesScrollRef.current?.scrollTo({
+          y: tempMinutes * horizontalScale(50),
+          animated: true
         });
       }, 300);
     }
@@ -57,8 +57,8 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
     >
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <BlurView intensity={80} tint="dark" style={styles.timePickerBlur}>
-          <View 
-            style={[styles.timePickerContent, { paddingBottom: Math.max(insets.bottom, horizontalScale(1)) }]} 
+          <View
+            style={[styles.timePickerContent, { paddingBottom: Math.max(insets.bottom, horizontalScale(1)) }]}
             onStartShouldSetResponder={() => true}
           >
             <View style={styles.modalHandle} />
@@ -74,12 +74,11 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
             </View>
 
             <View style={styles.timePickerColumns}>
-              {/* Hours Column */}
               <View style={styles.timeColumn}>
                 <Text style={styles.columnLabel}>HOUR</Text>
-                <ScrollView 
+                <ScrollView
                   ref={hoursScrollRef}
-                  showsVerticalScrollIndicator={false} 
+                  showsVerticalScrollIndicator={false}
                   snapToInterval={horizontalScale(50)}
                   decelerationRate="fast"
                 >
@@ -104,12 +103,11 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
                 <Text style={styles.separatorText}>:</Text>
               </View>
 
-              {/* Minutes Column */}
               <View style={styles.timeColumn}>
                 <Text style={styles.columnLabel}>MINUTE</Text>
-                <ScrollView 
+                <ScrollView
                   ref={minutesScrollRef}
-                  showsVerticalScrollIndicator={false} 
+                  showsVerticalScrollIndicator={false}
                   snapToInterval={horizontalScale(50)}
                   decelerationRate="fast"
                 >

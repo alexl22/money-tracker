@@ -1,11 +1,12 @@
+import { addDoc, collection, getAggregateFromServer, getCountFromServer, query, serverTimestamp, sum, where } from '@react-native-firebase/firestore';
 import { AlignLeft, TrendingUp, Type, Wallet } from "lucide-react-native";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Alert, Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { collection, addDoc, serverTimestamp } from '@react-native-firebase/firestore';
 import { FinanceModalBase, styles as baseStyles } from "../../components/FinanceModalBase";
 import { useAlert } from "../../context/AlertContext";
 import { useCurrency } from "../../context/CurrencyContext";
 import { auth, db } from "../../firebaseConfig";
+
 interface TransactionModalProps {
     isVisible: boolean;
     onClose: () => void;
@@ -38,6 +39,30 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
         }
         setIsSaving(true);
         try {
+            try {
+                const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
+                const countSnapshot = await getCountFromServer(q);
+                if (countSnapshot.data().count >= 50000) {
+                    showAlert("Limit Reached", "You have reached the maximum limit of 50,000 transactions. Please contact support or delete old data.", "alert");
+                    setIsSaving(false); return;
+                }
+
+                const aggregateSnapshot = await getAggregateFromServer(q, {
+                    totalLocal: sum('amount')
+                });
+                const currentTotalLocal = aggregateSnapshot.data().totalLocal || 0;
+                const newAmount = parseFloat(amount);
+
+                if (currentTotalLocal + newAmount > 10000000000) {
+                    if (Platform.OS === 'ios') Alert.alert("Total Limit Exceeded", "Your lifetime balance cannot exceed 10 Billion.");
+                    else showAlert("Total Limit Exceeded", "Your lifetime balance cannot exceed 10 Billion.", "alert", undefined, false, true);
+                    setIsSaving(false);
+                    return;
+                }
+            } catch (limitError) {
+                console.warn("Limit checks skipped (likely offline):", limitError);
+            }
+
             const transactionData = {
                 userId: user.uid,
                 amount: parseFloat(amount),
@@ -46,25 +71,23 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                 type: transactionType,
                 title: title,
                 notes: notes,
-                date: new Date(), // Local display date
-                createdAt: serverTimestamp() // Official server date for sync
+                date: new Date(), 
+                createdAt: serverTimestamp() 
             };
 
-            // OPTIMISTIC UI: We don't 'await' the server response here.
-            // Firestore handles the save in the background.
             addDoc(collection(db, 'transactions'), transactionData)
                 .catch(error => {
                     console.error("Delayed Save Error!", error);
-                    // Silent background error or non-blocking notification
                 });
 
-            // Success cleanup - HAPPENS IMMEDIATELY
             setTimeout(() => {
                 setTransactionType(null);
                 setTitle('');
                 setNotes('');
                 resetModal();
-                showAlert("Transaction Saved", `Your ${transactionType} of ${format(parseFloat(amount), { isConverted: true })} has been recorded.`, "success");
+                setTimeout(() => {
+                    showAlert("Transaction Saved", `Your ${transactionType} of ${format(parseFloat(amount), { isConverted: true })} has been recorded.`, "success");
+                }, Platform.OS === 'ios' ? 500 : 100);
             }, 100);
         }
         catch (error: any) {

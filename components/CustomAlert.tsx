@@ -1,22 +1,22 @@
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as NavigationBar from 'expo-navigation-bar';
 import { AlertTriangle, Check, Info } from 'lucide-react-native';
 import React from 'react';
-import { Dimensions, Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
-  ZoomIn,
-  ZoomOut
+  ZoomIn
 } from 'react-native-reanimated';
-import { useAlert } from '../context/AlertContext';
+import { useAlert, useAlertState } from '../context/AlertContext';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 
+const { width, height: screenHeight } = Dimensions.get('screen');
 
-const { width } = Dimensions.get('window');
-
-export default function CustomAlert() {
-  const { alertState, hideAlert } = useAlert();
+export default function CustomAlert({ isInsideModal }: { isInsideModal?: boolean }) {
+  const { hideAlert } = useAlert();
+  const alertState = useAlertState();
   const { visible, title, message, type, onConfirm, showCancel, disableBlur } = alertState;
 
   const handleConfirm = () => {
@@ -33,7 +33,7 @@ export default function CustomAlert() {
     }
     if (type === 'info')
       return <Info color="#ff05c9" size={size} strokeWidth={strokeWidth} />;
-    
+
     return <AlertTriangle color="#ef4444" size={size} strokeWidth={strokeWidth} />;
   };
 
@@ -41,19 +41,38 @@ export default function CustomAlert() {
     return type === 'success' ? '#10b981' : type === 'info' ? '#ff05c9' : '#ef4444';
   };
 
+  const [layoutReady, setLayoutReady] = React.useState(false);
+
+  React.useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (visible) {
+        NavigationBar.setBehaviorAsync('overlay-swipe');
+        NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0)');
+      }
+    }
+  }, [visible]);
+
+  React.useEffect(() => {
+    if (!visible) {
+      setLayoutReady(false);
+    }
+  }, [visible]);
+
+  if (!visible) return null;
+
   return (
-    <Modal
-      transparent
-      visible={visible}
-      animationType="none"
-      onRequestClose={hideAlert}
-      statusBarTranslucent={true}
-    >
-      <View style={styles.overlay}>
+    <View style={styles.fullScreenContainer}>
+      <View
+        style={styles.overlay}
+        onLayout={() => setLayoutReady(true)}
+      >
         <Animated.View
-          entering={FadeIn.duration(100)}
+          entering={FadeIn.duration(150)}
           exiting={FadeOut.duration(100)}
-          style={StyleSheet.absoluteFill}
+          style={[
+            StyleSheet.absoluteFill,
+            isInsideModal && { backgroundColor: 'rgba(0,0,0,0.45)' } 
+          ]}
         >
           <Pressable style={styles.backdrop} onPress={hideAlert}>
             <BlurView
@@ -65,30 +84,46 @@ export default function CustomAlert() {
           </Pressable>
         </Animated.View>
 
-        <Animated.View
-          entering={ZoomIn.springify(60).damping(80)}
-          exiting={ZoomOut.duration(60)}
-          style={styles.alertContainer}
-        >
-          <View style={styles.alertContent}>
-            <View style={[styles.iconContainer, { backgroundColor: `${getTypeColor()}15` }]}>
-              {getIcon()}
-            </View>
+        {layoutReady && (
+          <Animated.View
+            entering={ZoomIn.duration(150)}
+            style={styles.alertContainer}
+          >
+            <View style={styles.alertContent}>
+              <View style={[styles.iconContainer, { backgroundColor: `${getTypeColor()}15` }]}>
+                {getIcon()}
+              </View>
 
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.message}>{message}</Text>
+              <Text style={styles.title}>{title}</Text>
+              <Text style={styles.message}>{message}</Text>
 
-            {showCancel ? (
-              <View style={styles.buttonRow}>
+              {showCancel ? (
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={[styles.button, styles.cancelButton]}
+                    onPress={hideAlert}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.button, styles.confirmButton]}
+                    onPress={handleConfirm}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={[getTypeColor(), `${getTypeColor()}cc`]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.gradient}
+                    >
+                      <Text style={styles.buttonText}>Confirm</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              ) : (
                 <TouchableOpacity
-                  style={[styles.button, styles.cancelButton]}
-                  onPress={hideAlert}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.button, styles.confirmButton]}
+                  style={styles.button}
                   onPress={handleConfirm}
                   activeOpacity={0.8}
                 >
@@ -98,49 +133,39 @@ export default function CustomAlert() {
                     end={{ x: 1, y: 1 }}
                     style={styles.gradient}
                   >
-                    <Text style={styles.buttonText}>Confirm</Text>
+                    <Text style={styles.buttonText}>OK</Text>
                   </LinearGradient>
                 </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.button}
-                onPress={handleConfirm}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={[getTypeColor(), `${getTypeColor()}cc`]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.gradient}
-                >
-                  <Text style={styles.buttonText}>OK</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-          </View>
-        </Animated.View>
+              )}
+            </View>
+          </Animated.View>
+        )}
       </View>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  fullScreenContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 999999,
+    elevation: 999999,
+  },
   overlay: {
-    flex: 1,
+    width: width,
+    height: screenHeight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    ...StyleSheet.absoluteFillObject,
   },
   alertContainer: {
     width: width * 0.75,
     backgroundColor: '#1C1D21',
     borderRadius: moderateScale(28),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.15)',
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },

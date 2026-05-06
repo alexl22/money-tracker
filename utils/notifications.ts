@@ -73,7 +73,7 @@ export async function updateNotification(
     if (!enabled) return;
 
     const { granted } = await requestNotificationPermission();
-    if (!granted) return false; // Return status to the caller
+    if (!granted) return false;
 
     await scheduleDailyNotification(hour, minute);
     return true;

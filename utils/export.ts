@@ -1,6 +1,7 @@
-import { File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+
 export interface ExportTransaction {
   id: string;
   title: string;
@@ -13,10 +14,6 @@ export interface ExportTransaction {
   category?: string;
 }
 
-/**
- * Generates a CSV string from transaction data and shares it.
- */
-
 export const exportToCSV = async (
   transactions: ExportTransaction[],
   format: (amount: number, options?: any) => string,
@@ -25,10 +22,8 @@ export const exportToCSV = async (
 ) => {
   if (transactions.length === 0) throw new Error("No transactions to export.");
 
-  // Header row
   const header = ["Date", "Time", "Title", "Category/Notes", "Type", "Amount"].join(",");
 
-  // Data rows
   const rows = transactions.map(t => {
     const date = t.createdAt.toLocaleDateString();
     const time = t.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -36,7 +31,6 @@ export const exportToCSV = async (
     const displayValue = isSameCurrency ? t.amount : t.amountUSD;
     const amount = format(t.type === 'income' ? displayValue : -displayValue, { showSign: true, isConverted: isSameCurrency });
 
-    // Escape commas and quotes in strings
     const escapedTitle = t.title.includes(',') || t.title.includes('"') ? `"${t.title.replace(/"/g, '""')}"` : t.title;
     const escapedNotes = (t.notes || 'General').includes(',') || (t.notes || 'General').includes('"') ? `"${(t.notes || 'General').replace(/"/g, '""')}"` : (t.notes || 'General');
 
@@ -45,33 +39,25 @@ export const exportToCSV = async (
 
   const csvString = [header, ...rows].join("\n");
   const fileName = `Transactions_${new Date().toISOString().split('T')[0]}.csv`;
-
-  // Use the new SDK 54 API
-  const file = new File(Paths.cache, fileName);
+  const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
 
   try {
-    file.write(csvString);
-    await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: 'Share CSV Report' });
+    await FileSystem.writeAsStringAsync(fileUri, csvString, { encoding: FileSystem.EncodingType.UTF8 });
+    await Sharing.shareAsync(fileUri, { mimeType: 'text/csv', dialogTitle: 'Share CSV Report' });
   } catch (error) {
     console.error("CSV Export failed:", error);
     throw error;
   }
 };
 
-/**
- * Generates a PDF from transaction data using an HTML template and shares it.
- */
 export const exportToPDF = async (
   transactions: ExportTransaction[],
   format: (amount: number, options?: any) => string,
   currency: string,
   rates: any,
   userName?: string,
-  
 ) => {
   if (transactions.length === 0) throw new Error("No transactions to export.");
-
-  
 
   const totalIncome =  transactions.filter(t => t.type === 'income').reduce((sum, t) =>{
     const actualValue = t.currency === currency ? t.amount : (t.amountUSD * (rates?.[currency] || 1));
@@ -165,7 +151,13 @@ export const exportToPDF = async (
 
   try {
     const { uri } = await Print.printToFileAsync({ html: htmlContent });
-    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Share Report', UTI: 'com.adobe.pdf' });
+    const fileName = `MoneyTracker_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+    const newUri = `${FileSystem.cacheDirectory}${fileName}`;
+    await FileSystem.moveAsync({
+      from: uri,
+      to: newUri
+    });
+    await Sharing.shareAsync(newUri, { mimeType: 'application/pdf', dialogTitle: 'Share Report', UTI: 'com.adobe.pdf' });
   } catch (error) {
     console.error("PDF Export failed:", error);
     throw error;

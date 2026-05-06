@@ -2,7 +2,7 @@ import React, { createContext, useContext, ReactNode } from 'react';
 import { useSharedValue } from 'react-native-reanimated';
 
 interface TabBarContextType {
-  tabBarOffset: any; // Using any for simplicity in typing common Reanimated SharedValue
+  tabBarOffset: any;
 }
 
 const TabBarContext = createContext<TabBarContextType | undefined>(undefined);

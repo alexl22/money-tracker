@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 
 type AlertType = 'success' | 'alert' | 'info';
 
@@ -12,20 +12,20 @@ interface AlertState {
   disableBlur?: boolean;
 }
 
-interface AlertContextProps {
+interface AlertActions {
   showAlert: (
-    title: string, 
-    message: string, 
-    type?: AlertType, 
+    title: string,
+    message: string,
+    type?: AlertType,
     onConfirm?: () => void,
     showCancel?: boolean,
     disableBlur?: boolean
   ) => void;
   hideAlert: () => void;
-  alertState: AlertState;
 }
 
-const AlertContext = createContext<AlertContextProps | undefined>(undefined);
+const AlertStateContext = createContext<AlertState | undefined>(undefined);
+const AlertActionsContext = createContext<AlertActions | undefined>(undefined);
 
 export const AlertProvider = ({ children }: { children: ReactNode }) => {
   const [alertState, setAlertState] = useState<AlertState>({
@@ -37,32 +37,44 @@ export const AlertProvider = ({ children }: { children: ReactNode }) => {
     disableBlur: false,
   });
 
-  const showAlert = (
-    title: string, 
-    message: string, 
-    type: AlertType = 'alert', 
+  const showAlert = useCallback((
+    title: string,
+    message: string,
+    type: AlertType = 'alert',
     onConfirm?: () => void,
     showCancel: boolean = false,
     disableBlur: boolean = false
   ) => {
     setAlertState({ visible: true, title, message, type, onConfirm, showCancel, disableBlur });
-  };
+  }, []);
 
-  const hideAlert = () => {
+  const hideAlert = useCallback(() => {
     setAlertState((prev) => ({ ...prev, visible: false }));
-  };
+  }, []);
+
+  const actions = useMemo(() => ({ showAlert, hideAlert }), [showAlert, hideAlert]);
 
   return (
-    <AlertContext.Provider value={{ showAlert, hideAlert, alertState }}>
-      {children}
-    </AlertContext.Provider>
+    <AlertActionsContext.Provider value={actions}>
+      <AlertStateContext.Provider value={alertState}>
+        {children}
+      </AlertStateContext.Provider>
+    </AlertActionsContext.Provider>
   );
 };
 
 export const useAlert = () => {
-  const context = useContext(AlertContext);
-  if (!context) {
+  const actions = useContext(AlertActionsContext);
+  if (!actions) {
     throw new Error('useAlert must be used within an AlertProvider');
   }
-  return context;
+  return actions;
+};
+
+export const useAlertState = () => {
+  const state = useContext(AlertStateContext);
+  if (!state) {
+    throw new Error('useAlertState must be used within an AlertProvider');
+  }
+  return state;
 };

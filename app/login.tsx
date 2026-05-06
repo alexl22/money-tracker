@@ -6,6 +6,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../context/AlertContext';
 import { sendPasswordReset, signIn } from '../firebaseConfig';
+
 const BLUE = '#4A8AF4';
 const BG = '#101010';
 const INPUT_BG = '#1A1A1A';
@@ -54,8 +55,8 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient colors={['#101010', '#020f22']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.container}>
-      <View style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+      <View style={{ flex: 1, paddingTop: insets.top }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
             <View style={styles.header}>
@@ -63,7 +64,6 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.form}>
-              {/* Email Field */}
               <View style={styles.fieldWrapper}>
                 <Text style={styles.label}>EMAIL ADDRESS</Text>
                 <View style={styles.inputContainer}>
@@ -81,7 +81,6 @@ export default function LoginScreen() {
                 </View>
               </View>
 
-              {/* Password Field */}
               <View style={styles.fieldWrapper}>
                 <View style={styles.passwordLabelRow}>
                   <Text style={styles.label}>PASSWORD</Text>
@@ -105,12 +104,10 @@ export default function LoginScreen() {
                 </View>
               </View>
 
-              {/* Sign In Button */}
               <TouchableOpacity onPress={handleLogin} style={styles.signInButton}>
                 <Text style={styles.signInText}>SIGN IN</Text>
               </TouchableOpacity>
 
-              {/* Register Link */}
               <View style={styles.registerLinkContainer}>
                 <Text style={styles.registerText}>Don't have an account? </Text>
                 <TouchableOpacity onPress={() => router.push('/register')}>
@@ -122,7 +119,6 @@ export default function LoginScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* Auth Bottom Tab Navigation */}
         <View style={[styles.bottomNavContainer, { bottom: 5 + insets.bottom }]}>
           <View style={styles.bottomNav}>
             <TouchableOpacity style={styles.navItem}>
@@ -156,7 +152,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: 80,
-    paddingBottom: 150, // Space for bottom nav
+    paddingBottom: 150, 
   },
   header: {
     marginBottom: 48,

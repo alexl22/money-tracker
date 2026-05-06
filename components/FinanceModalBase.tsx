@@ -1,6 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
+import * as NavigationBar from "expo-navigation-bar";
 import { Delete, Pencil, X } from "lucide-react-native";
-import React, { ReactNode, useState } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -15,6 +16,7 @@ import {
 } from "react-native";
 import { useCurrency } from "../context/CurrencyContext";
 import { horizontalScale, moderateScale } from "../utils/scaling";
+import CustomAlert from "./CustomAlert";
 
 interface FinanceModalBaseProps {
   isVisible: boolean;
@@ -22,6 +24,7 @@ interface FinanceModalBaseProps {
   titleStep1: string;
   titleStep2: string;
   renderStep2: (amount: string, resetModal: () => void) => ReactNode;
+  marginTopStep2?: any;
 }
 
 export function FinanceModalBase({
@@ -29,15 +32,27 @@ export function FinanceModalBase({
   onClose,
   titleStep1,
   titleStep2,
-  renderStep2
+  renderStep2,
+  marginTopStep2
 }: FinanceModalBaseProps) {
   const [modalStep, setModalStep] = useState<1 | 2>(1);
   const [amount, setAmount] = useState("0");
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [isEditingDecimals, setIsEditingDecimals] = useState(false);
 
   const { getSymbol } = useCurrency();
 
-  React.useEffect(() => {
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (isVisible) {
+        NavigationBar.setBackgroundColorAsync('rgba(0, 0, 0, 0.85)');
+      } else {
+        NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0)');
+      }
+    }
+  }, [isVisible]);
+
+  useEffect(() => {
     const show = Keyboard.addListener("keyboardDidShow", () =>
       setKeyboardVisible(true)
     );
@@ -52,26 +67,46 @@ export function FinanceModalBase({
   }, []);
 
   const handleKeyPress = (val: string) => {
-    const digitCount = amount.replace(".", "").length;
+    const parts = amount.split(".");
+    let integerPart = parts[0] || "0";
+    let decimalPart = parts[1] || "";
 
     if (val === ".") {
-      if (amount.includes(".")) return;
-      if (digitCount >= 10) return;
-      setAmount(amount + ".");
-    } else if (val === "delete") {
-      if (amount.length <= 1) {
-        setAmount("0");
+      setIsEditingDecimals(!isEditingDecimals);
+      return;
+    }
+
+    if (val === "delete") {
+      if (isEditingDecimals) {
+        if (decimalPart.length > 0) {
+          decimalPart = decimalPart.slice(0, -1);
+        } else {
+          setIsEditingDecimals(false);
+        }
       } else {
-        setAmount(amount.slice(0, -1));
+        if (integerPart === "0") {
+          decimalPart = "";
+        } else if (integerPart.length <= 1) {
+          integerPart = "0";
+        } else {
+          integerPart = integerPart.slice(0, -1);
+        }
       }
     } else {
-      if (digitCount >= 10) return;
-      if (amount === "0") {
-        setAmount(val);
+      if (isEditingDecimals) {
+        if (decimalPart.length < 2) {
+          decimalPart += val;
+        }
       } else {
-        setAmount(amount + val);
+        if (integerPart === "0") {
+          integerPart = val;
+        } else if (integerPart.length < 8) {
+          integerPart += val;
+        }
       }
     }
+
+    setAmount(decimalPart.length > 0 || isEditingDecimals ? `${integerPart}.${decimalPart}` : integerPart);
   };
 
   const renderKeypadButton = (val: string, icon?: any) => (
@@ -80,7 +115,11 @@ export function FinanceModalBase({
       style={styles.keypadButton}
       onPress={() => handleKeyPress(val)}
     >
-      {icon ? icon : <Text style={styles.keypadButtonText}>{val}</Text>}
+      {icon ? icon : (
+        <Text style={[styles.keypadButtonText]}>
+          {val}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 
@@ -89,15 +128,23 @@ export function FinanceModalBase({
     setTimeout(() => {
       setModalStep(1);
       setAmount("0");
+      setIsEditingDecimals(false);
     }, 250);
   };
+
+  if (!isVisible) return null;
+
+  const displayParts = amount.split(".");
+  const displayIntegerRaw = displayParts[0] || "0";
+  const displayInteger = displayIntegerRaw.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const displayDecimal = (displayParts[1] || "").padEnd(2, "0");
 
   return (
     <Modal
       transparent
       visible={isVisible}
+      statusBarTranslucent={true}
       onRequestClose={resetModal}
-      statusBarTranslucent
     >
       <View style={styles.modalOverlay}>
         <KeyboardAvoidingView
@@ -116,7 +163,8 @@ export function FinanceModalBase({
             >
               <View style={[
                 styles.modalPositioner,
-                modalStep === 2 && styles.modalPositionerStep2
+                modalStep === 2 && styles.modalPositionerStep2,
+                (modalStep === 2 && marginTopStep2) ? { marginTop: marginTopStep2 as any } : null
               ]}>
                 <Pressable style={styles.modalContent} onPress={Keyboard.dismiss}>
                   {modalStep === 1 ? (
@@ -130,16 +178,26 @@ export function FinanceModalBase({
 
                       <View style={styles.amountDisplay}>
                         <View style={styles.amountRow}>
-                          <Text style={styles.currencySymbol}>
-                            {getSymbol()}
-                          </Text>
-                          <Text style={styles.amountText} numberOfLines={1}
+                          <Text style={styles.currencySymbol}>{getSymbol()}</Text>
+                          <Text
+                            numberOfLines={1}
                             adjustsFontSizeToFit={true}
+                            minimumFontScale={0.4}
+                            style={styles.unifiedAmountText}
                           >
-                            {Number(amount).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            })}
+                            <Text
+                              onPress={() => setIsEditingDecimals(false)}
+                              style={!isEditingDecimals ? styles.activeAmountPart : styles.inactiveAmountPart}
+                            >
+                              {displayInteger}
+                            </Text>
+                            <Text style={styles.inactiveAmountPart}>.</Text>
+                            <Text
+                              onPress={() => setIsEditingDecimals(true)}
+                              style={isEditingDecimals ? styles.activeAmountPart : styles.inactiveAmountPart}
+                            >
+                              {displayDecimal}
+                            </Text>
                           </Text>
                         </View>
                       </View>
@@ -196,10 +254,11 @@ export function FinanceModalBase({
                             adjustsFontSizeToFit={true}
                           >
                             {getSymbol()}{" "}
-                            {Number(amount).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            })}
+                            {(() => {
+                              const p = amount.split(".");
+                              const integerPart = (p[0] || "0").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                              return `${integerPart}.${(p[1] || "").padEnd(2, "0")}`;
+                            })()}
                           </Text>
                           <View style={styles.pillDivider} />
                           <Pencil color="#3b82f6" size={24} />
@@ -213,6 +272,7 @@ export function FinanceModalBase({
               </View>
             </Pressable>
           </ScrollView>
+          <CustomAlert isInsideModal={true} />
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -235,11 +295,11 @@ export const styles = StyleSheet.create({
     paddingHorizontal: horizontalScale(24),
   },
   modalPositioner: {
-    marginTop: "50%",
+    marginTop: "51%" as any,
     marginBottom: horizontalScale(20),
   },
   modalPositionerStep2: {
-    marginTop: "30%",
+    marginTop: "35%" as any,
   },
   modalContent: {
     backgroundColor: "#1C1D21",
@@ -283,10 +343,21 @@ export const styles = StyleSheet.create({
   },
   amountText: {
     fontSize: moderateScale(43),
-    color: '#FFFFFF',
     fontFamily: 'Manrope_700Bold',
     letterSpacing: -1,
+  },
+  unifiedAmountText: {
+    fontSize: moderateScale(43),
+    fontFamily: 'Manrope_700Bold',
+    letterSpacing: -1,
+    color: '#FFFFFF',
     flexShrink: 1,
+  },
+  activeAmountPart: {
+    color: '#FFFFFF',
+  },
+  inactiveAmountPart: {
+    color: 'rgba(255,255,255,0.4)',
   },
   dividerContainer: {
     height: horizontalScale(3),
@@ -355,8 +426,9 @@ export const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: horizontalScale(4) },
     shadowOpacity: 0.2,
     shadowRadius: moderateScale(10),
+    elevation: 4,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderColor: '#3b82f6',
   },
   primaryButtonText: {
     fontSize: moderateScale(16),
@@ -396,10 +468,11 @@ export const styles = StyleSheet.create({
     opacity: 1,
     shadowColor: '#FFFFFF',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.1,
     shadowRadius: moderateScale(15),
+    elevation: 2,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: '#3b3d42',
   },
   typeLabel: {
     fontSize: moderateScale(14),
