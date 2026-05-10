@@ -2,9 +2,9 @@ import { updateProfile } from '@react-native-firebase/auth';
 import { doc, setDoc } from '@react-native-firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Eye, EyeOff, Lock, LogIn, Mail, User, UserPlus } from 'lucide-react-native';
+import { Check, Eye, EyeOff, Lock, LogIn, Mail, User, UserPlus } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../context/AlertContext';
 import { db, signUp } from '../firebaseConfig';
@@ -23,11 +23,17 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { showAlert } = useAlert();
 
   const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
       showAlert("Incomplete Form", "Please fill in all the required fields to create your account.", "alert");
+      return;
+    }
+    if (!agreed) {
+      showAlert("Terms & Privacy", "Please read and agree to our Terms of Use and Privacy Policy to continue.", "alert");
       return;
     }
     if (password !== confirmPassword) {
@@ -38,6 +44,8 @@ export default function RegisterScreen() {
       showAlert("Weak Password", "For your security, passwords must be at least 6 characters long.", "alert");
       return;
     }
+    if (loading) return;
+    setLoading(true);
     try {
       const userCredential = await signUp(email, password);
       const user = userCredential.user;
@@ -54,14 +62,18 @@ export default function RegisterScreen() {
 
       await setDoc(doc(db, 'users', user.uid), userData);
 
-      router.push('/(tabs)/home');
+      router.replace('/(tabs)/home');
     } catch (error: any) {
       console.error(error);
       if (error.code === 'auth/network-request-failed' || error.message?.includes('network')) {
         showAlert("Internet Required", "You need an active internet connection to create a new account. Please check your WiFi or Data and try again.", "alert");
+      } else if (error.code === 'auth/email-already-in-use') {
+        showAlert("Email In Use", "This email address is already associated with an account. Please try logging in instead.", "alert");
       } else {
-        showAlert("Registration Failed", error.message || "We couldn't create your account. Please try again later.", "alert");
+        showAlert("Registration Failed", "We couldn't create your account at this time. Please try again later.", "alert");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -153,8 +165,37 @@ export default function RegisterScreen() {
                 )}
               </View>
 
-              <TouchableOpacity onPress={handleRegister} style={styles.signInButton}>
-                <Text style={styles.signInText}>REGISTER</Text>
+              {/* Terms and Privacy Agreement */}
+              <View style={styles.agreementWrapper}>
+                <TouchableOpacity 
+                  style={[styles.checkbox, agreed && styles.checkboxChecked]} 
+                  onPress={() => setAgreed(!agreed)}
+                  activeOpacity={0.7}
+                >
+                  {agreed && <Check color="white" size={14} strokeWidth={3} />}
+                </TouchableOpacity>
+                <View style={styles.agreementTextContainer}>
+                  <Text style={styles.agreementText}>I agree to the </Text>
+                  <TouchableOpacity onPress={() => router.push('/terms')}>
+                    <Text style={styles.agreementLink}>Terms of Use</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.agreementText}> and </Text>
+                  <TouchableOpacity onPress={() => router.push('/privacy')}>
+                    <Text style={styles.agreementLink}>Privacy Policy</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                onPress={handleRegister} 
+                style={[styles.signInButton, (loading || !agreed || !name || !email || !password) && { opacity: 0.5 }]}
+                disabled={loading || !agreed || !name || !email || !password}
+              >
+                {loading ? (
+                  <ActivityIndicator color={TEXT_WHITE} />
+                ) : (
+                  <Text style={styles.signInText}>REGISTER</Text>
+                )}
               </TouchableOpacity>
 
               <View style={styles.registerLinkContainer}>
@@ -229,6 +270,43 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
     marginLeft: 4,
+  },
+  agreementWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    paddingHorizontal: 4,
+    gap: 12,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  checkboxChecked: {
+    backgroundColor: BLUE,
+    borderColor: BLUE,
+  },
+  agreementTextContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    flex: 1,
+  },
+  agreementText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: TEXT_MUTED,
+  },
+  agreementLink: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
+    color: BLUE,
+    textDecorationLine: 'underline',
   },
   inputContainer: {
     flexDirection: 'row',

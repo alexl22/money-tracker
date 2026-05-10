@@ -254,10 +254,10 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
     const todayAtMidnight = new Date(); todayAtMidnight.setHours(0, 0, 0, 0);
     const todayForCounting = new Date(); todayForCounting.setHours(0, 0, 0, 0);
     const deadlineForCounting = new Date(item.deadline); deadlineForCounting.setHours(0, 0, 0, 0);
-    
+
     const iTotalGoalDays = Math.max(1, Math.floor((deadlineForCounting.getTime() - item.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
     const iDaysLeft = Math.max(0, Math.floor((deadlineForCounting.getTime() - todayForCounting.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-    
+
     const iIsUpcoming = item.startDate > todayAtMidnight;
     const iDaysUntilStart = iIsUpcoming ? Math.max(1, Math.floor((item.startDate.getTime() - todayAtMidnight.getTime()) / (1000 * 60 * 60 * 24))) : 0;
 
@@ -274,13 +274,25 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
     const iIsOnTrack = iCurrentPace > 0 && iDaysUntilTarget === iDaysLeft;
     const iDaysDiff = Math.abs(Math.round(iDaysLeft - iDaysUntilTarget));
 
+    const formatDays = (days: number, isShort: boolean = false) => {
+      if (days === Infinity) return isShort ? "∞" : "Infinity";
+      if (days <= 100) return `${days}${isShort ? 'd' : (days === 1 ? ' day' : ' days')}`;
+      if (days <= 365) {
+        const months = Math.floor(days / 30.44);
+        return `${months}${isShort ? 'mo' : (months === 1 ? ' month' : ' months')}`;
+      }
+      const years = (days / 365.25).toFixed(1);
+      const yearsDisplay = years.endsWith('.0') ? years.slice(0, -2) : years;
+      return `${yearsDisplay}${isShort ? 'y' : (yearsDisplay === '1' ? ' year' : ' years')}`;
+    };
+
     const iStatusMsg = (() => {
-      if (iIsUpcoming) return `Goal starts in ${iDaysUntilStart} day${iDaysUntilStart !== 1 ? 's' : ''}. Get ready!`;
+      if (iIsUpcoming) return `Goal starts in ${formatDays(iDaysUntilStart)}. Get ready!`;
       if (totalProfit >= iTarget) return "Congratulations! Goal Accomplished!";
       if (iIsOnTrack) return "Perfectly on track! You'll reach target exactly on the deadline.";
-      if (iIsAhead) return `Ahead of schedule! Estimated ${iDaysUntilTarget} days until reached (${iDaysDiff} days early).`;
+      if (iIsAhead) return `Ahead of schedule! Estimated ${formatDays(iDaysUntilTarget)} until reached (${formatDays(iDaysDiff)} early).`;
       if (iDaysUntilTarget === Infinity) return "Behind schedule. Please increase your daily profit to see completion forecast.";
-      return `Behind schedule. Estimated ${iDaysUntilTarget} days until reached (${iDaysDiff} days late).`;
+      return `Behind schedule. Estimated ${formatDays(iDaysUntilTarget)} until reached (${formatDays(iDaysDiff)} late).`;
     })();
 
     const isJustUpdated = lastSavedId === item.id;
@@ -339,7 +351,7 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
                 {iIsGoalReached ? 'GOAL COMPLETED' : (iIsTargetSet && iIsUpcoming ? 'UPCOMING GOAL' : 'FINAL COUNTDOWN')}
               </Text>
               <Text style={styles.statusValue}>
-                {iIsTargetSet ? (iIsGoalReached ? 'Target Reached!' : (iIsUpcoming ? `Starts in ${iDaysUntilStart}d` : `${iDaysLeft} Days Left`)) : 'Select dates'}
+                {iIsTargetSet ? (iIsGoalReached ? 'Target Reached!' : (iIsUpcoming ? `Starts in ${formatDays(iDaysUntilStart, true)}` : `${formatDays(iDaysLeft, true)} Left`)) : 'Select dates'}
               </Text>
               {iIsTargetSet && (
                 <Text style={styles.periodLabel}>{item.startDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - {item.deadline.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</Text>

@@ -148,9 +148,9 @@ export function FinanceModalBase({
     >
       <View style={styles.modalOverlay}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.keyboardAvoidingView}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+          keyboardVerticalOffset={0}
         >
           <ScrollView
             contentContainerStyle={styles.scrollContainer}
@@ -295,11 +295,11 @@ export const styles = StyleSheet.create({
     paddingHorizontal: horizontalScale(24),
   },
   modalPositioner: {
-    marginTop: "51%" as any,
+    marginTop: horizontalScale(190),
     marginBottom: horizontalScale(20),
   },
   modalPositionerStep2: {
-    marginTop: "35%" as any,
+    marginTop: horizontalScale(110),
   },
   modalContent: {
     backgroundColor: "#1C1D21",

@@ -51,10 +51,10 @@ export default function DashboardScreen() {
   const padding = horizontalScale(6);
   const tabWidth = (toggleWidth - padding * 2) / 3;
 
-  const [viewMode, setViewMode] = useState<'lifetime' | 'month' | 'range'>('lifetime');
+  const [viewMode, setViewMode] = useState<'total' | 'month' | 'range'>('total');
   const translateX = useSharedValue(0);
 
-  const toggleView = (mode: 'lifetime' | 'month' | 'range') => {
+  const toggleView = (mode: 'total' | 'month' | 'range') => {
     setViewMode(mode);
     let targetX = 0;
     if (mode === 'month') targetX = tabWidth;
@@ -141,7 +141,7 @@ export default function DashboardScreen() {
           hasTransactions = true;
         }
 
-        const matchesFilter = viewMode === 'lifetime' ||
+        const matchesFilter = viewMode === 'total' ||
           (viewMode === 'month' && transactionDate.getMonth().toString() === selectedMonth && transactionDate.getFullYear() === selectedYear) ||
           (viewMode === 'range' && transactionDate >= rangeStart && transactionDate <= rangeEnd);
 
@@ -198,10 +198,10 @@ export default function DashboardScreen() {
           <Animated.View style={[styles.activeHighlight, { width: tabWidth }, animatedToggleStyle]} />
           <Pressable
             style={styles.toggleTab}
-            onPress={() => toggleView('lifetime')}
+            onPress={() => toggleView('total')}
           >
-            <Text style={[styles.toggleText, viewMode === 'lifetime' && styles.toggleTextActive]}>
-              LIFE
+            <Text style={[styles.toggleText, viewMode === 'total' && styles.toggleTextActive]}>
+             TOTAL
             </Text>
           </Pressable>
           <Pressable
@@ -294,7 +294,7 @@ export default function DashboardScreen() {
                 <View style={styles.vDivider} />
 
                 <View style={styles.statColumn}>
-                  <Text style={styles.footerLabel}>{viewMode === 'lifetime' ? 'Monthly' : 'Daily'}</Text>
+                  <Text style={styles.footerLabel}>{viewMode === 'total' ? 'Monthly' : 'Daily'}</Text>
                   <AnimatedAmount
                     value={averageIncome}
                     format={format}
@@ -332,7 +332,7 @@ export default function DashboardScreen() {
                 <View style={styles.vDivider} />
 
                 <View style={styles.statColumn}>
-                  <Text style={styles.footerLabel}>{viewMode === 'lifetime' ? 'Monthly' : 'Daily'}</Text>
+                  <Text style={styles.footerLabel}>{viewMode === 'total' ? 'Monthly' : 'Daily'}</Text>
                   <AnimatedAmount
                     value={averageExpenses}
                     format={format}
@@ -347,12 +347,12 @@ export default function DashboardScreen() {
           <View>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => showAlert(viewMode === 'lifetime' ? 'Total Profit Details' : 'Period Profit Details', `Period Profit: ${format(totalIncome - totalExpenses, { isConverted: true, showSign: true })}`, 'info')}
+              onPress={() => showAlert(viewMode === 'total' ? 'Total Profit Details' : 'Period Profit Details', `Period Profit: ${format(totalIncome - totalExpenses, { isConverted: true, showSign: true })}`, 'info')}
               style={styles.totalBalanceCard}
             >
               <View style={styles.totalBalanceHeader}>
                 <Text style={[styles.totalBalanceLabel, { color: '#ffffffc7', opacity: 0.8 }]}>
-                  {viewMode === 'lifetime' ? 'TOTAL PROFIT' : 'PERIOD PROFIT'}
+                  {viewMode === 'total' ? 'TOTAL PROFIT' : 'PERIOD PROFIT'}
                 </Text>
               </View>
               <AnimatedAmount

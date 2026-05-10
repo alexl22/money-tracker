@@ -35,7 +35,6 @@ interface Loan {
 
 export function LoansTab({ localColors }: LoansTabProps) {
   const { showAlert } = useAlert();
-  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [totalLent, setTotalLent] = useState(0);
   const [totalBorrowed, setTotalBorrowed] = useState(0);

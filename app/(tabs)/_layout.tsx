@@ -3,7 +3,8 @@ import { onAuthStateChanged } from '@react-native-firebase/auth';
 import { doc, getDoc } from '@react-native-firebase/firestore';
 import { BlurView } from 'expo-blur';
 import { Tabs, useRouter } from 'expo-router';
-import { ArrowRightLeft, History, LayoutGrid, LogOut, Plus, Settings, User } from 'lucide-react-native';
+import { History, LayoutGrid, LogOut, Goal
+, Plus, Settings, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, Keyboard, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -13,6 +14,8 @@ import { TabBarProvider, useTabBar } from '../../context/TabBarContext';
 import { auth, db, signOutUser } from '../../firebaseConfig';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
 import { TransactionModal } from './speedEntry';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WelcomeGuide } from '../../components/WelcomeGuide';
 
 const { width } = Dimensions.get('window');
 
@@ -22,6 +25,17 @@ export default function TabLayout() {
   const [userName, setUserName] = useState(auth.currentUser?.email?.split('@')[0] || 'User');
   const { showAlert } = useAlert();
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [isWelcomeVisible, setIsWelcomeVisible] = useState(false);
+
+  useEffect(() => {
+    const checkFirstTime = async () => {
+      const hasSeen = await AsyncStorage.getItem('hasSeenGuide');
+      if (!hasSeen) {
+        setIsWelcomeVisible(true);
+      }
+    };
+    checkFirstTime();
+  }, []);
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
@@ -222,8 +236,8 @@ export default function TabLayout() {
           <Tabs.Screen
             name="goals"
             options={{
-              title: 'Transfer',
-              tabBarIcon: ({ color }) => <ArrowRightLeft color={color} size={22} strokeWidth={2.5} />,
+              title: 'Targets',
+              tabBarIcon: ({ color }) => <Goal color={color} size={22} strokeWidth={2.5} />,
             }}
           />
 
@@ -239,6 +253,10 @@ export default function TabLayout() {
         <TransactionModal
           isVisible={isModalVisible}
           onClose={() => setIsModalVisible(false)}
+        />
+        <WelcomeGuide
+          visible={isWelcomeVisible}
+          onClose={() => setIsWelcomeVisible(false)}
         />
       </View>
     </TabBarProvider>

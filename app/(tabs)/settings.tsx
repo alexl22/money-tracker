@@ -4,11 +4,12 @@ import { collection, doc, getDoc, getDocs, orderBy, query, where, writeBatch } f
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeOff, Lock, Mail, RefreshCcw, Search, Shield, Trash2, X } from 'lucide-react-native';
+import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeOff, HelpCircle, Lock, Mail, RefreshCcw, Search, Shield, Trash2, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, Modal, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { TimePickerModal } from '../../components/TimePickerModal';
+import { WelcomeGuide } from '../../components/WelcomeGuide';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
@@ -32,6 +33,7 @@ export default function SettingsScreen() {
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [isGuideVisible, setIsGuideVisible] = useState(false);
 
   const [tempHours, setTempHours] = useState(23);
   const [tempMinutes, setTempMinutes] = useState(0);
@@ -382,6 +384,7 @@ export default function SettingsScreen() {
       >
         <Text style={styles.headerTitle}>Settings</Text>
 
+
         <View style={[styles.softCard, { height: undefined, paddingVertical: horizontalScale(24) }]}>
           <Text style={styles.softCardTitle}>Display Currency</Text>
           <TouchableOpacity
@@ -554,6 +557,11 @@ export default function SettingsScreen() {
           styles={styles}
         />
 
+        <WelcomeGuide 
+          visible={isGuideVisible} 
+          onClose={() => setIsGuideVisible(false)} 
+        />
+
         <TouchableOpacity
           style={styles.softCard}
           onPress={handleExportAudit}
@@ -579,7 +587,7 @@ export default function SettingsScreen() {
                 >
                   Audit Export
                 </Text>
-                <Text style={styles.subText} numberOfLines={1}>Generate Report ({exportFormat})</Text>
+                <Text style={styles.subText} numberOfLines={1}>Generate Report</Text>
               </View>
             </View>
             <View
@@ -651,6 +659,23 @@ export default function SettingsScreen() {
             </View>
           )}
         </View>
+
+        <TouchableOpacity 
+            style={styles.softCard}
+            activeOpacity={0.7}
+            onPress={() => setIsGuideVisible(true)}
+        >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: horizontalScale(12) }}>
+                <View style={[styles.iconCircle, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                    <HelpCircle color="#3b82f6" size={24} />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.softCardTitleNoMargin}>How to use</Text>
+                    <Text style={[styles.subText, { marginTop: 2 }]}>View the quick start guide</Text>
+                </View>
+                <ChevronDown color="rgba(255,255,255,0.3)" size={20} style={{ transform: [{ rotate: '-90deg' }] }} />
+            </View>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.deleteAccountBtn}

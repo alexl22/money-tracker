@@ -81,7 +81,7 @@ export default function GoalsScreen() {
             <Text style={[styles.toggleText, viewMode === 'goals' && styles.toggleTextActive]}>GOALS</Text>
           </Pressable>
           <Pressable style={styles.toggleTab} onPress={() => toggleView('loans')}>
-            <Text style={[styles.toggleText, viewMode === 'loans' && styles.toggleTextActive]}>LOANS</Text>
+            <Text style={[styles.toggleText, viewMode === 'loans' && styles.toggleTextActive, { paddingLeft: 5 }]}>LOANS</Text>
           </Pressable>
         </View>
 

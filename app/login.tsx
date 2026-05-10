@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Eye, EyeOff, Lock, LogIn, Mail, UserPlus } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../context/AlertContext';
 import { sendPasswordReset, signIn } from '../firebaseConfig';
@@ -18,6 +18,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { showAlert } = useAlert();
 
   const handleLogin = async () => {
@@ -25,12 +26,16 @@ export default function LoginScreen() {
       showAlert("Missing Credentials", "Please enter your email and password to continue.", "alert");
       return;
     }
+    if (loading) return;
+    setLoading(true);
     try {
       await signIn(email, password);
-      router.push('/(tabs)/home');
+      router.replace('/(tabs)/home');
     } catch (error: any) {
       console.error(error);
       showAlert("Login Error", "We couldn't sign you in. Please check your credentials.", "alert");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -47,7 +52,7 @@ export default function LoginScreen() {
       showAlert("Email Sent", "If an account exists with that email, a password reset link has been sent. Please also check your Spam/Junk folder.", "success");
     } catch (error: any) {
       console.error(error);
-      showAlert("Error", `[${error.code || 'unknown'}] ${error.message || "Something went wrong. Please try again later."}`, "alert");
+      showAlert("Request Failed", "We couldn't send the reset link. Please verify your email and try again.", "alert");
     }
   };
 
@@ -104,8 +109,16 @@ export default function LoginScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity onPress={handleLogin} style={styles.signInButton}>
-                <Text style={styles.signInText}>SIGN IN</Text>
+               <TouchableOpacity 
+                onPress={handleLogin} 
+                style={[styles.signInButton, loading && { opacity: 0.7 }]}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color={TEXT_WHITE} />
+                ) : (
+                  <Text style={styles.signInText}>SIGN IN</Text>
+                )}
               </TouchableOpacity>
 
               <View style={styles.registerLinkContainer}>
