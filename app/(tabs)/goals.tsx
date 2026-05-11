@@ -10,8 +10,8 @@ import { horizontalScale, moderateScale } from '../../utils/scaling';
 export default function GoalsScreen() {
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const toggleWidth = SCREEN_WIDTH - horizontalScale(48);
-  const padding = horizontalScale(3);
-  const tabWidth = (toggleWidth - padding * 2) / 2;
+  const PADDING = horizontalScale(6);
+  const tabWidth = (toggleWidth - PADDING * 2) / 2;
 
   const [viewMode, setViewMode] = useState<'goals' | 'loans'>('goals');
   const [isScrollEnabled, setIsScrollEnabled] = useState(true);
@@ -75,13 +75,13 @@ export default function GoalsScreen() {
       >
         <View style={styles.headerSpacer} />
         <View style={[styles.toggleContainer, { width: toggleWidth }]}>
-          <Animated.View style={[styles.activeHighlight, { width: tabWidth - 6 }, animatedToggleStyle]} />
+          <Animated.View style={[styles.activeHighlight, { width: tabWidth }, animatedToggleStyle]} />
 
           <Pressable style={styles.toggleTab} onPress={() => toggleView('goals')}>
             <Text style={[styles.toggleText, viewMode === 'goals' && styles.toggleTextActive]}>GOALS</Text>
           </Pressable>
           <Pressable style={styles.toggleTab} onPress={() => toggleView('loans')}>
-            <Text style={[styles.toggleText, viewMode === 'loans' && styles.toggleTextActive, { paddingLeft: 5 }]}>LOANS</Text>
+            <Text style={[styles.toggleText, viewMode === 'loans' && styles.toggleTextActive]}>LOANS</Text>
           </Pressable>
         </View>
 

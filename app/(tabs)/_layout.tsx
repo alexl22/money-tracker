@@ -192,14 +192,18 @@ export default function TabLayout() {
             headerShown: true,
             header: () => (
               <View style={[styles.customHeader, { paddingTop: Math.max(insets.top, horizontalScale(15)) }]}>
-                <View style={styles.userInfo}>
+                <TouchableOpacity
+                  style={styles.userInfo}
+                  onPress={() => router.push('/settings')}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.userAvatar}>
-                    <User color={Colors.white} size={moderateScale(16)} />
+                    <User color={Colors.white} size={moderateScale(20)} />
                   </View>
                   <Text style={styles.userName} numberOfLines={1}>
                     {userName.charAt(0).toUpperCase() + userName.slice(1)}
                   </Text>
-                </View>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.logoutButton}
                   onPress={() => showAlert("Logout", "Are you sure you want to logout?", "alert", handleLogout, true)}
@@ -331,10 +335,10 @@ const styles = StyleSheet.create({
     gap: horizontalScale(12),
   },
   userAvatar: {
-    width: horizontalScale(32),
-    height: horizontalScale(32),
-    borderRadius: moderateScale(16),
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: horizontalScale(40),
+    height: horizontalScale(40),
+    borderRadius: moderateScale(20),
+    backgroundColor: 'rgba(255,255,255,0.05)',
     justifyContent: 'center',
     alignItems: 'center',
   },

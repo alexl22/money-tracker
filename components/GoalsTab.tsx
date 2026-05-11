@@ -245,7 +245,7 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
     });
 
     const iTarget = item.currency === currency ? item.targetAmount : ((item.targetAmountUSD || (item.targetAmount / (rates?.[item.currency] || 1))) * (rates?.[currency] || 1));
-    const iProgress = iTarget > 0 ? Math.min(100, (totalProfit / iTarget) * 100) : 0;
+    const iProgress = iTarget > 0 ? Math.max(0, Math.min(100, (totalProfit / iTarget) * 100)) : 0;
     const iOffset = circumference - (circumference * iProgress / 100);
     const iIsTargetSet = item.targetAmount > 0;
     const iIsGoalReached = iIsTargetSet && iTarget > 0 && totalProfit >= iTarget;

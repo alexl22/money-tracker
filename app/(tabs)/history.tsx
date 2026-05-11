@@ -718,7 +718,9 @@ export default function HistoryScreen() {
             <Text style={styles.emptyStateTitle}>
               {showAllHistory ? "No transactions found" : `Nothing found for Week ${weeks[selectedWeekIndex]?.label}`}
             </Text>
-            <Text style={styles.emptyStateText}>Try selecting another week or add a new transaction.</Text>
+            <Text style={styles.emptyStateText}>
+              {showAllHistory ? "Adjust your filters or add a new transaction." : "Try selecting another week or add a new transaction."}
+            </Text>
           </View>
         }
       />
