@@ -201,7 +201,7 @@ export default function DashboardScreen() {
             onPress={() => toggleView('total')}
           >
             <Text style={[styles.toggleText, viewMode === 'total' && styles.toggleTextActive]}>
-             TOTAL
+              TOTAL
             </Text>
           </Pressable>
           <Pressable

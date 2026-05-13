@@ -1,7 +1,7 @@
 import { addDoc, and, collection, deleteDoc, doc, getDoc, onSnapshot, or, query, serverTimestamp, updateDoc, where } from '@react-native-firebase/firestore';
 import { AlignLeft, CheckCircle2, Mail, Plus, TrendingUp, Type, Wallet } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Reanimated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useAlert } from '../context/AlertContext';
 import { useCurrency } from '../context/CurrencyContext';
@@ -381,80 +381,85 @@ export function LoansTab({ localColors }: LoansTabProps) {
             const finalLoanAmount = effectiveType === 'lent' ? -displayValueForLoan : displayValueForLoan;
 
             return (
-              <TouchableOpacity
+              <View
                 key={loan.id}
-                activeOpacity={0.8}
-                onPress={() => setExpandedLoanId(isExpanded ? null : loan.id)}
-                onLongPress={() => handleDeleteLoan(loan.id, displayName)}
-                delayLongPress={300}
-                style={[styles.loanCard, { borderColor: effectiveType === 'lent' ? 'rgba(235, 86, 86, 0.6)' : 'rgba(16, 185, 129, 0.6)' }]}
               >
-                <View style={styles.loanMainContent}>
-                  <View style={styles.loanLeft}>
-                    <View style={styles.avatarContainer}>
-                      <Text style={[styles.avatarText, { color: effectiveType === 'lent' ? '#eb5656' : '#6ee591' }]}>
-                        {displayName.substring(0, 2).toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1, marginRight: 8 }}>
-                      <Text style={styles.loanName} numberOfLines={isExpanded ? undefined : 1}>
-                        {isOwner ? `To ${loan.personName}` : `From ${displayName}`}
-                      </Text>
-                      <Text style={styles.loanNote} numberOfLines={isExpanded ? undefined : 1}>{loan.note}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.loanRight}>
-                    <Text
-                      style={[styles.loanAmount, { color: effectiveType === 'lent' ? '#eb5656' : '#6ee591' }]}
-                      numberOfLines={1}
-                    >
-                      {format(finalLoanAmount, {
-                        compact: true,
-                        showSign: true,
-                        threshold: 1000000,
-                        isConverted: isSameCurrency
-                      })}
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.checkmarkContainer}
-                      onPress={() => toggleLoanStatus(loan.id, loan.status)}
-                    >
-                      <CheckCircle2
-                        color={loan.status === 'settled' ? localColors.primary : "rgba(255,255,255,0.4)"}
-                        size={moderateScale(20)}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {isExpanded && Math.abs(displayValueForLoan) >= 1000000 && (
-                  <View style={styles.expandedSection}>
-                    <View style={styles.divider} />
-                    <View style={styles.detailRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.detailLabel}>EXACT AMOUNT</Text>
-                        <Text
-                          style={[styles.detailValue, { color: effectiveType === 'lent' ? '#eb5656' : '#6ee591' }]}
-                          numberOfLines={1}
-                          adjustsFontSizeToFit
-                        >
-                          {format(finalLoanAmount, {
-                            showSign: true,
-                            isConverted: isSameCurrency
-                          })}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setExpandedLoanId(isExpanded ? null : loan.id)}
+                  onLongPress={() => handleDeleteLoan(loan.id, displayName)}
+                  delayLongPress={300}
+                  style={[styles.loanCard, { borderColor: effectiveType === 'lent' ? 'rgba(235, 86, 86, 0.6)' : 'rgba(16, 185, 129, 0.6)' }]}
+                >
+                  <View style={styles.loanMainContent}>
+                    <View style={styles.loanLeft}>
+                      <View style={styles.avatarContainer}>
+                        <Text style={[styles.avatarText, { color: effectiveType === 'lent' ? '#eb5656' : '#6ee591' }]}>
+                          {displayName.substring(0, 2).toUpperCase()}
                         </Text>
                       </View>
-                    </View>
-
-                    {loan.note && (
-                      <View style={{ marginTop: horizontalScale(12) }}>
-                        <Text style={styles.detailLabel}>NOTES</Text>
-                        <Text style={styles.fullNoteText}>{loan.note}</Text>
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text style={styles.loanName} numberOfLines={isExpanded ? undefined : 1}>
+                          {isOwner ? `To ${loan.personName}` : `From ${displayName}`}
+                        </Text>
+                        <Text style={styles.loanNote} numberOfLines={isExpanded ? undefined : 1}>{loan.note}</Text>
                       </View>
-                    )}
+                    </View>
+                    <View style={styles.loanRight}>
+                      <Text
+                        style={[styles.loanAmount, { color: effectiveType === 'lent' ? '#eb5656' : '#6ee591' }]}
+                        numberOfLines={1}
+                      >
+                        {format(finalLoanAmount, {
+                          compact: true,
+                          showSign: true,
+                          threshold: 1000000,
+                          isConverted: isSameCurrency
+                        })}
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.checkmarkContainer}
+                        onPress={() => toggleLoanStatus(loan.id, loan.status)}
+                      >
+                        <CheckCircle2
+                          color={loan.status === 'settled' ? localColors.primary : "rgba(255,255,255,0.4)"}
+                          size={moderateScale(20)}
+                        />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                )}
-              </TouchableOpacity>
+
+                  {isExpanded && Math.abs(displayValueForLoan) >= 1000000 && (
+                    <View
+                      style={styles.expandedSection}
+                    >
+                      <View style={styles.divider} />
+                      <View style={styles.detailRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.detailLabel}>EXACT AMOUNT</Text>
+                          <Text
+                            style={[styles.detailValue, { color: effectiveType === 'lent' ? '#eb5656' : '#6ee591' }]}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                          >
+                            {format(finalLoanAmount, {
+                              showSign: true,
+                              isConverted: isSameCurrency
+                            })}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {loan.note && (
+                        <View style={{ marginTop: horizontalScale(12) }}>
+                          <Text style={styles.detailLabel}>NOTES</Text>
+                          <Text style={styles.fullNoteText}>{loan.note}</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
             );
           })
         ) : (

@@ -320,9 +320,7 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
         </View>
 
         {iIsTargetSet && (
-          <Animated.Text
-            entering={isJustUpdated ? FadeInDown.delay(100).springify() : undefined}
-            layout={LinearTransition}
+          <Text
             style={styles.motivationalText}
           >
             <Text style={{ color: localColors.white, fontWeight: 'bold' }}>{iIsUpcoming ? "Get ready for your goal!" : (totalProfit >= iTarget ? "Goal Accomplished!" : "You're nearly there!")}</Text>{"\n"}
@@ -331,13 +329,10 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
             ) : (
               <Text style={{ color: 'rgba(255,255,255,0.4)' }}>Only <Text style={{ color: '#67E8F9', fontWeight: 'bold' }}>{format(iTarget - totalProfit, { isConverted: true })}</Text> left to reach target.</Text>
             )}
-          </Animated.Text>
+          </Text>
         )}
 
-        <Animated.View
-          entering={isJustUpdated ? FadeInDown.delay(200).springify() : undefined}
-          layout={LinearTransition}
-        >
+        <View>
           <TouchableOpacity
             style={styles.summaryRow}
             onPress={() => {
@@ -359,13 +354,10 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
               <View style={styles.goalStatusIconContainer}><View style={styles.goalStatusIconCircle}>{iIsGoalReached ? <Trophy color="#6ee591" size={28} /> : <Calendar color="#67E8F9" size={24} />}</View></View>
             </View>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
 
         {iIsTargetSet && (
-          <Animated.View
-            entering={isJustUpdated ? FadeInDown.delay(300).springify() : undefined}
-            layout={LinearTransition}
-          >
+          <View>
             <TouchableOpacity onPress={() => showAlert("Performance", `Today: ${format(todayProfit, { isConverted: true })}\nTarget: ${format(iDailyTarget, { isConverted: true })}`, "info")}>
               <View style={styles.performanceCard}>
                 <View style={styles.perfHeader}>
@@ -393,7 +385,7 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
 
               </View>
             </TouchableOpacity>
-          </Animated.View>
+          </View>
         )}
         {iIsTargetSet && (
           <Text style={styles.forecastCaption}>

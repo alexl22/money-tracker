@@ -72,9 +72,6 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     borderBottomWidth: 0,
   },
-  securityWrapper: {
-    marginBottom: 0,
-  },
   securityDropdown: {
     backgroundColor: '#1C1D1F',
     borderBottomLeftRadius: moderateScale(32),
@@ -388,6 +385,9 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  securityWrapper: {
+    width: '100%',
   },
 });
 

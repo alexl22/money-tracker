@@ -1,10 +1,10 @@
 import { collection, deleteDoc, doc, onSnapshot, query, where } from '@react-native-firebase/firestore';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Calendar, CalendarDays, ChevronDown, ShoppingBag, SlidersHorizontal, Wallet, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, SectionList, Text, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import Animated, { FadeInDown, FadeOut, LinearTransition, useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { DatePicker } from '../../components/DatePicker';
 import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
 import { useAlert } from '../../context/AlertContext';
@@ -58,32 +58,27 @@ const TransactionRow = React.memo(({
   const rowRef = React.useRef<any>(null);
 
   return (
-    <Swipeable
-      ref={rowRef}
-      renderRightActions={renderGhostActions}
-      renderLeftActions={renderGhostActions}
-      onSwipeableWillOpen={() => {
-        setTimeout(() => {
-          rowRef.current?.close();
-        }, 150);
-        showAlert(
-          'Delete Transaction',
-          'Are you sure you want to delete this transaction?',
-          'alert',
-          () => { handleDeleteTransaction(item.id, item.title) },
-          true,
-          false
-        );
-      }}
+    <View
+      key={item.id}
+      style={{ marginBottom: horizontalScale(10) }}
     >
-      <Animated.View
-        key={item.id}
-        {...(!showAllHistory ? {
-          entering: FadeInDown.duration(350).delay(index * 20).springify().damping(15),
-          exiting: FadeOut.duration(250),
-          layout: LinearTransition.springify().damping(15).stiffness(100)
-        } : {})}
-        style={{ marginBottom: horizontalScale(10) }}
+      <Swipeable
+        ref={rowRef}
+        renderRightActions={renderGhostActions}
+        renderLeftActions={renderGhostActions}
+        onSwipeableWillOpen={() => {
+          setTimeout(() => {
+            rowRef.current?.close();
+          }, 150);
+          showAlert(
+            'Delete Transaction',
+            'Are you sure you want to delete this transaction?',
+            'alert',
+            () => { handleDeleteTransaction(item.id, item.title) },
+            true,
+            false
+          );
+        }}
       >
         <TouchableOpacity
           activeOpacity={0.7}
@@ -156,8 +151,10 @@ const TransactionRow = React.memo(({
             </Text>
           </View>
 
-          {(isExpanded && (item.amount.includes('M') || item.amount.includes('K') || item.amount.includes('B'))) && (
-            <View style={styles.expandedContent}>
+          {(isExpanded && (item.amount.includes('M') || item.amount.includes('K') || item.amount.includes('B') || !!item.notes)) && (
+            <View
+              style={styles.expandedContent}
+            >
               {(item.amount.includes('M') || item.amount.includes('K') || item.amount.includes('B')) && <View style={styles.detailDivider} />}
 
               {(item.amount.includes('M') || item.amount.includes('K') || item.amount.includes('B')) && (
@@ -177,11 +174,12 @@ const TransactionRow = React.memo(({
                   </View>
                 </View>
               )}
+
             </View>
           )}
         </TouchableOpacity>
-      </Animated.View>
-    </Swipeable>
+      </Swipeable>
+    </View>
   );
 });
 

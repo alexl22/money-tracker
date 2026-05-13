@@ -152,7 +152,7 @@ export default function SettingsScreen() {
 
         let isActuallyEnabled = savedEnabled !== null ? JSON.parse(savedEnabled) : false;
 
-       
+
         if (isActuallyEnabled) {
           const hasPermission = await checkNotificationPermission();
           if (!hasPermission) {
@@ -418,7 +418,9 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={styles.securityWrapper}>
+        <View
+          style={styles.securityWrapper}
+        >
           <TouchableOpacity
             style={[styles.actionCard, isSecurityExpanded && styles.actionCardExpanded]}
             onPress={() => setIsSecurityExpanded(!isSecurityExpanded)}
@@ -436,7 +438,9 @@ export default function SettingsScreen() {
           </TouchableOpacity>
 
           {isSecurityExpanded && (
-            <View style={styles.securityDropdown}>
+            <View
+              style={styles.securityDropdown}
+            >
               <View style={styles.innerSectionGroup}>
                 <Text style={styles.innerSectionLabel}>NEW PASSWORD</Text>
                 <View style={styles.inputCard}>
@@ -557,9 +561,9 @@ export default function SettingsScreen() {
           styles={styles}
         />
 
-        <WelcomeGuide 
-          visible={isGuideVisible} 
-          onClose={() => setIsGuideVisible(false)} 
+        <WelcomeGuide
+          visible={isGuideVisible}
+          onClose={() => setIsGuideVisible(false)}
         />
 
         <TouchableOpacity
@@ -612,7 +616,9 @@ export default function SettingsScreen() {
 
         </TouchableOpacity>
 
-        <View style={styles.securityWrapper}>
+        <View
+          style={styles.securityWrapper}
+        >
           <TouchableOpacity
             style={[styles.actionCard, isDataExpanded && styles.actionCardExpanded]}
             onPress={() => setIsDataExpanded(!isDataExpanded)}
@@ -630,7 +636,9 @@ export default function SettingsScreen() {
           </TouchableOpacity>
 
           {isDataExpanded && (
-            <View style={styles.securityDropdown}>
+            <View
+              style={styles.securityDropdown}
+            >
               <TouchableOpacity
                 style={[styles.actionCard, { marginTop: 0, height: horizontalScale(60), borderColor: 'rgba(239, 68, 68, 0.2)' }]}
                 onPress={handleClearTransactions}
@@ -660,21 +668,23 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        <TouchableOpacity 
-            style={styles.softCard}
-            activeOpacity={0.7}
-            onPress={() => setIsGuideVisible(true)}
+        <TouchableOpacity
+          style={styles.softCard}
+          activeOpacity={0.7}
+          onPress={() => setIsGuideVisible(true)}
         >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: horizontalScale(12) }}>
-                <View style={[styles.iconCircle, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-                    <HelpCircle color="#3b82f6" size={24} />
-                </View>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.softCardTitleNoMargin}>How to use</Text>
-                    <Text style={[styles.subText, { marginTop: 2 }]}>View the quick start guide</Text>
-                </View>
-                <ChevronDown color="rgba(255,255,255,0.3)" size={20} style={{ transform: [{ rotate: '-90deg' }] }} />
+          <View style={styles.cardHeader}>
+            <View style={styles.cardHeaderLeft}>
+              <View style={[styles.iconCircle, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                <HelpCircle color="#3b82f6" size={24} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.softCardTitleNoMargin}>How to use</Text>
+                <Text style={[styles.subText, { marginTop: 2 }]}>View the quick start guide</Text>
+              </View>
             </View>
+            <ChevronDown color="rgba(255,255,255,0.3)" size={20} style={{ transform: [{ rotate: '-90deg' }] }} />
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity

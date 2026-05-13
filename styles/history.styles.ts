@@ -514,6 +514,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 1.2,
   },
+  securityWrapper: {
+    width: '100%',
+  },
 });
 
 export default styles;
