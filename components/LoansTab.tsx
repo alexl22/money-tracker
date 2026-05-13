@@ -622,7 +622,9 @@ function LoanModal({ isVisible, onClose }: { isVisible: boolean; onClose: () => 
           <View style={baseStyles.inputSection}>
             <View style={baseStyles.inputLabelHeader}>
               <Mail color="rgba(255,255,255,0.4)" size={14} />
-              <Text style={baseStyles.inputLabel}>Person Email</Text>
+              <Text style={baseStyles.inputLabel}>
+                PERSON EMAIL <Text style={{ textTransform: 'none', letterSpacing: 0, fontSize: moderateScale(9), color: 'rgba(255,255,255,0.2)' }}>(Fill only if they use this app)</Text>
+              </Text>
             </View>
             <TextInput
               style={baseStyles.textInput}

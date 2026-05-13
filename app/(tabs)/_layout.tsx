@@ -1,21 +1,24 @@
 import { Colors } from '@/constants/DesignSystem';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged } from '@react-native-firebase/auth';
 import { doc, getDoc } from '@react-native-firebase/firestore';
 import { BlurView } from 'expo-blur';
 import { Tabs, useRouter } from 'expo-router';
-import { History, LayoutGrid, LogOut, Goal
-, Plus, Settings, User } from 'lucide-react-native';
+import {
+  Goal,
+  History, LayoutGrid, LogOut,
+  Plus, Settings, User
+} from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, Keyboard, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { WelcomeGuide } from '../../components/WelcomeGuide';
 import { useAlert } from '../../context/AlertContext';
 import { TabBarProvider, useTabBar } from '../../context/TabBarContext';
 import { auth, db, signOutUser } from '../../firebaseConfig';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
 import { TransactionModal } from './speedEntry';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WelcomeGuide } from '../../components/WelcomeGuide';
 
 const { width } = Dimensions.get('window');
 
@@ -85,7 +88,7 @@ export default function TabLayout() {
 
   const CustomTabBar = ({ state, descriptors, navigation }: any) => {
     const navBarWidth = width * 0.95;
-    const padding = horizontalScale(10); 
+    const padding = horizontalScale(10);
     const innerWidth = navBarWidth - padding;
     const tabWidth = innerWidth / 5;
 
@@ -149,7 +152,7 @@ export default function TabLayout() {
               }
             };
 
-           
+
             if (route.name === 'speedEntry') {
               return (
                 <View key={route.key} style={{ width: tabWidth, alignItems: 'center', justifyContent: 'center' }}>

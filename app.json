@@ -12,9 +12,10 @@
       "backgroundColor": "#00000000"
     },
     "ios": {
+      "icon": "./assets/images/ios-icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.alex.moneytracker",
-      "buildNumber": "6",
+      "buildNumber": "8",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -68,6 +69,9 @@
           "ios": {
             "useFrameworks": "static",
             "modularHeaders": true
+          },
+          "android": {
+            "kotlinVersion": "1.9.25"
           }
         }
       ]

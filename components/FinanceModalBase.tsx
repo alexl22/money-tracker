@@ -466,11 +466,6 @@ export const styles = StyleSheet.create({
   },
   typeCircleActive: {
     opacity: 1,
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: moderateScale(15),
-    elevation: 2,
     borderWidth: 1,
     borderColor: '#3b3d42',
   },

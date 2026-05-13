@@ -3,10 +3,11 @@ import { onAuthStateChanged } from '@react-native-firebase/auth';
 import { collection, doc, getDoc, getDocs, orderBy, query, where, writeBatch } from '@react-native-firebase/firestore';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as NavigationBar from 'expo-navigation-bar';
 import { router } from 'expo-router';
 import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeOff, HelpCircle, Lock, Mail, RefreshCcw, Search, Shield, Trash2, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Linking, Modal, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, Modal, Platform, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { TimePickerModal } from '../../components/TimePickerModal';
 import { WelcomeGuide } from '../../components/WelcomeGuide';
@@ -144,14 +145,12 @@ export default function SettingsScreen() {
       fetchUserData(u);
     });
 
-
     const loadNotificationSettings = async () => {
       try {
         const savedEnabled = await AsyncStorage.getItem('notifications_enabled');
         const savedTime = await AsyncStorage.getItem('notifications_time');
 
         let isActuallyEnabled = savedEnabled !== null ? JSON.parse(savedEnabled) : false;
-
 
         if (isActuallyEnabled) {
           const hasPermission = await checkNotificationPermission();
@@ -171,6 +170,16 @@ export default function SettingsScreen() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (isCurrencyPickerVisible || isTimePickerVisible) {
+        NavigationBar.setBackgroundColorAsync('rgba(0, 0, 0, 0.85)');
+      } else {
+        NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0)');
+      }
+    }
+  }, [isCurrencyPickerVisible, isTimePickerVisible]);
 
   const formatTime = (h: number, m: number) => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;

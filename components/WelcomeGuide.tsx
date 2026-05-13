@@ -12,10 +12,12 @@ import {
   Trash2,
   X
 } from 'lucide-react-native';
+import * as NavigationBar from 'expo-navigation-bar';
 import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -313,6 +315,16 @@ function SwipeAnimation() {
 
 export const WelcomeGuide = ({ visible, onClose }: { visible: boolean, onClose: () => void }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (visible) {
+        NavigationBar.setBackgroundColorAsync('rgba(0, 0, 0, 0.85)');
+      } else {
+        NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0)');
+      }
+    }
+  }, [visible]);
 
   const handleNext = () => {
     if (currentSlide < SLIDES.length - 1) {

@@ -4,7 +4,7 @@ import { Calendar, CalendarDays, ChevronDown, ShoppingBag, SlidersHorizontal, Wa
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, SectionList, Text, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import Animated, { FadeInDown, LinearTransition, useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { DatePicker } from '../../components/DatePicker';
 import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
 import { useAlert } from '../../context/AlertContext';
@@ -58,7 +58,9 @@ const TransactionRow = React.memo(({
   const rowRef = React.useRef<any>(null);
 
   return (
-    <View
+    <Animated.View
+      entering={showAllHistory ? undefined : FadeInDown.delay(index * 60).springify().damping(15)}
+      layout={LinearTransition}
       key={item.id}
       style={{ marginBottom: horizontalScale(10) }}
     >
@@ -179,7 +181,7 @@ const TransactionRow = React.memo(({
           )}
         </TouchableOpacity>
       </Swipeable>
-    </View>
+    </Animated.View>
   );
 });
 

@@ -43,14 +43,8 @@ export default function CustomAlert({ isInsideModal }: { isInsideModal?: boolean
 
   const [layoutReady, setLayoutReady] = React.useState(false);
 
-  React.useEffect(() => {
-    if (Platform.OS === 'android') {
-      if (visible) {
-        NavigationBar.setBehaviorAsync('overlay-swipe');
-        NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0)');
-      }
-    }
-  }, [visible]);
+  // The NavigationBar color is managed by the root layout and individual modals,
+  // so CustomAlert no longer overrides it.
 
   React.useEffect(() => {
     if (!visible) {
