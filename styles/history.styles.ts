@@ -138,6 +138,7 @@ const styles = StyleSheet.create({
     width: 1,
     height: moderateScale(30),
     backgroundColor: 'rgba(255,255,255,0.05)',
+    marginHorizontal: horizontalScale(5),
   },
   horizontalDivider: {
     height: 1,
@@ -166,7 +167,7 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: moderateScale(22),
+    fontSize: moderateScale(20),
   },
 
   weekSelectorScroll: {

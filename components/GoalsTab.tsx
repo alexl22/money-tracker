@@ -103,17 +103,9 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
   useEffect(() => {
     if (!user) return;
 
-    let queryStartDate = new Date();
-    queryStartDate.setHours(0, 0, 0, 0);
-
-    if (currentGoal && !currentGoal.isAddCard) {
-      queryStartDate = currentGoal.startDate;
-    }
-
     const q = query(
       collection(db, "transactions"),
-      where("userId", "==", user.uid),
-      where("date", ">=", queryStartDate)
+      where("userId", "==", user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -123,7 +115,7 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
       globalTransactionsCache = list;
     }, (error) => console.error("Transactions Snapshot Error:", error));
     return () => unsubscribe();
-  }, [user, currentGoal?.id, currentGoal?.startDate]);
+  }, [user]);
 
   useEffect(() => {
     if (currentGoal && !currentGoal.isAddCard) {
@@ -320,7 +312,9 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
         </View>
 
         {iIsTargetSet && (
-          <Text
+          <Animated.Text
+            entering={isJustUpdated ? FadeInDown.delay(100).springify() : undefined}
+            layout={LinearTransition}
             style={styles.motivationalText}
           >
             <Text style={{ color: localColors.white, fontWeight: 'bold' }}>{iIsUpcoming ? "Get ready for your goal!" : (totalProfit >= iTarget ? "Goal Accomplished!" : "You're nearly there!")}</Text>{"\n"}
@@ -329,10 +323,13 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
             ) : (
               <Text style={{ color: 'rgba(255,255,255,0.4)' }}>Only <Text style={{ color: '#67E8F9', fontWeight: 'bold' }}>{format(iTarget - totalProfit, { isConverted: true })}</Text> left to reach target.</Text>
             )}
-          </Text>
+          </Animated.Text>
         )}
 
-        <View>
+        <Animated.View
+          entering={isJustUpdated ? FadeInDown.delay(200).springify() : undefined}
+          layout={LinearTransition}
+        >
           <TouchableOpacity
             style={styles.summaryRow}
             onPress={() => {
@@ -354,10 +351,13 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
               <View style={styles.goalStatusIconContainer}><View style={styles.goalStatusIconCircle}>{iIsGoalReached ? <Trophy color="#6ee591" size={28} /> : <Calendar color="#67E8F9" size={24} />}</View></View>
             </View>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
 
         {iIsTargetSet && (
-          <View>
+          <Animated.View
+            entering={isJustUpdated ? FadeInDown.delay(300).springify() : undefined}
+            layout={LinearTransition}
+          >
             <TouchableOpacity onPress={() => showAlert("Performance", `Today: ${format(todayProfit, { isConverted: true })}\nTarget: ${format(iDailyTarget, { isConverted: true })}`, "info")}>
               <View style={styles.performanceCard}>
                 <View style={styles.perfHeader}>
@@ -385,7 +385,7 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
 
               </View>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         )}
         {iIsTargetSet && (
           <Text style={styles.forecastCaption}>

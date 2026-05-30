@@ -83,6 +83,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     borderColor: 'rgba(255,255,255,0.12)',
     marginBottom: horizontalScale(20),
+    marginTop: -2,
   },
   innerSectionGroup: {
     marginBottom: horizontalScale(16),

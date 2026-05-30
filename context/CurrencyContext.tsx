@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getExchangeRates } from '../utils/currency';
 import { onAuthChanged } from '../firebaseConfig';
+import { getExchangeRates } from '../utils/currency';
 
 type CurrencyCode = string;
 

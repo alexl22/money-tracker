@@ -85,10 +85,7 @@ export default function DashboardScreen() {
     transform: [{ translateX: translateX.value }],
   }));
 
-  const [totalIncome, setTotalIncome] = useState(0);
-  const [totalExpenses, setTotalExpenses] = useState(0);
-  const [averageIncome, setAverageIncome] = useState(0);
-  const [averageExpenses, setAverageExpenses] = useState(0);
+  const [rawTransactions, setRawTransactions] = useState<any[]>([]);
   const { showAlert } = useAlert();
   const user = auth.currentUser;
 
@@ -108,82 +105,89 @@ export default function DashboardScreen() {
 
     const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      handleSnapshot(snapshot);
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setRawTransactions(list);
     }, (error) => {
       console.error("Firestore Error:", error);
     });
 
-    function handleSnapshot(snapshot: any) {
-      let currentTotalIncome = 0;
-      let currentTotalExpenses = 0;
-      let earliestDate = new Date();
-      let hasTransactions = false;
+    return () => unsubscribe();
+  }, [user]);
 
-      snapshot.forEach((doc: any) => {
-        const data = doc.data();
-        let transactionDate: Date;
+  const { totalIncome, totalExpenses, averageIncome, averageExpenses } = React.useMemo(() => {
+    let currentTotalIncome = 0;
+    let currentTotalExpenses = 0;
+    let earliestDate = new Date();
+    let hasTransactions = false;
 
-        const rawDate = data.date || data.createdAt;
-        if (rawDate && typeof rawDate.toDate === 'function') {
-          transactionDate = rawDate.toDate();
-        } else if (rawDate instanceof Date) {
-          transactionDate = rawDate;
-        } else if (rawDate && typeof rawDate.seconds === 'number') {
-          transactionDate = new Date(rawDate.seconds * 1000);
-        } else if (rawDate) {
-          transactionDate = new Date(rawDate);
-        } else {
-          transactionDate = new Date();
-        }
+    rawTransactions.forEach((t: any) => {
+      let transactionDate: Date;
 
-        if (!hasTransactions || transactionDate < earliestDate) {
-          earliestDate = transactionDate;
-          hasTransactions = true;
-        }
-
-        const matchesFilter = viewMode === 'total' ||
-          (viewMode === 'month' && transactionDate.getMonth().toString() === selectedMonth && transactionDate.getFullYear() === selectedYear) ||
-          (viewMode === 'range' && transactionDate >= rangeStart && transactionDate <= rangeEnd);
-
-        const valueToSum = (data.currency === currency)
-          ? data.amount
-          : ((data.amountUSD || (data.amount / (rates?.[data.currency] || 1))) * (rates?.[currency] || 1));
-
-        if (matchesFilter) {
-          if (data.type === 'income') {
-            currentTotalIncome += valueToSum;
-          } else {
-            currentTotalExpenses += valueToSum;
-          }
-        }
-      });
-
-      setTotalIncome(currentTotalIncome);
-      setTotalExpenses(currentTotalExpenses);
-
-      if (viewMode === 'month') {
-        const daysInSelectedMonth = new Date(selectedYear, parseInt(selectedMonth) + 1, 0).getDate();
-        setAverageIncome(currentTotalIncome / daysInSelectedMonth);
-        setAverageExpenses(currentTotalExpenses / daysInSelectedMonth);
-      } else if (viewMode === 'range') {
-        const diffTime = Math.abs(rangeEnd.getTime() - rangeStart.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-        setAverageIncome(currentTotalIncome / diffDays);
-        setAverageExpenses(currentTotalExpenses / diffDays);
+      const rawDate = t.date || t.createdAt;
+      if (rawDate && typeof rawDate.toDate === 'function') {
+        transactionDate = rawDate.toDate();
+      } else if (rawDate instanceof Date) {
+        transactionDate = rawDate;
+      } else if (rawDate && typeof rawDate.seconds === 'number') {
+        transactionDate = new Date(rawDate.seconds * 1000);
+      } else if (rawDate) {
+        transactionDate = new Date(rawDate);
       } else {
-        const now = new Date();
-        const startYear = earliestDate.getFullYear();
-        const startMonth = earliestDate.getMonth();
-        const currentYearLocal = now.getFullYear();
-        const currentMonthLocal = now.getMonth();
-        const monthsDiff = hasTransactions ? (currentYearLocal - startYear) * 12 + (currentMonthLocal - startMonth) + 1 : 1;
-        setAverageIncome(currentTotalIncome / monthsDiff);
-        setAverageExpenses(currentTotalExpenses / monthsDiff);
+        transactionDate = new Date();
       }
+
+      if (!hasTransactions || transactionDate < earliestDate) {
+        earliestDate = transactionDate;
+        hasTransactions = true;
+      }
+
+      const matchesFilter = viewMode === 'total' ||
+        (viewMode === 'month' && transactionDate.getMonth().toString() === selectedMonth && transactionDate.getFullYear() === selectedYear) ||
+        (viewMode === 'range' && transactionDate >= rangeStart && transactionDate <= rangeEnd);
+
+      const valueToSum = (t.currency === currency)
+        ? t.amount
+        : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
+
+      if (matchesFilter) {
+        if (t.type === 'income') {
+          currentTotalIncome += valueToSum;
+        } else {
+          currentTotalExpenses += valueToSum;
+        }
+      }
+    });
+
+    let computedAvgIncome = 0;
+    let computedAvgExpenses = 0;
+
+    if (viewMode === 'month') {
+      const daysInSelectedMonth = new Date(selectedYear, parseInt(selectedMonth) + 1, 0).getDate();
+      computedAvgIncome = currentTotalIncome / daysInSelectedMonth;
+      computedAvgExpenses = currentTotalExpenses / daysInSelectedMonth;
+    } else if (viewMode === 'range') {
+      const diffTime = Math.abs(rangeEnd.getTime() - rangeStart.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      computedAvgIncome = currentTotalIncome / diffDays;
+      computedAvgExpenses = currentTotalExpenses / diffDays;
+    } else {
+      const now = new Date();
+      const startYear = earliestDate.getFullYear();
+      const startMonth = earliestDate.getMonth();
+      const currentYearLocal = now.getFullYear();
+      const currentMonthLocal = now.getMonth();
+      const monthsDiff = hasTransactions ? (currentYearLocal - startYear) * 12 + (currentMonthLocal - startMonth) + 1 : 1;
+      computedAvgIncome = currentTotalIncome / monthsDiff;
+      computedAvgExpenses = currentTotalExpenses / monthsDiff;
     }
 
-    return () => unsubscribe && unsubscribe();
-  }, [viewMode, selectedMonth, selectedYear, rangeStart, rangeEnd, currency, user, rates]);
+    return {
+      totalIncome: currentTotalIncome,
+      totalExpenses: currentTotalExpenses,
+      averageIncome: computedAvgIncome,
+      averageExpenses: computedAvgExpenses
+    };
+  }, [rawTransactions, viewMode, selectedMonth, selectedYear, rangeStart, rangeEnd, currency, rates]);
 
   return (
     <View style={styles.container}>
