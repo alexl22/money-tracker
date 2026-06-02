@@ -238,7 +238,7 @@ export default function HistoryScreen() {
   const scrollRef = React.useRef<any>(null);
   const transactionsListY = React.useRef(0);
 
-  const { format, currency } = useCurrency();
+  const { format, currency, rates } = useCurrency();
   const user = auth.currentUser;
   const weeks = getWeeksOfMonth(selectedYear, Number(selectedMonth));
   const currentWeek = weeks[selectedWeekIndex] || weeks[0];
@@ -275,8 +275,11 @@ export default function HistoryScreen() {
     });
 
     monthList.forEach((t) => {
-      if (t.type === "income") grossIncome += t.amountUSD || t.amount;
-      else grossExpense += t.amountUSD || t.amount;
+      const valToSum = (t.currency === currency)
+        ? t.amount
+        : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
+      if (t.type === "income") grossIncome += valToSum;
+      else grossExpense += valToSum;
     });
 
     let weekBalance = 0;
@@ -335,7 +338,9 @@ export default function HistoryScreen() {
         time: timeStr
       });
 
-      const valForTotal = (t.amountUSD || t.amount || 0);
+      const valForTotal = (t.currency === currency)
+        ? t.amount
+        : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
       const signedVal = t.type === 'income' ? valForTotal : -valForTotal;
       dayTotals[fullDate] += signedVal;
       weekBalance += signedVal;
@@ -343,7 +348,7 @@ export default function HistoryScreen() {
 
     grouped.forEach(g => {
       const total = dayTotals[g.fullDate];
-      g.dailyTotal = format(total, { compact: true, showSign: true, threshold: 1000000000 });
+      g.dailyTotal = format(total, { compact: true, showSign: true, threshold: 1000000000, isConverted: true });
     });
 
     const weeksStatus: Record<number, boolean> = {};
@@ -496,7 +501,7 @@ export default function HistoryScreen() {
 
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => showAlert('Total Income Details', `Total Income: ${format(monthIncome)}\nTotal Expense: ${format(-monthExpense)}\nNet Profit/Loss: ${format(monthProfit)}`, 'info')}
+              onPress={() => showAlert('Total Income Details', `Total Income: ${format(monthIncome, { isConverted: true })}\nTotal Expense: ${format(-monthExpense, { isConverted: true })}\nNet Profit/Loss: ${format(monthProfit, { isConverted: true })}`, 'info')}
             >
               <View style={styles.summaryCardLarge}>
                 <View style={styles.summaryTop}>
@@ -508,7 +513,7 @@ export default function HistoryScreen() {
                       adjustsFontSizeToFit
                       minimumFontScale={0.5}
                     >
-                      {format(monthIncome, { compact: true, showSign: true })}
+                      {format(monthIncome, { compact: true, showSign: true, isConverted: true })}
                     </Text>
                   </View>
                   <View style={styles.verticalDivider} />
@@ -520,7 +525,7 @@ export default function HistoryScreen() {
                       adjustsFontSizeToFit
                       minimumFontScale={0.5}
                     >
-                      {format(-monthExpense, { compact: true })}
+                      {format(-monthExpense, { compact: true, isConverted: true })}
                     </Text>
                   </View>
                 </View>
@@ -535,7 +540,7 @@ export default function HistoryScreen() {
                     adjustsFontSizeToFit
                     minimumFontScale={0.5}
                   >
-                    {format(monthProfit, { compact: true, showSign: true })}
+                    {format(monthProfit, { compact: true, showSign: true, isConverted: true })}
                   </Text>
                 </View>
               </View>
@@ -666,7 +671,7 @@ export default function HistoryScreen() {
                   adjustsFontSizeToFit
                   minimumFontScale={0.6}
                 >
-                  {format(weekIncome, { compact: true, showSign: true })}
+                  {format(weekIncome, { compact: true, showSign: true, isConverted: true })}
                 </Text>
               </Text>
             </View>

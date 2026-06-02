@@ -32,6 +32,15 @@ export default function RegisterScreen() {
       showAlert("Incomplete Form", "Please fill in all the required fields to create your account.", "alert");
       return;
     }
+    const nameTrimmed = name.trim();
+    if (/\d/.test(nameTrimmed)) {
+      showAlert("Invalid Name", "Full name cannot contain numbers.", "alert");
+      return;
+    }
+    if (!email.includes('@')) {
+      showAlert("Invalid Email", "Email address must contain the '@' symbol.", "alert");
+      return;
+    }
     if (!agreed) {
       showAlert("Terms & Privacy", "Please read and agree to our Terms of Use and Privacy Policy to continue.", "alert");
       return;
@@ -69,6 +78,8 @@ export default function RegisterScreen() {
         showAlert("Internet Required", "You need an active internet connection to create a new account. Please check your WiFi or Data and try again.", "alert");
       } else if (error.code === 'auth/email-already-in-use') {
         showAlert("Email In Use", "This email address is already associated with an account. Please try logging in instead.", "alert");
+      } else if (error.code === 'auth/invalid-email') {
+        showAlert("Invalid Email", "The email address you entered is invalid.", "alert");
       } else {
         showAlert("Registration Failed", "We couldn't create your account at this time. Please try again later.", "alert");
       }
