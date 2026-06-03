@@ -26,6 +26,8 @@
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "SCHEDULE_EXACT_ALARM",
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM",
         "POST_NOTIFICATIONS"
       ],
       "adaptiveIcon": {
@@ -81,6 +83,12 @@
       "eas": {
         "projectId": "5b8fb733-d859-4124-bd7f-4f1fe0d08ef1"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/5b8fb733-d859-4124-bd7f-4f1fe0d08ef1"
     }
   }
 }

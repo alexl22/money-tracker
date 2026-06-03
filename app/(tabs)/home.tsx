@@ -1,4 +1,3 @@
-import { collection, onSnapshot, query, where } from '@react-native-firebase/firestore';
 import { Calendar, ChevronDown, Receipt, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
@@ -18,7 +17,7 @@ import { Colors } from '../../constants/DesignSystem';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
-import { auth, db } from '../../firebaseConfig';
+import { useTransactions } from '../../context/TransactionsContext';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
 
 const AnimatedAmount = ({ value, format, style, options = {} }: { value: number, format: any, style?: any, options?: any }) => {
@@ -85,9 +84,8 @@ export default function DashboardScreen() {
     transform: [{ translateX: translateX.value }],
   }));
 
-  const [rawTransactions, setRawTransactions] = useState<any[]>([]);
+  const { transactions: rawTransactions } = useTransactions();
   const { showAlert } = useAlert();
-  const user = auth.currentUser;
 
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth().toString());
@@ -99,20 +97,6 @@ export default function DashboardScreen() {
   const [rangeStart, setRangeStart] = useState(sevenDaysAgo);
   const [rangeEnd, setRangeEnd] = useState(currentDate);
   const [isRangePickerVisible, setIsRangePickerVisible] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setRawTransactions(list);
-    }, (error) => {
-      console.error("Firestore Error:", error);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
 
   const { totalIncome, totalExpenses, averageIncome, averageExpenses } = React.useMemo(() => {
     let currentTotalIncome = 0;

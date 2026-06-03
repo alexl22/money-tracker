@@ -21,6 +21,7 @@ import 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
 import { AlertProvider } from '../context/AlertContext';
 import { CurrencyProvider } from '../context/CurrencyContext';
+import { TransactionsProvider } from '../context/TransactionsContext';
 import { onAuthChanged } from '../firebaseConfig';
 import { setupNotifications } from '../utils/notifications';
 
@@ -90,21 +91,23 @@ export default function RootLayout() {
       <ThemeProvider value={DarkTheme}>
         <CurrencyProvider>
           <AlertProvider>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                animation: 'fade',
-                contentStyle: { backgroundColor: Colors.background },
-              }}
-            >
-              <Stack.Screen name="login" />
-              <Stack.Screen name="register" />
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="privacy" options={{ title: 'Privacy Policy', presentation: 'modal', animation: 'slide_from_bottom' }} />
-              <Stack.Screen name="terms" options={{ title: 'Terms of Use', presentation: 'modal', animation: 'slide_from_bottom' }} />
-            </Stack>
-            <CustomAlert />
-            <StatusBar style="light" />
+            <TransactionsProvider>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  animation: 'fade',
+                  contentStyle: { backgroundColor: Colors.background },
+                }}
+              >
+                <Stack.Screen name="login" />
+                <Stack.Screen name="register" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="privacy" options={{ title: 'Privacy Policy', presentation: 'modal', animation: 'slide_from_bottom' }} />
+                <Stack.Screen name="terms" options={{ title: 'Terms of Use', presentation: 'modal', animation: 'slide_from_bottom' }} />
+              </Stack>
+              <CustomAlert />
+              <StatusBar style="light" />
+            </TransactionsProvider>
           </AlertProvider>
         </CurrencyProvider>
       </ThemeProvider>

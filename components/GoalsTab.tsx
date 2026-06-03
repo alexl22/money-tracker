@@ -6,6 +6,7 @@ import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated'
 import Svg, { Circle, G } from 'react-native-svg';
 import { useAlert } from '../context/AlertContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useTransactions } from '../context/TransactionsContext';
 import { auth, db } from '../firebaseConfig';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 import { DatePicker } from './DatePicker';
@@ -43,7 +44,7 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
 
   const [goals, setGoals] = useState<Goal[]>(globalGoalsCache);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [allTransactions, setAllTransactions] = useState<any[]>(globalTransactionsCache);
+  const { transactions: allTransactions } = useTransactions();
   const [editingTitle, setEditingTitle] = useState("");
 
   const [isPickerVisible, setIsPickerVisible] = useState(false);
@@ -100,22 +101,7 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
     return () => unsubscribe();
   }, [user]);
 
-  useEffect(() => {
-    if (!user) return;
 
-    const q = query(
-      collection(db, "transactions"),
-      where("userId", "==", user.uid)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot) return;
-      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setAllTransactions(list);
-      globalTransactionsCache = list;
-    }, (error) => console.error("Transactions Snapshot Error:", error));
-    return () => unsubscribe();
-  }, [user]);
 
   useEffect(() => {
     if (currentGoal && !currentGoal.isAddCard) {
@@ -225,7 +211,7 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
 
     allTransactions.forEach(t => {
       const amount = (t.currency === currency) ? t.amount : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
-      const date = t.date?.toDate() || new Date(t.createdAt?.seconds * 1000 || Date.now());
+      const date = t.date || t.createdAt || new Date();
       if (date >= item.startDate) {
         if (t.type === 'income') totalProfit += amount;
         else if (t.type === 'expense') totalProfit -= amount;

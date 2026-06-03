@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, onSnapshot, query, where } from '@react-native-firebase/firestore';
+import { deleteDoc, doc } from '@react-native-firebase/firestore';
 import { useFocusEffect } from '@react-navigation/native';
 import { Calendar, CalendarDays, ChevronDown, ShoppingBag, SlidersHorizontal, Wallet, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -10,6 +10,7 @@ import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
+import { useTransactions } from '../../context/TransactionsContext';
 import { auth, db } from '../../firebaseConfig';
 import styles from '../../styles/history.styles';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
@@ -232,7 +233,7 @@ export default function HistoryScreen() {
   const [customRange, setCustomRange] = useState<{ start: Date, end: Date } | null>(null);
   const [isCustomRangeActive, setIsCustomRangeActive] = useState(false);
   const [shouldScrollToTransactions, setShouldScrollToTransactions] = useState(false);
-  const [allRawTransactions, setAllRawTransactions] = useState<RawTransaction[]>([]);
+  const { transactions: allRawTransactions } = useTransactions();
   const [truncatedItems, setTruncatedItems] = useState<Record<string, { title: boolean; sub: boolean }>>({});
 
   const scrollRef = React.useRef<any>(null);
@@ -375,40 +376,7 @@ export default function HistoryScreen() {
     weeksWithData
   } = historyData;
 
-  useEffect(() => {
-    if (!user) return;
 
-    const q = query(collection(db, "transactions"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot: any) => {
-      const rawList: RawTransaction[] = snapshot.docs.map((doc: any) => {
-        const data = doc.data({ serverTimestamps: 'estimate' });
-        const rawDate = data.date || data.createdAt;
-        let finalDate: Date;
-
-        if (rawDate && typeof rawDate.toDate === 'function') {
-          finalDate = rawDate.toDate();
-        } else if (rawDate instanceof Date) {
-          finalDate = rawDate;
-        } else if (rawDate) {
-          finalDate = new Date(rawDate);
-        } else {
-          finalDate = new Date();
-        }
-
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: finalDate,
-        } as RawTransaction;
-      }).sort((a: RawTransaction, b: RawTransaction) => b.createdAt.getTime() - a.createdAt.getTime());
-
-      setAllRawTransactions(rawList);
-    }, (error: any) => {
-      console.error("Firestore Error:", error);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
 
   useEffect(() => {
     if (shouldScrollToTransactions && transactions.length > 0) {
