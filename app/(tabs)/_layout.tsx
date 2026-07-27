@@ -14,6 +14,7 @@ import { Dimensions, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, Vi
 import Animated, { FadeInDown, FadeInUp, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WelcomeGuide } from '../../components/WelcomeGuide';
+import WhatsNewModal from '../../components/WhatsNewModal';
 import { useAlert } from '../../context/AlertContext';
 import { TabBarProvider, useTabBar } from '../../context/TabBarContext';
 import { useTransactions } from '../../context/TransactionsContext';
@@ -31,6 +32,7 @@ export default function TabLayout() {
   const { showAlert } = useAlert();
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [isWelcomeVisible, setIsWelcomeVisible] = useState(false);
+  const [isWhatsNewVisible, setIsWhatsNewVisible] = useState(false);
   const { searchQuery, setSearchQuery, isSearching, setIsSearching } = useTransactions();
 
 
@@ -52,17 +54,40 @@ export default function TabLayout() {
       hideSub.remove();
     };
   }, []);
+  const checkWhatsNew = async (uid: string, firestoreData?: any) => {
+    try {
+      // 1. Verificare rapidă locală în AsyncStorage
+      const localSeen = await AsyncStorage.getItem('hasSeenWhatsNew_v1');
+      if (localSeen === 'true') {
+        return;
+      }
+
+      // 2. Verificare în documentul utilizatorului din Firestore
+      if (firestoreData && firestoreData.hasSeenWhatsNew_v1 === true) {
+        await AsyncStorage.setItem('hasSeenWhatsNew_v1', 'true');
+        return;
+      }
+
+      // 3. Dacă nu a văzut, afișăm modalul
+      setIsWhatsNewVisible(true);
+    } catch (e) {
+      console.error('Error checking WhatsNew:', e);
+    }
+  };
+
   useEffect(() => {
     const fetchUserName = async (u: any) => {
       if (u) {
         try {
           const userDoc = await getDoc(doc(db, 'users', u.uid));
+          let data = null;
           if (userDoc.exists()) {
-            const data = userDoc.data();
+            data = userDoc.data();
             if (data?.displayName) {
               setUserName(data.displayName);
             }
           }
+          await checkWhatsNew(u.uid, data);
         } catch (error) {
           console.error("Error fetching name:", error);
         }
@@ -312,6 +337,10 @@ export default function TabLayout() {
         <WelcomeGuide
           visible={isWelcomeVisible}
           onClose={() => setIsWelcomeVisible(false)}
+        />
+        <WhatsNewModal
+          isVisible={isWhatsNewVisible}
+          onClose={() => setIsWhatsNewVisible(false)}
         />
       </View>
     </TabBarProvider>
