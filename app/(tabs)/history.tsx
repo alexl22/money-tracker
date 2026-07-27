@@ -216,7 +216,16 @@ export default function HistoryScreen() {
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth().toString());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
-  const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
+
+  const getWeekIndexForDate = (date: Date) => {
+    const day = date.getDate();
+    if (day <= 7) return 0;
+    if (day <= 14) return 1;
+    if (day <= 21) return 2;
+    return 3;
+  };
+
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState(() => getWeekIndexForDate(currentDate));
 
   const [filterMode, setFilterMode] = useState<'all' | 'income' | 'expense'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -246,7 +255,12 @@ export default function HistoryScreen() {
   const headerHeight = useRef(0);
 
   useEffect(() => {
-    setSelectedWeekIndex(0);
+    const now = new Date();
+    if (Number(selectedMonth) === now.getMonth() && selectedYear === now.getFullYear()) {
+      setSelectedWeekIndex(getWeekIndexForDate(now));
+    } else {
+      setSelectedWeekIndex(0);
+    }
   }, [selectedMonth, selectedYear]);
 
   const historyData = React.useMemo(() => {

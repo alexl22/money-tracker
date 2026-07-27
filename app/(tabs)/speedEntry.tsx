@@ -71,8 +71,8 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                 type: transactionType,
                 title: title,
                 notes: notes,
-                date: new Date(), 
-                createdAt: serverTimestamp() 
+                date: new Date(),
+                createdAt: serverTimestamp()
             };
 
             addDoc(collection(db, 'transactions'), transactionData)
@@ -179,7 +179,7 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                             numberOfLines={3}
                             value={notes}
                             onChangeText={setNotes}
-                            maxLength={60}
+                            maxLength={100}
                         />
                     </View>
 
