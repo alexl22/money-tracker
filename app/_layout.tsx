@@ -19,12 +19,11 @@ import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
-import { AlertProvider, useAlert } from '../context/AlertContext';
+import { AlertProvider } from '../context/AlertContext';
 import { CurrencyProvider } from '../context/CurrencyContext';
 import { TransactionsProvider } from '../context/TransactionsContext';
 import { onAuthChanged } from '../firebaseConfig';
 import { setupNotifications } from '../utils/notifications';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import * as NavigationBar from 'expo-navigation-bar';
 import { Platform, Text, TextInput } from 'react-native';
@@ -47,39 +46,6 @@ if ((TextInput as any).defaultProps) {
 
 
 SplashScreen.preventAutoHideAsync();
-
-const CURRENT_VERSION = '1.1.0';
-
-function VersionChecker() {
-  const { showAlert } = useAlert();
-
-  useEffect(() => {
-    const checkVersion = async () => {
-      try {
-        const lastSeen = await AsyncStorage.getItem('last_seen_version');
-        
-        if (lastSeen === null) {
-          // Fresh install: save version silently without showing alert
-          await AsyncStorage.setItem('last_seen_version', CURRENT_VERSION);
-        } else if (lastSeen !== CURRENT_VERSION) {
-          // Returning user: show what's new!
-          showAlert(
-            "What's New! 🚀",
-            "• Instant transaction saving (no loading delays).\n• Premium animations for editing and deleting transactions.\n• Seamless search bar transitions.",
-            "info"
-          );
-          await AsyncStorage.setItem('last_seen_version', CURRENT_VERSION);
-        }
-      } catch (e) {
-        console.warn("Error checking version:", e);
-      }
-    };
-
-    checkVersion();
-  }, [showAlert]);
-
-  return null;
-}
 
 export default function RootLayout() {
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -106,7 +72,7 @@ export default function RootLayout() {
       setupNotifications();
       SplashScreen.hideAsync();
 
-    
+
       if (Platform.OS === 'android') {
         NavigationBar.setPositionAsync('absolute');
         NavigationBar.setBehaviorAsync('overlay-swipe');
@@ -126,7 +92,6 @@ export default function RootLayout() {
         <CurrencyProvider>
           <AlertProvider>
             <TransactionsProvider>
-              <VersionChecker />
               <Stack
                 screenOptions={{
                   headerShown: false,

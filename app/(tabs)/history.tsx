@@ -2,7 +2,7 @@ import { deleteDoc, doc } from '@react-native-firebase/firestore';
 import { useFocusEffect } from '@react-navigation/native';
 import { Calendar, CalendarDays, ChevronDown, Search, ShoppingBag, SlidersHorizontal, Wallet, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, SectionList, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Pressable, Platform, SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import Animated, { FadeInDown, FadeOutUp, LinearTransition, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { DatePicker } from '../../components/DatePicker';
@@ -17,7 +17,6 @@ import { horizontalScale, moderateScale } from '../../utils/scaling';
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import TransactionOptionsMenu from '../../components/TransactionOptionsMenu';
-import EditTransactionModal from '../../components/EditTransactionModal';
 
 const AnimatedSectionList = Animated.createAnimatedComponent(SectionList);
 const renderGhostActions = () => <View style={{ width: 80 }} />;
@@ -216,6 +215,7 @@ export default function HistoryScreen() {
 
   const [optionsMenuTransaction, setOptionsMenuTransaction] = useState<any | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
+
 
   const isSearchingShared = useSharedValue(search === 'true' || isSearching);
   const shouldAnimate = useSharedValue(true);
@@ -525,7 +525,7 @@ export default function HistoryScreen() {
               </View>
             </View>
 
-            <Animated.View style={animatedCardStyle}>
+            <Animated.View style={animatedCardStyle} pointerEvents={isSearching ? 'none' : 'auto'}>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => showAlert('Total Income Details', `Total Income: ${format(monthIncome, { isConverted: true })}\nTotal Expense: ${format(-monthExpense, { isConverted: true })}\nNet Profit/Loss: ${format(monthProfit, { isConverted: true })}`, 'info')}
@@ -793,12 +793,6 @@ export default function HistoryScreen() {
         isVisible={optionsMenuTransaction !== null}
         onClose={() => setOptionsMenuTransaction(null)}
         transaction={optionsMenuTransaction}
-        onEdit={() => {
-          setEditingTransaction(optionsMenuTransaction);
-          setTimeout(() => {
-            setOptionsMenuTransaction(null);
-          }, 150);
-        }}
         onDelete={() => {
           const item = optionsMenuTransaction;
           setOptionsMenuTransaction(null);
@@ -811,12 +805,6 @@ export default function HistoryScreen() {
             false
           );
         }}
-      />
-
-      <EditTransactionModal
-        isVisible={editingTransaction !== null}
-        onClose={() => setEditingTransaction(null)}
-        transaction={editingTransaction}
       />
     </View>
   );
