@@ -19,6 +19,10 @@ export interface Transaction {
 interface TransactionsContextType {
   transactions: Transaction[];
   loading: boolean;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  isSearching: boolean;
+  setIsSearching: (searching: boolean) => void;
 }
 
 const TransactionsContext = createContext<TransactionsContextType | undefined>(undefined);
@@ -57,6 +61,8 @@ const parseCompatibleDate = (rawDate: any): Date => {
 export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     // Listen to Auth State Changes
@@ -111,7 +117,14 @@ export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, []);
 
   return (
-    <TransactionsContext.Provider value={{ transactions, loading }}>
+    <TransactionsContext.Provider value={{
+      transactions,
+      loading,
+      searchQuery,
+      setSearchQuery,
+      isSearching,
+      setIsSearching
+    }}>
       {children}
     </TransactionsContext.Provider>
   );

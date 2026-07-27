@@ -3,19 +3,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged } from '@react-native-firebase/auth';
 import { doc, getDoc } from '@react-native-firebase/firestore';
 import { BlurView } from 'expo-blur';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, useRouter, usePathname } from 'expo-router';
 import {
   Goal,
   History, LayoutGrid, LogOut,
-  Plus, Settings, User
+  Plus, Search, Settings, User, X
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
-import { Dimensions, Keyboard, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import React, { useEffect, useState, useRef } from 'react';
+import { Dimensions, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeInDown, FadeInUp, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WelcomeGuide } from '../../components/WelcomeGuide';
 import { useAlert } from '../../context/AlertContext';
 import { TabBarProvider, useTabBar } from '../../context/TabBarContext';
+import { useTransactions } from '../../context/TransactionsContext';
 import { auth, db, signOutUser } from '../../firebaseConfig';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
 import { TransactionModal } from './speedEntry';
@@ -24,11 +25,14 @@ const { width } = Dimensions.get('window');
 
 export default function TabLayout() {
   const router = useRouter();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const [userName, setUserName] = useState(auth.currentUser?.email?.split('@')[0] || 'User');
   const { showAlert } = useAlert();
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [isWelcomeVisible, setIsWelcomeVisible] = useState(false);
+  const { searchQuery, setSearchQuery, isSearching, setIsSearching } = useTransactions();
+
 
   useEffect(() => {
     const checkFirstTime = async () => {
@@ -195,24 +199,68 @@ export default function TabLayout() {
             headerShown: true,
             header: () => (
               <View style={[styles.customHeader, { paddingTop: Math.max(insets.top, horizontalScale(15)) }]}>
-                <TouchableOpacity
-                  style={styles.userInfo}
-                  onPress={() => router.push('/settings')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.userAvatar}>
-                    <User color={Colors.white} size={moderateScale(20)} />
-                  </View>
-                  <Text style={styles.userName} numberOfLines={1}>
-                    {userName.charAt(0).toUpperCase() + userName.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.logoutButton}
-                  onPress={() => showAlert("Logout", "Are you sure you want to logout?", "alert", handleLogout, true)}
-                >
-                  <LogOut color="rgba(255,255,255,0.6)" size={moderateScale(20)} />
-                </TouchableOpacity>
+                {isSearching ? (
+                  <Animated.View 
+                    entering={FadeInDown.springify().stiffness(450).damping(38).mass(0.8)}
+                    style={styles.searchHeaderContainer}
+                  >
+                    <Search color="rgba(255,255,255,0.4)" size={moderateScale(18)} strokeWidth={2.5} />
+                    <TextInput
+                      style={styles.searchHeaderInput}
+                      placeholder="Search transactions..."
+                      placeholderTextColor="rgba(255,255,255,0.4)"
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      autoFocus={true}
+                      autoCorrect={false}
+                      returnKeyType="search"
+                    />
+                    <TouchableOpacity
+                      style={styles.searchHeaderClose}
+                      onPress={() => {
+                        setIsSearching(false);
+                        setSearchQuery('');
+                      }}
+                    >
+                      <X color="rgba(255,255,255,0.6)" size={moderateScale(20)} strokeWidth={2.5} />
+                    </TouchableOpacity>
+                  </Animated.View>
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={styles.userInfo}
+                      onPress={() => router.push('/settings')}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.userAvatar}>
+                        <User color={Colors.white} size={moderateScale(20)} />
+                      </View>
+                      <Text style={styles.userName} numberOfLines={1}>
+                        {userName.charAt(0).toUpperCase() + userName.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                    <View style={styles.headerRightButtons}>
+                      <TouchableOpacity
+                        style={styles.searchButton}
+                        onPress={() => {
+                          if (pathname !== '/history') {
+                            router.push({ pathname: '/history', params: { search: 'true' } });
+                          } else {
+                            setIsSearching(true);
+                          }
+                        }}
+                      >
+                        <Search color="rgba(255,255,255,0.6)" size={moderateScale(20)} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.logoutButton}
+                        onPress={() => showAlert("Logout", "Are you sure you want to logout?", "alert", handleLogout, true)}
+                      >
+                        <LogOut color="rgba(255,255,255,0.6)" size={moderateScale(20)} />
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
               </View>
             ),
           }}>
@@ -357,5 +405,41 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  headerRightButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: horizontalScale(12),
+  },
+  searchButton: {
+    width: horizontalScale(40),
+    height: horizontalScale(40),
+    borderRadius: moderateScale(20),
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchHeaderContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    height: horizontalScale(46),
+    borderRadius: moderateScale(23),
+    paddingHorizontal: horizontalScale(16),
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  searchHeaderInput: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: moderateScale(15),
+    height: '100%',
+    marginLeft: horizontalScale(8),
+    paddingVertical: 0,
+  },
+  searchHeaderClose: {
+    padding: horizontalScale(4),
   },
 });

@@ -1,10 +1,10 @@
 import { deleteDoc, doc } from '@react-native-firebase/firestore';
 import { useFocusEffect } from '@react-navigation/native';
-import { Calendar, CalendarDays, ChevronDown, ShoppingBag, SlidersHorizontal, Wallet, X } from 'lucide-react-native';
+import { Calendar, CalendarDays, ChevronDown, Search, ShoppingBag, SlidersHorizontal, Wallet, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, SectionList, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, SectionList, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import Animated, { FadeInDown, LinearTransition, useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeOutUp, LinearTransition, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { DatePicker } from '../../components/DatePicker';
 import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
 import { useAlert } from '../../context/AlertContext';
@@ -14,6 +14,10 @@ import { useTransactions } from '../../context/TransactionsContext';
 import { auth, db } from '../../firebaseConfig';
 import styles from '../../styles/history.styles';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
+
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import TransactionOptionsMenu from '../../components/TransactionOptionsMenu';
+import EditTransactionModal from '../../components/EditTransactionModal';
 
 const AnimatedSectionList = Animated.createAnimatedComponent(SectionList);
 const renderGhostActions = () => <View style={{ width: 80 }} />;
@@ -54,7 +58,8 @@ interface RawTransaction {
 
 const TransactionRow = React.memo(({
   item, index, isExpanded, showAllHistory, currency, format,
-  showAlert, handleDeleteTransaction, setExpandedId, truncatedItems, setTruncatedItems
+  showAlert, handleDeleteTransaction, setExpandedId, truncatedItems, setTruncatedItems,
+  onLongPress
 }: any) => {
   const rowRef = React.useRef<any>(null);
 
@@ -93,14 +98,7 @@ const TransactionRow = React.memo(({
               setExpandedId(isExpanded ? null : item.id);
             }
           }}
-          onLongPress={() => showAlert(
-            'Delete Transaction',
-            'Are you sure you want to delete this transaction?',
-            'alert',
-            () => { handleDeleteTransaction(item.id, item.title) },
-            true,
-            false
-          )}
+          onLongPress={onLongPress}
           delayLongPress={300}
           style={[
             styles.transactionCard,
@@ -212,10 +210,51 @@ function getWeeksOfMonth(year: number, month: number) {
 }
 
 export default function HistoryScreen() {
+  const { transactions: allRawTransactions, searchQuery, setSearchQuery, isSearching, setIsSearching } = useTransactions();
+  const { search } = useLocalSearchParams<{ search?: string }>();
+  const router = useRouter();
+
+  const [optionsMenuTransaction, setOptionsMenuTransaction] = useState<any | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
+
+  const isSearchingShared = useSharedValue(search === 'true' || isSearching);
+  const shouldAnimate = useSharedValue(true);
+
+  useEffect(() => {
+    if (search === 'true') {
+      shouldAnimate.value = false;
+      setIsSearching(true);
+      isSearchingShared.value = true;
+      router.setParams({ search: undefined });
+    }
+  }, [search]);
+
   const [isPickerVisible, setIsPickerVisible] = useState(false);
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth().toString());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const cardHeight = horizontalScale(150);
+  const cardMarginBottom = horizontalScale(20);
+
+  useEffect(() => {
+    if (isSearching) {
+      isSearchingShared.value = true;
+    } else {
+      isSearchingShared.value = false;
+      shouldAnimate.value = true;
+    }
+  }, [isSearching]);
+
+  const animatedCardStyle = useAnimatedStyle(() => {
+    const active = !isSearchingShared.value;
+    const targetMarginTop = active ? 0 : -(cardHeight + cardMarginBottom);
+    const duration = shouldAnimate.value ? 250 : 0;
+    const opacityDuration = shouldAnimate.value ? 100 : 0;
+    return {
+      marginTop: withTiming(targetMarginTop, { duration }),
+      opacity: withTiming(active ? 1 : 0, { duration: opacityDuration }),
+    };
+  });
 
   const getWeekIndexForDate = (date: Date) => {
     const day = date.getDate();
@@ -233,6 +272,8 @@ export default function HistoryScreen() {
     useCallback(() => {
       return () => {
         setExpandedId(null);
+        setIsSearching(false);
+        setSearchQuery('');
       };
     }, [])
   );
@@ -242,7 +283,6 @@ export default function HistoryScreen() {
   const [customRange, setCustomRange] = useState<{ start: Date, end: Date } | null>(null);
   const [isCustomRangeActive, setIsCustomRangeActive] = useState(false);
   const [shouldScrollToTransactions, setShouldScrollToTransactions] = useState(false);
-  const { transactions: allRawTransactions } = useTransactions();
   const [truncatedItems, setTruncatedItems] = useState<Record<string, { title: boolean; sub: boolean }>>({});
 
   const scrollRef = React.useRef<any>(null);
@@ -303,11 +343,15 @@ export default function HistoryScreen() {
 
     const weekFilteredList = monthList.filter(t => {
       const filterMatch = filterMode === 'all' || t.type === filterMode;
-      if (showAllHistory) return filterMatch;
+      const searchMatch = !searchQuery ||
+        t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (t.notes && t.notes.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      if (showAllHistory) return filterMatch && searchMatch;
 
       const txDate = t.createdAt.getTime();
       const dateMatch = txDate >= currentWeek.start.getTime() && txDate <= currentWeek.end.getTime();
-      return dateMatch && filterMatch;
+      return dateMatch && filterMatch && searchMatch;
     });
 
     weekFilteredList.forEach((t) => {
@@ -379,7 +423,7 @@ export default function HistoryScreen() {
       weekIncome: weekBalance,
       weeksWithData: weeksStatus
     };
-  }, [allRawTransactions, selectedMonth, selectedYear, selectedWeekIndex, filterMode, currency, user, showAllHistory, isCustomRangeActive, customRange, format]);
+  }, [allRawTransactions, selectedMonth, selectedYear, selectedWeekIndex, filterMode, currency, user, showAllHistory, isCustomRangeActive, customRange, format, searchQuery]);
 
   const {
     transactions,
@@ -481,52 +525,54 @@ export default function HistoryScreen() {
               </View>
             </View>
 
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => showAlert('Total Income Details', `Total Income: ${format(monthIncome, { isConverted: true })}\nTotal Expense: ${format(-monthExpense, { isConverted: true })}\nNet Profit/Loss: ${format(monthProfit, { isConverted: true })}`, 'info')}
-            >
-              <View style={styles.summaryCardLarge}>
-                <View style={styles.summaryTop}>
-                  <View style={styles.summaryMetric}>
-                    <Text style={[styles.summaryLabel, { color: 'rgba(49, 230, 169, 0.4)' }]}>TOTAL INCOME</Text>
+            <Animated.View style={animatedCardStyle}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => showAlert('Total Income Details', `Total Income: ${format(monthIncome, { isConverted: true })}\nTotal Expense: ${format(-monthExpense, { isConverted: true })}\nNet Profit/Loss: ${format(monthProfit, { isConverted: true })}`, 'info')}
+              >
+                <View style={[styles.summaryCardLarge, { height: cardHeight }]}>
+                  <View style={styles.summaryTop}>
+                    <View style={styles.summaryMetric}>
+                      <Text style={[styles.summaryLabel, { color: 'rgba(49, 230, 169, 0.4)' }]}>TOTAL INCOME</Text>
+                      <Text
+                        style={[styles.summaryValue, { color: '#10b981' }]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.5}
+                      >
+                        {format(monthIncome, { compact: true, showSign: true, isConverted: true })}
+                      </Text>
+                    </View>
+                    <View style={styles.verticalDivider} />
+                    <View style={styles.summaryMetric}>
+                      <Text style={[styles.summaryLabel, { color: 'rgba(235, 86, 86, 0.68)' }]}>TOTAL EXPENSE</Text>
+                      <Text
+                        style={[styles.summaryValue, { color: '#eb5656' }]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.5}
+                      >
+                        {format(-monthExpense, { compact: true, isConverted: true })}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.horizontalDivider} />
+
+                  <View style={styles.summaryBottom}>
+                    <Text style={styles.profitLabel}>NET PROFIT / LOSS</Text>
                     <Text
-                      style={[styles.summaryValue, { color: '#10b981' }]}
+                      style={[styles.profitValue, { color: monthProfit >= 0 ? '#10b981' : '#eb5656' }]}
                       numberOfLines={1}
                       adjustsFontSizeToFit
                       minimumFontScale={0.5}
                     >
-                      {format(monthIncome, { compact: true, showSign: true, isConverted: true })}
-                    </Text>
-                  </View>
-                  <View style={styles.verticalDivider} />
-                  <View style={styles.summaryMetric}>
-                    <Text style={[styles.summaryLabel, { color: 'rgba(235, 86, 86, 0.68)' }]}>TOTAL EXPENSE</Text>
-                    <Text
-                      style={[styles.summaryValue, { color: '#eb5656' }]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.5}
-                    >
-                      {format(-monthExpense, { compact: true, isConverted: true })}
+                      {format(monthProfit, { compact: true, showSign: true, isConverted: true })}
                     </Text>
                   </View>
                 </View>
-
-                <View style={styles.horizontalDivider} />
-
-                <View style={styles.summaryBottom}>
-                  <Text style={styles.profitLabel}>NET PROFIT / LOSS</Text>
-                  <Text
-                    style={[styles.profitValue, { color: monthProfit >= 0 ? '#10b981' : '#eb5656' }]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.5}
-                  >
-                    {format(monthProfit, { compact: true, showSign: true, isConverted: true })}
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </Animated.View>
 
             {!showAllHistory && (
               <View
@@ -697,6 +743,7 @@ export default function HistoryScreen() {
             setExpandedId={setExpandedId}
             truncatedItems={truncatedItems}
             setTruncatedItems={setTruncatedItems}
+            onLongPress={() => setOptionsMenuTransaction(item)}
           />
         )}
         ListEmptyComponent={
@@ -740,6 +787,36 @@ export default function HistoryScreen() {
         }}
         initialStartDate={customRange?.start}
         initialDeadline={customRange?.end}
+      />
+
+      <TransactionOptionsMenu
+        isVisible={optionsMenuTransaction !== null}
+        onClose={() => setOptionsMenuTransaction(null)}
+        transaction={optionsMenuTransaction}
+        onEdit={() => {
+          setEditingTransaction(optionsMenuTransaction);
+          setTimeout(() => {
+            setOptionsMenuTransaction(null);
+          }, 150);
+        }}
+        onDelete={() => {
+          const item = optionsMenuTransaction;
+          setOptionsMenuTransaction(null);
+          showAlert(
+            'Delete Transaction',
+            'Are you sure you want to delete this transaction?',
+            'alert',
+            () => { handleDeleteTransaction(item.id, item.title) },
+            true,
+            false
+          );
+        }}
+      />
+
+      <EditTransactionModal
+        isVisible={editingTransaction !== null}
+        onClose={() => setEditingTransaction(null)}
+        transaction={editingTransaction}
       />
     </View>
   );

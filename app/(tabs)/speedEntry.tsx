@@ -1,10 +1,11 @@
-import { addDoc, collection, getAggregateFromServer, getCountFromServer, query, serverTimestamp, sum, where } from '@react-native-firebase/firestore';
+import { addDoc, collection, serverTimestamp } from '@react-native-firebase/firestore';
 import { AlignLeft, TrendingUp, Type, Wallet } from "lucide-react-native";
 import React, { useState } from "react";
 import { Alert, Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { FinanceModalBase, styles as baseStyles } from "../../components/FinanceModalBase";
 import { useAlert } from "../../context/AlertContext";
 import { useCurrency } from "../../context/CurrencyContext";
+import { useTransactions } from "../../context/TransactionsContext";
 import { auth, db } from "../../firebaseConfig";
 
 interface TransactionModalProps {
@@ -19,6 +20,7 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
     const [isSaving, setIsSaving] = useState(false);
     const { showAlert } = useAlert();
     const { currency, convertToBase, format } = useCurrency();
+    const { transactions } = useTransactions();
     const handleSave = async (amount: string, resetModal: () => void) => {
         const user = auth.currentUser;
         if (!user) {
@@ -37,30 +39,28 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
             else showAlert("Invalid Amount", "Please enter a valid amount for this transaction.", "alert", undefined, false, true);
             return;
         }
+        if (!title || !title.trim()) {
+            if (Platform.OS === 'ios') Alert.alert("Title Required", "Please enter a title for this transaction.");
+            else showAlert("Title Required", "Please enter a title for this transaction.", "alert", undefined, false, true);
+            return;
+        }
         setIsSaving(true);
         try {
-            try {
-                const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
-                const countSnapshot = await getCountFromServer(q);
-                if (countSnapshot.data().count >= 50000) {
-                    showAlert("Limit Reached", "You have reached the maximum limit of 50,000 transactions. Please contact support or delete old data.", "alert");
-                    setIsSaving(false); return;
-                }
+            // Check transaction count and total amount limits locally from cached state to make saves instant
+            if (transactions.length >= 50000) {
+                showAlert("Limit Reached", "You have reached the maximum limit of 50,000 transactions. Please contact support or delete old data.", "alert");
+                setIsSaving(false);
+                return;
+            }
 
-                const aggregateSnapshot = await getAggregateFromServer(q, {
-                    totalLocal: sum('amount')
-                });
-                const currentTotalLocal = aggregateSnapshot.data().totalLocal || 0;
-                const newAmount = parseFloat(amount);
+            const currentTotalLocal = transactions.reduce((acc, t) => acc + (t.amount || 0), 0);
+            const newAmount = parseFloat(amount);
 
-                if (currentTotalLocal + newAmount > 10000000000) {
-                    if (Platform.OS === 'ios') Alert.alert("Total Limit Exceeded", "Your lifetime balance cannot exceed 10 Billion.");
-                    else showAlert("Total Limit Exceeded", "Your lifetime balance cannot exceed 10 Billion.", "alert", undefined, false, true);
-                    setIsSaving(false);
-                    return;
-                }
-            } catch (limitError) {
-                console.warn("Limit checks skipped (likely offline):", limitError);
+            if (currentTotalLocal + newAmount > 10000000000) {
+                if (Platform.OS === 'ios') Alert.alert("Total Limit Exceeded", "Your lifetime balance cannot exceed 10 Billion.");
+                else showAlert("Total Limit Exceeded", "Your lifetime balance cannot exceed 10 Billion.", "alert", undefined, false, true);
+                setIsSaving(false);
+                return;
             }
 
             const transactionData = {
