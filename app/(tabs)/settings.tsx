@@ -5,12 +5,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as NavigationBar from 'expo-navigation-bar';
 import { router } from 'expo-router';
-import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeOff, HelpCircle, Lock, Mail, RefreshCcw, Search, Shield, Trash2, X } from 'lucide-react-native';
+import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeOff, HelpCircle, Lock, Mail, RefreshCcw, Search, Shield, Sparkles, Trash2, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, Modal, Platform, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { TimePickerModal } from '../../components/TimePickerModal';
 import { WelcomeGuide } from '../../components/WelcomeGuide';
+import WhatsNewModal from '../../components/WhatsNewModal';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
@@ -35,6 +36,7 @@ export default function SettingsScreen() {
   const [userEmail, setUserEmail] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [isGuideVisible, setIsGuideVisible] = useState(false);
+  const [isWhatsNewVisible, setIsWhatsNewVisible] = useState(false);
 
   const [tempHours, setTempHours] = useState(23);
   const [tempMinutes, setTempMinutes] = useState(0);
@@ -575,6 +577,11 @@ export default function SettingsScreen() {
           onClose={() => setIsGuideVisible(false)}
         />
 
+        <WhatsNewModal
+          isVisible={isWhatsNewVisible}
+          onClose={() => setIsWhatsNewVisible(false)}
+        />
+
         <TouchableOpacity
           style={styles.softCard}
           onPress={handleExportAudit}
@@ -695,7 +702,24 @@ export default function SettingsScreen() {
             <ChevronDown color="rgba(255,255,255,0.3)" size={20} style={{ transform: [{ rotate: '-90deg' }] }} />
           </View>
         </TouchableOpacity>
-
+        <TouchableOpacity
+          style={styles.softCard}
+          activeOpacity={0.7}
+          onPress={() => setIsWhatsNewVisible(true)}
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.cardHeaderLeft}>
+              <View style={[styles.iconCircle, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                <Sparkles color="#3b82f6" size={24} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.softCardTitleNoMargin}>What's New</Text>
+                <Text style={[styles.subText, { marginTop: 2 }]}>View latest updates</Text>
+              </View>
+            </View>
+            <ChevronDown color="rgba(255,255,255,0.3)" size={20} style={{ transform: [{ rotate: '-90deg' }] }} />
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.deleteAccountBtn}
           onPress={deleteAccount}
