@@ -101,7 +101,7 @@ export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         });
 
         // Sort descending by date
-        rawList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        rawList.sort((a, b) => (b.date?.getTime() || b.createdAt.getTime()) - (a.date?.getTime() || a.createdAt.getTime()));
 
         setTransactions(rawList);
         setLoading(false);

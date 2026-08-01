@@ -18,7 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, { FadeIn, FadeOut, ZoomIn } from 'react-native-reanimated';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useAlert } from '../context/AlertContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebaseConfig';
@@ -118,7 +118,9 @@ export default function TransactionOptionsMenu({
         notes: notes.trim(),
       };
 
-      await updateDoc(transactionRef, updatedData);
+      updateDoc(transactionRef, updatedData).catch((error) => {
+        console.error('Delayed Update Error:', error);
+      });
 
       onClose();
       setTimeout(() => {
