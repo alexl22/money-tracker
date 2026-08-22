@@ -391,11 +391,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   versionText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: moderateScale(12),
-    color: 'rgba(255,255,255,0.2)',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: moderateScale(11),
+    color: 'rgba(255,255,255,0.15)',
     textAlign: 'center',
-    marginTop: horizontalScale(16),
+    marginTop: horizontalScale(24),
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
 });
 

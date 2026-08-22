@@ -716,7 +716,7 @@ export default function SettingsScreen() {
         </View>
 
         <Text style={styles.versionText}>
-          Version {Constants.expoConfig?.version || '1.0.0'} ({Platform.OS === 'ios' ? 'iOS' : 'Android'} • Build {Platform.select({ ios: Constants.expoConfig?.ios?.buildNumber || '1', android: Constants.expoConfig?.android?.versionCode?.toString() || '1' })})
+          v1.0.2
         </Text>
 
         <View style={{ height: 120 }} />
