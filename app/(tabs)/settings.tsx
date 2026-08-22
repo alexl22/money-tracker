@@ -9,6 +9,7 @@ import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeO
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, Modal, Platform, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import Constants from 'expo-constants';
 import { TimePickerModal } from '../../components/TimePickerModal';
 import { WelcomeGuide } from '../../components/WelcomeGuide';
 import { useAlert } from '../../context/AlertContext';
@@ -713,6 +714,10 @@ export default function SettingsScreen() {
             <Text style={styles.footerLinkText}>Terms of Use</Text>
           </TouchableOpacity>
         </View>
+
+        <Text style={styles.versionText}>
+          Version {Constants.expoConfig?.version || '1.0.0'} ({Platform.OS === 'ios' ? 'iOS' : 'Android'} • Build {Platform.select({ ios: Constants.expoConfig?.ios?.buildNumber || '1', android: Constants.expoConfig?.android?.versionCode?.toString() || '1' })})
+        </Text>
 
         <View style={{ height: 120 }} />
 

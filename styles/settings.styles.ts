@@ -390,6 +390,13 @@ const styles = StyleSheet.create({
   securityWrapper: {
     width: '100%',
   },
+  versionText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: moderateScale(12),
+    color: 'rgba(255,255,255,0.2)',
+    textAlign: 'center',
+    marginTop: horizontalScale(16),
+  },
 });
 
 export default styles;
