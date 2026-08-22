@@ -10,7 +10,7 @@ import {
   Plus, Search, Settings, User, X
 } from 'lucide-react-native';
 import React, { useEffect, useState, useRef } from 'react';
-import { Dimensions, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, View, AppState } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WelcomeGuide } from '../../components/WelcomeGuide';
@@ -118,6 +118,24 @@ export default function TabLayout() {
     }));
 
     const { tabBarOffset } = useTabBar();
+
+    // Reset tab bar offset to 0 (visible) whenever the active screen or tab index changes
+    useEffect(() => {
+      tabBarOffset.value = 0;
+    }, [pathname, state.index]);
+
+    // Reset tab bar offset to 0 when the app returns from background to foreground
+    useEffect(() => {
+      const subscription = AppState.addEventListener('change', (nextAppState) => {
+        if (nextAppState === 'active') {
+          tabBarOffset.value = 0;
+        }
+      });
+      return () => {
+        subscription.remove();
+      };
+    }, []);
+
     if (isKeyboardVisible) return null;
 
     const animatedContainerStyle = useAnimatedStyle(() => ({
