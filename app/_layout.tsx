@@ -126,6 +126,7 @@ export default function RootLayout() {
                   <Stack.Screen name="login" />
                   <Stack.Screen name="register" />
                   <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="shifts" options={{ title: 'Shift Tracker', animation: 'slide_from_right' }} />
                   <Stack.Screen name="privacy" options={{ title: 'Privacy Policy', presentation: 'modal', animation: 'slide_from_bottom' }} />
                   <Stack.Screen name="terms" options={{ title: 'Terms of Use', presentation: 'modal', animation: 'slide_from_bottom' }} />
                 </Stack>
