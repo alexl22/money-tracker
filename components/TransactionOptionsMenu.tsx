@@ -1,7 +1,7 @@
 import { doc, updateDoc } from '@react-native-firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as NavigationBar from 'expo-navigation-bar';
-import { Pencil, Trash2, X } from 'lucide-react-native';
+import { Pencil, Trash2, X, Calendar, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,6 +25,12 @@ import { db } from '../firebaseConfig';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 
 const { width, height: screenHeight } = Dimensions.get('screen');
+
+const DAYS_OF_WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 interface TransactionOptionsMenuProps {
   isVisible: boolean;
@@ -53,6 +59,9 @@ export default function TransactionOptionsMenu({
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [transactionType, setTransactionType] = useState<'income' | 'expense'>('expense');
+  const [date, setDate] = useState<Date>(new Date());
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calendarCursor, setCalendarCursor] = useState<Date>(new Date());
   const [isSaving, setIsSaving] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
@@ -77,6 +86,24 @@ export default function TransactionOptionsMenu({
       setTitle(transaction.title || '');
       setNotes(transaction.notes || '');
       setTransactionType(transaction.type || 'expense');
+
+      // Parse transaction date, fallback to createdAt or current date
+      let txDate: Date;
+      if (transaction.date) {
+        txDate = new Date(transaction.date.toDate ? transaction.date.toDate() : transaction.date);
+      } else if (transaction.createdAt) {
+        txDate = new Date(transaction.createdAt.toDate ? transaction.createdAt.toDate() : transaction.createdAt);
+      } else {
+        txDate = new Date();
+      }
+      setDate(txDate);
+      const currentYear = new Date().getFullYear();
+      if (txDate.getFullYear() === currentYear) {
+        setCalendarCursor(new Date(txDate));
+      } else {
+        setCalendarCursor(new Date());
+      }
+      setShowCalendar(false);
     }
   }, [isVisible, transaction]);
 
@@ -116,6 +143,7 @@ export default function TransactionOptionsMenu({
         type: transactionType,
         title: title.trim(),
         notes: notes.trim(),
+        date: date,
       };
 
       updateDoc(transactionRef, updatedData).catch((error) => {
@@ -138,6 +166,119 @@ export default function TransactionOptionsMenu({
     }
   };
 
+  const renderInlineCalendar = () => {
+    const year = calendarCursor.getFullYear();
+    const month = calendarCursor.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    // Day of the week of the 1st day of the month (0 = Monday, 6 = Sunday)
+    let firstDayIndex = new Date(year, month, 1).getDay();
+    firstDayIndex = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+
+    const days = [];
+    // Empty slots for previous month padding
+    for (let i = 0; i < firstDayIndex; i++) {
+      days.push(<View key={`empty-${i}`} style={styles.calendarDayEmpty} />);
+    }
+
+    // Days of current month
+    for (let d = 1; d <= daysInMonth; d++) {
+      const isSelected = date.getDate() === d && date.getMonth() === month && date.getFullYear() === year;
+      const isToday = new Date().getDate() === d && new Date().getMonth() === month && new Date().getFullYear() === year;
+      
+      days.push(
+        <TouchableOpacity
+          key={`day-${d}`}
+          style={[
+            styles.calendarDayButton,
+            isSelected && styles.calendarDaySelected
+          ]}
+          onPress={() => {
+            const newDate = new Date(date);
+            newDate.setFullYear(year);
+            newDate.setMonth(month);
+            newDate.setDate(d);
+            setDate(newDate);
+            setShowCalendar(false);
+          }}
+        >
+          <Text style={[
+            styles.calendarDayText,
+            isSelected && styles.calendarDaySelectedText,
+            isToday && !isSelected && styles.calendarDayTodayText
+          ]}>
+            {d}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+
+    // Padding for next month to keep grid consistent
+    const totalSlots = Math.ceil(days.length / 7) * 7;
+    const remaining = totalSlots - days.length;
+    for (let i = 0; i < remaining; i++) {
+      days.push(<View key={`empty-next-${i}`} style={styles.calendarDayEmpty} />);
+    }
+
+    const currentYear = new Date().getFullYear();
+    const canPrev = month > 0 || year > currentYear;
+    const canNext = month < 11 || year < currentYear;
+
+    const prevMonth = () => {
+      if (canPrev) {
+        setCalendarCursor(new Date(year, month - 1, 1));
+      }
+    };
+
+    const nextMonth = () => {
+      if (canNext) {
+        setCalendarCursor(new Date(year, month + 1, 1));
+      }
+    };
+
+    return (
+      <View style={styles.inlineCalendarContainer}>
+        <View style={styles.calendarHeader}>
+          <TouchableOpacity 
+            onPress={prevMonth} 
+            style={[styles.calendarNavBtn, !canPrev && { opacity: 0.3 }]}
+            disabled={!canPrev}
+          >
+            <ChevronLeft color="#fff" size={18} />
+          </TouchableOpacity>
+          <Text style={styles.calendarMonthText}>
+            {MONTHS[month]} {year}
+          </Text>
+          <TouchableOpacity 
+            onPress={nextMonth} 
+            style={[styles.calendarNavBtn, !canNext && { opacity: 0.3 }]}
+            disabled={!canNext}
+          >
+            <ChevronRight color="#fff" size={18} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.calendarWeekLabels}>
+          {DAYS_OF_WEEK.map((day, idx) => (
+            <Text 
+              key={idx} 
+              style={[
+                styles.calendarWeekLabelText,
+                idx === 6 && { color: '#eb5656' }
+              ]}
+            >
+              {day}
+            </Text>
+          ))}
+        </View>
+
+        <View style={styles.calendarGrid}>
+          {days}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <Modal
       transparent
@@ -154,7 +295,7 @@ export default function TransactionOptionsMenu({
 
           {layoutReady && (
             <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              behavior="padding"
               style={styles.keyboardAvoidingView}
             >
               <ScrollView
@@ -324,77 +465,99 @@ export default function TransactionOptionsMenu({
                               </TouchableOpacity>
                             </View>
 
-                            {/* Amount Input */}
-                            <View style={styles.inputSection}>
-                              <Text style={styles.inputLabel}>AMOUNT</Text>
-                              <TextInput
-                                style={styles.textInput}
-                                placeholder="0.00"
-                                placeholderTextColor="rgba(255,255,255,0.1)"
-                                value={amount}
-                                onChangeText={setAmount}
-                                keyboardType="numeric"
-                                maxLength={12}
-                              />
-                            </View>
+                            {/* Date Selector */}
+                            <TouchableOpacity
+                              style={styles.dateSelectorBtn}
+                              onPress={() => {
+                                Keyboard.dismiss();
+                                setShowCalendar(!showCalendar);
+                              }}
+                              activeOpacity={0.8}
+                            >
+                              <Calendar color="#3b82f6" size={14} strokeWidth={2.5} />
+                              <Text style={styles.dateSelectorText}>
+                                {date.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                              </Text>
+                            </TouchableOpacity>
 
-                            {/* Title Input */}
-                            <View style={styles.inputSection}>
-                              <Text style={styles.inputLabel}>TITLE</Text>
-                              <TextInput
-                                style={styles.textInput}
-                                placeholder="e.g. Rent, Groceries"
-                                placeholderTextColor="rgba(255,255,255,0.1)"
-                                value={title}
-                                onChangeText={setTitle}
-                                maxLength={30}
-                              />
-                            </View>
+                            {/* Calendar Inline */}
+                            {showCalendar && renderInlineCalendar()}
 
-                            {/* Notes Input */}
-                            <View style={styles.inputSection}>
-                              <Text style={styles.inputLabel}>NOTES / DETAILS</Text>
-                              <TextInput
-                                style={[styles.textInput, styles.textArea]}
-                                placeholder="e.g. Shop branch, extra details..."
-                                placeholderTextColor="rgba(255,255,255,0.1)"
-                                value={notes}
-                                onChangeText={setNotes}
-                                multiline
-                                numberOfLines={3}
-                                maxLength={100}
-                              />
-                            </View>
+                            {!showCalendar && (
+                              <>
+                                {/* Amount Input */}
+                                <View style={styles.inputSection}>
+                                  <Text style={styles.inputLabel}>AMOUNT</Text>
+                                  <TextInput
+                                    style={styles.textInput}
+                                    placeholder="0.00"
+                                    placeholderTextColor="rgba(255,255,255,0.1)"
+                                    value={amount}
+                                    onChangeText={setAmount}
+                                    keyboardType="numeric"
+                                    maxLength={12}
+                                  />
+                                </View>
 
-                            {/* Action Buttons */}
-                            <View style={styles.actionButtonsRow}>
-                              <TouchableOpacity
-                                style={styles.cancelFormButton}
-                                onPress={() => setMode('menu')}
-                                disabled={isSaving}
-                              >
-                                <Text style={styles.cancelFormButtonText}>Cancel</Text>
-                              </TouchableOpacity>
+                                {/* Title Input */}
+                                <View style={styles.inputSection}>
+                                  <Text style={styles.inputLabel}>TITLE</Text>
+                                  <TextInput
+                                    style={styles.textInput}
+                                    placeholder="e.g. Rent, Groceries"
+                                    placeholderTextColor="rgba(255,255,255,0.1)"
+                                    value={title}
+                                    onChangeText={setTitle}
+                                    maxLength={30}
+                                  />
+                                </View>
 
-                              <TouchableOpacity
-                                style={styles.saveButton}
-                                onPress={handleSaveEdit}
-                                disabled={isSaving}
-                              >
-                                <LinearGradient
-                                  colors={['#3b82f6', '#1d4ed8']}
-                                  start={{ x: 0, y: 0 }}
-                                  end={{ x: 1, y: 1 }}
-                                  style={styles.gradient}
-                                >
-                                  {isSaving ? (
-                                    <ActivityIndicator color="#FFFFFF" size="small" />
-                                  ) : (
-                                    <Text style={styles.saveButtonText}>Save changes</Text>
-                                  )}
-                                </LinearGradient>
-                              </TouchableOpacity>
-                            </View>
+                                {/* Notes Input */}
+                                <View style={styles.inputSection}>
+                                  <Text style={styles.inputLabel}>NOTES / DETAILS</Text>
+                                  <TextInput
+                                    style={[styles.textInput, styles.textArea]}
+                                    placeholder="e.g. Shop branch, extra details..."
+                                    placeholderTextColor="rgba(255,255,255,0.1)"
+                                    value={notes}
+                                    onChangeText={setNotes}
+                                    multiline
+                                    numberOfLines={3}
+                                    maxLength={100}
+                                  />
+                                </View>
+
+                                {/* Action Buttons */}
+                                <View style={styles.actionButtonsRow}>
+                                  <TouchableOpacity
+                                    style={styles.cancelFormButton}
+                                    onPress={() => setMode('menu')}
+                                    disabled={isSaving}
+                                  >
+                                    <Text style={styles.cancelFormButtonText}>Cancel</Text>
+                                  </TouchableOpacity>
+
+                                  <TouchableOpacity
+                                    style={styles.saveButton}
+                                    onPress={handleSaveEdit}
+                                    disabled={isSaving}
+                                  >
+                                    <LinearGradient
+                                      colors={['#3b82f6', '#1d4ed8']}
+                                      start={{ x: 0, y: 0 }}
+                                      end={{ x: 1, y: 1 }}
+                                      style={styles.gradient}
+                                    >
+                                      {isSaving ? (
+                                        <ActivityIndicator color="#FFFFFF" size="small" />
+                                      ) : (
+                                        <Text style={styles.saveButtonText}>Save changes</Text>
+                                      )}
+                                    </LinearGradient>
+                                  </TouchableOpacity>
+                                </View>
+                              </>
+                            )}
                           </View>
                         </Pressable>
                       </View>
@@ -433,10 +596,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: horizontalScale(24),
   },
   dismissArea: {
     width: '100%',
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: horizontalScale(24),
@@ -648,6 +812,97 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope_700Bold',
     color: '#FFFFFF',
     letterSpacing: 0.5,
+  },
+  dateSelectorBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: moderateScale(15),
+    paddingHorizontal: horizontalScale(16),
+    paddingVertical: horizontalScale(8),
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    gap: horizontalScale(8),
+    alignSelf: 'center',
+    marginBottom: horizontalScale(16),
+  },
+  dateSelectorText: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: moderateScale(12),
+  },
+  inlineCalendarContainer: {
+    backgroundColor: '#151618',
+    borderRadius: moderateScale(20),
+    padding: horizontalScale(12),
+    marginBottom: horizontalScale(16),
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: horizontalScale(12),
+  },
+  calendarNavBtn: {
+    width: horizontalScale(32),
+    height: horizontalScale(32),
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: moderateScale(8),
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  calendarMonthText: {
+    color: '#fff',
+    fontFamily: 'Manrope_700Bold',
+    fontSize: moderateScale(14),
+  },
+  calendarWeekLabels: {
+    flexDirection: 'row',
+    marginBottom: horizontalScale(8),
+  },
+  calendarWeekLabelText: {
+    color: 'rgba(255,255,255,0.3)',
+    width: '14.28%',
+    textAlign: 'center',
+    fontSize: moderateScale(11),
+    fontFamily: 'Inter_700Bold',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calendarDayButton: {
+    width: '14.28%',
+    height: horizontalScale(36),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 1,
+  },
+  calendarDayEmpty: {
+    width: '14.28%',
+    height: horizontalScale(36),
+  },
+  calendarDaySelected: {
+    backgroundColor: '#3b82f6',
+    borderRadius: moderateScale(18),
+  },
+  calendarDayText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontFamily: 'Inter_500Medium',
+    fontSize: moderateScale(13),
+  },
+  calendarDaySelectedText: {
+    color: '#fff',
+    fontFamily: 'Inter_700Bold',
+  },
+  calendarDayTodayText: {
+    color: '#67E8F9',
+    fontFamily: 'Inter_700Bold',
   },
 });
 

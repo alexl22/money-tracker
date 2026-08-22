@@ -518,6 +518,43 @@ const styles = StyleSheet.create({
   securityWrapper: {
     width: '100%',
   },
+  weekBalanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: horizontalScale(4),
+  },
+  txCountBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: horizontalScale(10),
+    paddingVertical: horizontalScale(4),
+    borderRadius: moderateScale(10),
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  txCountText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: moderateScale(11),
+    color: 'rgba(255, 255, 255, 0.5)',
+  },
+  weekTitleBadge: {
+    backgroundColor: 'rgba(74, 138, 244, 0.12)',
+    paddingHorizontal: horizontalScale(8),
+    height: horizontalScale(22),
+    borderRadius: moderateScale(11),
+    borderWidth: 1,
+    borderColor: 'rgba(74, 138, 244, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginTop: horizontalScale(5), // slight adjustment downward to align with text baseline
+  },
+  weekTitleBadgeText: {
+    color: '#4A8AF4',
+    fontFamily: 'Inter_700Bold',
+    fontSize: moderateScale(12),
+    lineHeight: moderateScale(14),
+  },
 });
 
 export default styles;

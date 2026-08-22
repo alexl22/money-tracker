@@ -33,6 +33,8 @@ interface TransactionItem {
   type: 'income' | 'expense';
   notes?: string;
   time: string;
+  date?: Date;
+  createdAt?: Date;
 }
 
 interface TransactionGroup {
@@ -310,7 +312,7 @@ export default function HistoryScreen() {
       monthExpense: 0,
       monthProfit: 0,
       weekIncome: 0,
-      weeksWithData: {}
+      weeksWithData: {} as Record<number, boolean>
     };
 
     let startOfMonth = new Date(selectedYear, Number(selectedMonth), 1);
@@ -394,7 +396,9 @@ export default function HistoryScreen() {
         currency: t.currency || 'USD',
         type: t.type,
         notes: t.notes,
-        time: timeStr
+        time: timeStr,
+        date: t.date,
+        createdAt: t.createdAt
       });
 
       const valForTotal = (t.currency === currency)
@@ -421,7 +425,8 @@ export default function HistoryScreen() {
       monthExpense: grossExpense,
       monthProfit: grossIncome - grossExpense,
       weekIncome: weekBalance,
-      weeksWithData: weeksStatus
+      weeksWithData: weeksStatus,
+      txCount: weekFilteredList.length
     };
   }, [allRawTransactions, selectedMonth, selectedYear, selectedWeekIndex, filterMode, currency, user, showAllHistory, isCustomRangeActive, customRange, format, searchQuery]);
 
@@ -431,7 +436,8 @@ export default function HistoryScreen() {
     monthExpense,
     monthProfit,
     weekIncome,
-    weeksWithData
+    weeksWithData,
+    txCount
   } = historyData;
 
 
@@ -619,11 +625,16 @@ export default function HistoryScreen() {
 
             <View style={styles.weekHeader}>
               <View style={styles.weekTitleRow}>
-                <Text style={[styles.weekTitle, showAllHistory && { fontSize: moderateScale(24) }]} numberOfLines={1} adjustsFontSizeToFit>
-                  {showAllHistory
-                    ? (isCustomRangeActive && customRange ? `${customRange.start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - ${customRange.end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}` : "All History")
-                    : `Week ${weeks[selectedWeekIndex]?.label}`}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: horizontalScale(8), flex: 1, marginRight: horizontalScale(10) }}>
+                  <Text style={[styles.weekTitle, showAllHistory && { fontSize: moderateScale(24) }, { marginRight: 0, flex: 0 }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {showAllHistory
+                      ? (isCustomRangeActive && customRange ? `${customRange.start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - ${customRange.end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}` : "All History")
+                      : `Week ${weeks[selectedWeekIndex]?.label}`}
+                  </Text>
+                  <View style={styles.weekTitleBadge}>
+                    <Text style={styles.weekTitleBadgeText}>{txCount}</Text>
+                  </View>
+                </View>
                 <View style={{ flexDirection: 'row', gap: horizontalScale(5), alignItems: 'center', flexShrink: 0 }}>
                   {showAllHistory && (
                     <View style={[styles.filterIconButton, isCustomRangeActive && styles.filterIconButtonActive, { overflow: 'hidden' }]}>

@@ -1,6 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot, query, where } from '@react-native-firebase/firestore';
 import { auth, db, onAuthChanged } from '../firebaseConfig';
+// ---------------------------------------------------------------------------------------------------------------------
+import { syncUserStats } from '../utils/syncStats';
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface Transaction {
   id: string;
@@ -64,9 +67,22 @@ export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
+  // ---------------------------------------------------------------------------------------------------------------------  
+  const hasSyncedStats = useRef(false);
+  // ---------------------------------------------------------------------------------------------------------------------  
+
   useEffect(() => {
+    let unsubscribeSnapshot: (() => void) | null = null;
+
     // Listen to Auth State Changes
     const unsubscribeAuth = onAuthChanged((user: any) => {
+      // Clean up previous snapshot listener if it exists (e.g. on user log out/switch)
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+        unsubscribeSnapshot = null;
+      }
+    
+      hasSyncedStats.current = false;
       if (!user) {
         setTransactions([]);
         setLoading(false);
@@ -79,7 +95,7 @@ export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         where('userId', '==', user.uid)
       );
 
-      const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+      unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
         if (!snapshot) {
           setTransactions([]);
           setLoading(false);
@@ -105,15 +121,25 @@ export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         setTransactions(rawList);
         setLoading(false);
+
+        // Run the biweekly stats sync check exactly once per login session -------------------------------------------
+        if (!hasSyncedStats.current) {
+          hasSyncedStats.current = true;
+          syncUserStats(user.uid, rawList);
+        }
+        // ----------------------------------------------------------------------------------------------------------------
       }, (error) => {
         console.error("Transactions Context Firestore Error:", error);
         setLoading(false);
       });
-
-      return () => unsubscribeSnapshot();
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+      }
+    };
   }, []);
 
   return (
