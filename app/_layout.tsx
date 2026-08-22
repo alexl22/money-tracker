@@ -12,7 +12,8 @@ import {
 } from '@expo-google-fonts/manrope';
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useSegments, usePathname } from 'expo-router';
+import analytics from '@react-native-firebase/analytics';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -46,6 +47,26 @@ if ((TextInput as any).defaultProps) {
 
 
 SplashScreen.preventAutoHideAsync();
+
+function AnalyticsTracker() {
+  const segments = useSegments();
+  const pathname = usePathname();
+
+  
+  useEffect(() => {
+    try {
+      const currentScreen = segments.join('/') || 'home';
+      analytics().logScreenView({
+        screen_name: currentScreen,
+        screen_class: currentScreen,
+      });
+    } catch (error) {
+      console.warn('[Analytics] Error logging screen view:', error);
+    }
+  }, [segments, pathname]);
+
+  return null;
+}
 
 export default function RootLayout() {
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -92,6 +113,7 @@ export default function RootLayout() {
         <CurrencyProvider>
           <AlertProvider>
             <TransactionsProvider>
+              <AnalyticsTracker />
               <Stack
                 screenOptions={{
                   headerShown: false,
