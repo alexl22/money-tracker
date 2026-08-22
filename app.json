@@ -2,7 +2,7 @@
   "expo": {
     "name": "Money Tracker: Daily Finance",
     "slug": "money-tracker",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "moneytracker",
@@ -15,7 +15,7 @@
       "icon": "./assets/images/ios-icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.alex.moneytracker",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -23,6 +23,7 @@
     },
     "android": {
       "package": "com.alex.moneytracker",
+      "versionCode": 2,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "SCHEDULE_EXACT_ALARM",
