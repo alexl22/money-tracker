@@ -715,7 +715,7 @@ export default function SettingsScreen() {
         </View>
 
         <Text style={styles.versionText}>
-          v1.0.2
+          v1.0.3
         </Text>
 
         <View style={{ height: 120 }} />
