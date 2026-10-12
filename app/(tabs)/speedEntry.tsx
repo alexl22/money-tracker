@@ -63,6 +63,12 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                 return;
             }
 
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const dateString = `${year}-${month}-${day}`;
+
             const transactionData = {
                 userId: user.uid,
                 amount: parseFloat(amount),
@@ -71,8 +77,9 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                 type: transactionType,
                 title: title,
                 notes: notes,
-                date: new Date(),
-                createdAt: serverTimestamp()
+                date: now,
+                createdAt: serverTimestamp(),
+                dateString: dateString
             };
 
             addDoc(collection(db, 'transactions'), transactionData)

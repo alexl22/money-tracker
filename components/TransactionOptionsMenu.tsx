@@ -136,6 +136,10 @@ export default function TransactionOptionsMenu({
     setIsSaving(true);
     try {
       const transactionRef = doc(db, 'transactions', transaction.id);
+      const txYear = date.getFullYear();
+      const txMonth = String(date.getMonth() + 1).padStart(2, '0');
+      const txDay = String(date.getDate()).padStart(2, '0');
+      const dateString = `${txYear}-${txMonth}-${txDay}`;
       const parsedAmount = parseFloat(amount);
       const updatedData = {
         amount: parsedAmount,
@@ -144,6 +148,7 @@ export default function TransactionOptionsMenu({
         title: title.trim(),
         notes: notes.trim(),
         date: date,
+        dateString: dateString,
       };
 
       updateDoc(transactionRef, updatedData).catch((error) => {

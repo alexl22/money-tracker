@@ -9,7 +9,6 @@ import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeO
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, Modal, Platform, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
-import Constants from 'expo-constants';
 import { TimePickerModal } from '../../components/TimePickerModal';
 import { WelcomeGuide } from '../../components/WelcomeGuide';
 import { useAlert } from '../../context/AlertContext';

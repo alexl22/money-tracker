@@ -1,10 +1,10 @@
 import { deleteDoc, doc } from '@react-native-firebase/firestore';
 import { useFocusEffect } from '@react-navigation/native';
-import { Calendar, CalendarDays, ChevronDown, Search, ShoppingBag, SlidersHorizontal, Wallet, X } from 'lucide-react-native';
+import { ArrowUpDown, Calendar, CalendarDays, ChevronDown, ShoppingBag, SlidersHorizontal, Wallet, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, Platform, SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Pressable, SectionList, Text, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import Animated, { FadeInDown, FadeOutUp, LinearTransition, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { FadeInDown, LinearTransition, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { DatePicker } from '../../components/DatePicker';
 import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
 import { useAlert } from '../../context/AlertContext';
@@ -34,6 +34,7 @@ interface TransactionItem {
   notes?: string;
   time: string;
   date?: Date;
+  dateString?: string;
   createdAt?: Date;
 }
 
@@ -52,6 +53,8 @@ interface RawTransaction {
   currency: string;
   type: 'income' | 'expense';
   createdAt: Date;
+  date?: Date;
+  dateString?: string;
   notes?: string;
   userId: string;
 }
@@ -269,6 +272,7 @@ export default function HistoryScreen() {
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(() => getWeekIndexForDate(currentDate));
 
   const [filterMode, setFilterMode] = useState<'all' | 'income' | 'expense'>('all');
+  const [sortOrder, setSortOrder] = useState<'none' | 'amount-desc' | 'amount-asc'>('none');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   useFocusEffect(
     useCallback(() => {
@@ -379,7 +383,6 @@ export default function HistoryScreen() {
         ? (t.type === 'income' ? t.amount : -t.amount)
         : (t.type === 'income' ? (t.amountUSD || t.amount) : -(t.amountUSD || t.amount));
 
-
       const dateStr = t.createdAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
       const timeStr = t.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -412,12 +415,39 @@ export default function HistoryScreen() {
     grouped.forEach(g => {
       const total = dayTotals[g.fullDate];
       g.dailyTotal = format(total, { compact: true, showSign: true, threshold: 1000000000, isConverted: true });
+      if (sortOrder === 'amount-desc') {
+        g.data.sort((a, b) => b.amountUSD - a.amountUSD);
+      } else if (sortOrder === 'amount-asc') {
+        g.data.sort((a, b) => a.amountUSD - b.amountUSD);
+      }
     });
 
     const weeksStatus: Record<number, boolean> = {};
     weeks.forEach((w, i) => {
       weeksStatus[i] = monthList.some(t => t.createdAt.getTime() >= w.start.getTime() && t.createdAt.getTime() <= w.end.getTime());
     });
+
+    if (showAllHistory && sortOrder !== 'none') {
+      const allItems: any[] = [];
+      grouped.forEach(g => allItems.push(...g.data));
+      allItems.sort((a, b) => {
+        return sortOrder === 'amount-desc' ? b.amountUSD - a.amountUSD : a.amountUSD - b.amountUSD;
+      });
+      return {
+        transactions: [{
+          date: sortOrder === 'amount-desc' ? 'HIGHEST TRANSACTIONS' : 'LOWEST TRANSACTIONS',
+          fullDate: 'ALL TIME',
+          dailyTotal: '',
+          data: allItems
+        }],
+        monthIncome: grossIncome,
+        monthExpense: grossExpense,
+        monthProfit: grossIncome - grossExpense,
+        weekIncome: weekBalance,
+        weeksWithData: weeksStatus,
+        txCount: weekFilteredList.length
+      };
+    }
 
     return {
       transactions: grouped,
@@ -428,7 +458,7 @@ export default function HistoryScreen() {
       weeksWithData: weeksStatus,
       txCount: weekFilteredList.length
     };
-  }, [allRawTransactions, selectedMonth, selectedYear, selectedWeekIndex, filterMode, currency, user, showAllHistory, isCustomRangeActive, customRange, format, searchQuery]);
+  }, [allRawTransactions, selectedMonth, selectedYear, selectedWeekIndex, filterMode, sortOrder, currency, user, showAllHistory, isCustomRangeActive, customRange, format, searchQuery]);
 
   const {
     transactions,
@@ -625,13 +655,27 @@ export default function HistoryScreen() {
 
             <View style={styles.weekHeader}>
               <View style={styles.weekTitleRow}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: horizontalScale(8), flex: 1, marginRight: horizontalScale(10) }}>
-                  <Text style={[styles.weekTitle, showAllHistory && { fontSize: moderateScale(24) }, { marginRight: 0, flex: 0 }]} numberOfLines={1} adjustsFontSizeToFit>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: horizontalScale(6), flex: 1, flexShrink: 1, marginRight: horizontalScale(4) }}>
+                  <Text
+                    style={[
+                      styles.weekTitle,
+                      {
+                        flex: 0,
+                        flexGrow: 0,
+                        flexShrink: 1,
+                        marginRight: 0,
+                        fontSize: showAllHistory ? moderateScale(24) : moderateScale(26)
+                      }
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.5}
+                  >
                     {showAllHistory
-                      ? (isCustomRangeActive && customRange ? `${customRange.start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - ${customRange.end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}` : "All History")
-                      : `Week ${weeks[selectedWeekIndex]?.label}`}
+                      ? (isCustomRangeActive && customRange ? `${customRange.start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - ${customRange.end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`.replace(/ /g, '\u00A0') : "All\u00A0History")
+                      : `Week\u00A0${weeks[selectedWeekIndex]?.label}`}
                   </Text>
-                  <View style={styles.weekTitleBadge}>
+                  <View style={[styles.weekTitleBadge, { flexShrink: 0 }]}>
                     <Text style={styles.weekTitleBadgeText}>{txCount}</Text>
                   </View>
                 </View>
@@ -673,6 +717,36 @@ export default function HistoryScreen() {
                       )}
                     </View>
                   )}
+                  {!showAllHistory && (
+                    <TouchableOpacity
+                      style={[
+                        styles.filterIconButton,
+                        sortOrder !== 'none' && styles.filterIconButtonActive,
+                        {
+                          borderColor: sortOrder === 'none' ? 'rgba(255, 255, 255, 0.18)' : 'rgba(74, 138, 244, 0.7)',
+                          height: horizontalScale(32),
+                          width: horizontalScale(66),
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          gap: horizontalScale(5)
+                        }
+                      ]}
+                      onPress={() => {
+                        const modes: ('none' | 'amount-desc' | 'amount-asc')[] = ['none', 'amount-desc', 'amount-asc'];
+                        const nextMode = modes[(modes.indexOf(sortOrder) + 1) % modes.length];
+                        setSortOrder(nextMode);
+                      }}
+                    >
+                      <ArrowUpDown
+                        color={sortOrder === 'none' ? 'rgba(255,255,255,0.4)' : '#4A8AF4'}
+                        size={14}
+                        strokeWidth={2.5}
+                      />
+                      <Text style={[styles.filterModeLabel, { color: sortOrder !== 'none' ? '#4A8AF4' : 'rgba(255,255,255,0.4)' }]}>
+                        {sortOrder === 'none' ? 'SORT' : (sortOrder === 'amount-desc' ? 'MAX' : 'MIN')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity
                     style={[
                       styles.filterIconButton,
@@ -681,6 +755,7 @@ export default function HistoryScreen() {
                         borderColor: filterMode === 'all' ? 'rgba(255, 255, 255, 0.18)' : (filterMode === 'income' ? 'rgba(16, 185, 129, 0.7)' : 'rgba(235, 86, 86, 0.7)'),
                         paddingVertical: horizontalScale(7),
                         paddingHorizontal: horizontalScale(9),
+                        height: horizontalScale(32),
                         gap: horizontalScale(6)
                       }
                     ]}
@@ -703,16 +778,48 @@ export default function HistoryScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
-              <Text style={styles.weekIncomeLabelSmall}>
-                {showAllHistory ? 'TOTAL BALANCE: ' : 'WEEK BALANCE: '}<Text
-                  style={[styles.weekIncomeValueSmall, { color: weekIncome >= 0 ? '#10b981' : '#eb5656' }]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.6}
-                >
-                  {format(weekIncome, { compact: true, showSign: true, isConverted: true })}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: horizontalScale(6) }}>
+                <Text style={[styles.weekIncomeLabelSmall, { flexShrink: 1, marginRight: horizontalScale(8) }]}>
+                  {showAllHistory ? 'TOTAL BALANCE: ' : 'WEEK BALANCE: '}<Text
+                    style={[styles.weekIncomeValueSmall, { color: weekIncome >= 0 ? '#10b981' : '#eb5656' }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.6}
+                  >
+                    {format(weekIncome, { compact: true, showSign: true, isConverted: true })}
+                  </Text>
                 </Text>
-              </Text>
+                {showAllHistory && (
+                  <TouchableOpacity
+                    style={[
+                      styles.filterIconButton,
+                      sortOrder !== 'none' && styles.filterIconButtonActive,
+                      {
+                        borderColor: sortOrder === 'none' ? 'rgba(255, 255, 255, 0.18)' : 'rgba(74, 138, 244, 0.7)',
+                        height: horizontalScale(32),
+                        width: horizontalScale(66),
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        gap: horizontalScale(5)
+                      }
+                    ]}
+                    onPress={() => {
+                      const modes: ('none' | 'amount-desc' | 'amount-asc')[] = ['none', 'amount-desc', 'amount-asc'];
+                      const nextMode = modes[(modes.indexOf(sortOrder) + 1) % modes.length];
+                      setSortOrder(nextMode);
+                    }}
+                  >
+                    <ArrowUpDown
+                      color={sortOrder === 'none' ? 'rgba(255,255,255,0.4)' : '#4A8AF4'}
+                      size={14}
+                      strokeWidth={2.5}
+                    />
+                    <Text style={[styles.filterModeLabel, { color: sortOrder !== 'none' ? '#4A8AF4' : 'rgba(255,255,255,0.4)' }]}>
+                      {sortOrder === 'none' ? 'SORT' : (sortOrder === 'amount-desc' ? 'MAX' : 'MIN')}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
 
             <View style={styles.separator} />

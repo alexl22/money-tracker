@@ -14,6 +14,7 @@ export interface Transaction {
   type: 'income' | 'expense';
   createdAt: Date;
   date?: Date;
+  dateString?: string;
   notes?: string;
   userId: string;
   [key: string]: any; // Allow other properties from Firestore
@@ -105,14 +106,25 @@ export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const rawList = snapshot.docs.map((doc) => {
           const data = doc.data({ serverTimestamps: 'estimate' });
           const rawDate = data.date || data.createdAt;
-          const compatibleDate = parseCompatibleDate(rawDate);
+          let compatibleDate = parseCompatibleDate(rawDate);
+
+          // If dateString is stored, anchor the Date object to that calendar day so it never shifts
+          if (data.dateString && typeof data.dateString === 'string') {
+            const parts = data.dateString.split('-');
+            if (parts.length === 3) {
+              const y = parseInt(parts[0], 10);
+              const m = parseInt(parts[1], 10) - 1;
+              const d = parseInt(parts[2], 10);
+              compatibleDate = new Date(y, m, d, compatibleDate.getHours(), compatibleDate.getMinutes(), compatibleDate.getSeconds());
+            }
+          }
 
           return {
             id: doc.id,
             ...data,
-            // Keep original date if it existed, but make it compatible
-            date: data.date ? parseCompatibleDate(data.date) : compatibleDate,
+            date: compatibleDate,
             createdAt: compatibleDate,
+            dateString: data.dateString,
           } as Transaction;
         });
 

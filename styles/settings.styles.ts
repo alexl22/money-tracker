@@ -395,9 +395,9 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(11),
     color: 'rgba(255,255,255,0.15)',
     textAlign: 'center',
-    marginTop: horizontalScale(24),
+    marginTop: horizontalScale(30),
     letterSpacing: 1.5,
-    textTransform: 'uppercase',
+
   },
 });
 

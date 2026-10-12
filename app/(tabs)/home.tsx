@@ -12,6 +12,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 import { DatePicker } from '../../components/DatePicker';
+import { InsightsCarousel } from '../../components/InsightsCarousel';
 import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
 import { Colors } from '../../constants/DesignSystem';
 import { useAlert } from '../../context/AlertContext';
@@ -351,6 +352,15 @@ export default function DashboardScreen() {
               />
             </TouchableOpacity>
           </View>
+
+          {viewMode === 'total' && (
+            <InsightsCarousel
+              transactions={rawTransactions}
+              currency={currency}
+              rates={rates}
+              format={format}
+            />
+          )}
         </Animated.View>
 
         <View style={{ height: 120 }} />

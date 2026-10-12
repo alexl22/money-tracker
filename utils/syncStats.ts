@@ -9,7 +9,7 @@ export const syncUserStats = async (userId: string, transactionsList: any[]) => 
   try {
     const userRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userRef);
-    
+
     if (!userDoc.exists()) return;
 
     const userData = userDoc.data();
@@ -33,7 +33,7 @@ export const syncUserStats = async (userId: string, transactionsList: any[]) => 
     if (shouldSync) {
       let income = 0;
       let expense = 0;
-      
+
       transactionsList.forEach(tx => {
         // Use amountUSD for correct cross-currency comparison, fallback to nominal amount
         const amount = tx.amountUSD !== undefined ? tx.amountUSD : (tx.amount || 0);
@@ -54,7 +54,7 @@ export const syncUserStats = async (userId: string, transactionsList: any[]) => 
         totalProfit: roundedProfit,
         statsLastUpdated: new Date()
       });
-      
+
       console.log(`[Sync] Successfully updated overall stats in Firestore for user: ${userId}`);
     }
   } catch (error) {
