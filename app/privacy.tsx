@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View, Linking, TouchableOpacity } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function PrivacyPolicyScreen() {
   const handleEmailPress = () => {
@@ -33,7 +33,7 @@ export default function PrivacyPolicyScreen() {
 
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>
-           Questions or concerns? Reading this Privacy Notice will help you understand your privacy rights and choices. If you do not agree with our policies and practices, please do not use our Services. If you still have any questions or concerns, please contact us at suport.moneytracker@gmail.com.
+          Questions or concerns? Reading this Privacy Notice will help you understand your privacy rights and choices. If you do not agree with our policies and practices, please do not use our Services. If you still have any questions or concerns, please contact us at suport.moneytracker@gmail.com.
         </Text>
       </View>
 
@@ -116,7 +116,7 @@ export default function PrivacyPolicyScreen() {
 
       <Section title="7. DO WE COLLECT INFORMATION FROM MINORS?">
         <Text style={styles.paragraph}>
-          We do not knowingly collect data from children under 18 years of age.
+          We do not knowingly collect data from children under 13 years of age.
         </Text>
       </Section>
 
@@ -159,7 +159,19 @@ export default function PrivacyPolicyScreen() {
 
       <Section title="13. REVIEW, UPDATE, OR DELETE DATA">
         <Text style={styles.paragraph}>
-          Based on the laws of your country, you may have the right to request access to your data. To review or delete, please contact us. Users can request account deletion by contacting us at suport.moneytracker@gmail.com, or through the "Delete Account" button in the app Settings.
+          Based on applicable privacy laws, you have the right to request access to, modification of, or deletion of your personal and financial data. You have multiple ways to manage your data:
+        </Text>
+        <Text style={[styles.paragraph, { marginLeft: 12 }]}>
+          • In-App Deletion: You can delete individual transactions, categories, and financial logs directly from the app interface at any time.
+        </Text>
+        <Text style={[styles.paragraph, { marginLeft: 12 }]}>
+          • Account & Data Deletion: You can delete your entire account along with all synced transactions, budget history, and cloud data permanently by going to Settings &rarr; Security &rarr; Delete Account.
+        </Text>
+        <Text style={[styles.paragraph, { marginLeft: 12 }]}>
+          • Email Request: You can also request complete deletion of your account and all associated data by contacting us at suport.moneytracker@gmail.com.
+        </Text>
+        <Text style={styles.paragraph}>
+          Upon receiving an account deletion request, all personal identifiers and financial records stored in our Firebase database are permanently deleted within 30 days, and no data is retained.
         </Text>
       </Section>
 
