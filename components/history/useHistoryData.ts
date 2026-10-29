@@ -22,6 +22,33 @@ export interface UseHistoryDataParams {
   currentWeek: WeekInfo;
 }
 
+const MONTHS_LONG = [
+  'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+  'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+];
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function formatFastTime(d: Date): string {
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+function formatFastDateStr(d: Date): string {
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = MONTHS_SHORT[d.getMonth()];
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
+}
+
+function formatFastFullDate(d: Date): string {
+  const month = MONTHS_LONG[d.getMonth()];
+  const day = d.getDate();
+  const year = d.getFullYear();
+  return `${month} ${day}, ${year}`;
+}
+
 export function useHistoryData({
   selectedMonth,
   selectedYear,
@@ -228,17 +255,23 @@ export function useHistoryData({
     const grouped: TransactionGroup[] = [];
     const dayTotals: Record<string, number> = {};
 
-    weekFilteredList.forEach((t) => {
-      const dateLabel =
-        t.createdAt.toDateString() === new Date().toDateString()
-          ? 'Today'
-          : t.createdAt.toDateString() === new Date(Date.now() - 86400000).toDateString()
-          ? 'Yesterday'
-          : t.createdAt.toLocaleDateString('en-US', { weekday: 'long' });
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const yesterday = new Date(Date.now() - 86400000);
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
 
-      const fullDate = t.createdAt
-        .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-        .toUpperCase();
+    weekFilteredList.forEach((t) => {
+      const dStr =
+        t.dateString ||
+        `${t.createdAt.getFullYear()}-${String(t.createdAt.getMonth() + 1).padStart(2, '0')}-${String(t.createdAt.getDate()).padStart(2, '0')}`;
+      const dateLabel =
+        dStr === todayStr
+          ? 'Today'
+          : dStr === yesterdayStr
+          ? 'Yesterday'
+          : DAYS[t.createdAt.getDay()];
+
+      const fullDate = formatFastFullDate(t.createdAt);
 
       let dayGroup = grouped.find((g) => g.fullDate === fullDate);
       if (!dayGroup) {
@@ -260,8 +293,8 @@ export function useHistoryData({
         ? t.amountUSD || t.amount
         : -(t.amountUSD || t.amount);
 
-      const dateStr = t.createdAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-      const timeStr = t.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateStr = formatFastDateStr(t.createdAt);
+      const timeStr = formatFastTime(t.createdAt);
 
       dayGroup.data.push({
         id: t.id,
@@ -302,18 +335,20 @@ export function useHistoryData({
     });
 
     const weeksStatus: Record<number, boolean> = {};
-    if (hasMonthlyStats && monthlyStatsDoc?.weeks) {
-      weeks.forEach((_, i) => {
-        const key = String(i) as '0' | '1' | '2' | '3';
-        const wCount = monthlyStatsDoc.weeks?.[key]?.count || 0;
-        weeksStatus[i] = wCount > 0;
-      });
-    } else {
-      weeks.forEach((w, i) => {
-        weeksStatus[i] = monthList.some(
-          (t) => t.createdAt.getTime() >= w.start.getTime() && t.createdAt.getTime() <= w.end.getTime()
-        );
-      });
+    if (!showAllHistory) {
+      if (hasMonthlyStats && monthlyStatsDoc?.weeks) {
+        weeks.forEach((_, i) => {
+          const key = String(i) as '0' | '1' | '2' | '3';
+          const wCount = monthlyStatsDoc.weeks?.[key]?.count || 0;
+          weeksStatus[i] = wCount > 0;
+        });
+      } else {
+        weeks.forEach((w, i) => {
+          weeksStatus[i] = monthList.some(
+            (t) => t.createdAt.getTime() >= w.start.getTime() && t.createdAt.getTime() <= w.end.getTime()
+          );
+        });
+      }
     }
 
     const selectedKey = String(selectedWeekIndex) as '0' | '1' | '2' | '3';

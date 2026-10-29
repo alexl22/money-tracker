@@ -101,7 +101,6 @@ export default function HistoryScreen() {
   const [customRange, setCustomRange] = useState<{ start: Date, end: Date } | null>(null);
   const [isCustomRangeActive, setIsCustomRangeActive] = useState(false);
   const [shouldScrollToTransactions, setShouldScrollToTransactions] = useState(false);
-  const [truncatedItems, setTruncatedItems] = useState<Record<string, { title: boolean; sub: boolean }>>({});
 
   const scrollRef = React.useRef<any>(null);
   const transactionsListY = React.useRef(0);
@@ -223,8 +222,11 @@ export default function HistoryScreen() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         stickySectionHeadersEnabled={false}
-        initialNumToRender={7}
-        windowSize={5}
+        initialNumToRender={15}
+        windowSize={7}
+        maxToRenderPerBatch={10}
+        removeClippedSubviews={true}
+        updateCellsBatchingPeriod={50}
         onEndReached={() => {
           if (showAllHistory) {
             setDisplayLimit(prev => prev + 25);
@@ -374,8 +376,6 @@ export default function HistoryScreen() {
             showAlert={showAlert}
             handleDeleteTransaction={handleDeleteTransaction}
             setExpandedId={setExpandedId}
-            truncatedItems={truncatedItems}
-            setTruncatedItems={setTruncatedItems}
             onLongPress={() => setOptionsMenuTransaction(item)}
           />
         )}

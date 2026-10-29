@@ -1,9 +1,9 @@
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import styles from '../../styles/history.styles';
-import { horizontalScale, moderateScale } from '../../utils/scaling';
+import { horizontalScale } from '../../utils/scaling';
 import { TransactionItem } from './types';
 
 const renderGhostActions = () => <View style={{ width: 80 }} />;
@@ -25,8 +25,6 @@ interface TransactionRowProps {
   ) => void;
   handleDeleteTransaction: (item: any) => void;
   setExpandedId: (id: string | null) => void;
-  truncatedItems: Record<string, { title?: boolean; sub?: boolean }>;
-  setTruncatedItems: React.Dispatch<React.SetStateAction<Record<string, { title: boolean; sub: boolean }>>>;
   onLongPress: () => void;
 }
 
@@ -40,16 +38,13 @@ export const TransactionRow = React.memo(function TransactionRow({
   showAlert,
   handleDeleteTransaction,
   setExpandedId,
-  truncatedItems,
-  setTruncatedItems,
   onLongPress,
 }: TransactionRowProps) {
   const rowRef = React.useRef<any>(null);
 
   return (
     <Animated.View
-      entering={showAllHistory ? undefined : FadeInDown.delay(index * 60).springify().damping(15)}
-      layout={LinearTransition}
+      entering={showAllHistory ? undefined : FadeInDown.delay(index * 40).springify().damping(15)}
       key={item.id}
       style={{ marginBottom: horizontalScale(10) }}
     >
@@ -78,9 +73,10 @@ export const TransactionRow = React.memo(function TransactionRow({
           onPress={() => {
             const isCompactAmount =
               item.amount.includes('M') || item.amount.includes('K') || item.amount.includes('B');
-            const isTruncated = truncatedItems[item.id]?.title || truncatedItems[item.id]?.sub;
+            const isLong =
+              (item.title && item.title.length > 18) || (item.sub && item.sub.length > 25);
 
-            if (isCompactAmount || isTruncated || !!item.notes) {
+            if (isCompactAmount || isLong || !!item.notes) {
               setExpandedId(isExpanded ? null : item.id);
             }
           }}
@@ -101,39 +97,10 @@ export const TransactionRow = React.memo(function TransactionRow({
               <item.icon color={item.type === 'income' ? '#10b981' : '#eb5656'} size={22} strokeWidth={2.5} />
             </View>
             <View style={styles.transactionInfo}>
-              <Text
-                style={styles.transactionTitle}
-                numberOfLines={isExpanded ? undefined : 1}
-                onTextLayout={(e) => {
-                  if (!isExpanded && e.nativeEvent.lines.length > 0) {
-                    const isTruncated =
-                      e.nativeEvent.lines.length > 1 || e.nativeEvent.lines[0].width > moderateScale(150);
-                    if (isTruncated && !truncatedItems[item.id]?.title) {
-                      setTruncatedItems((prev: any) => ({
-                        ...prev,
-                        [item.id]: { ...prev[item.id], title: true },
-                      }));
-                    }
-                  }
-                }}
-              >
+              <Text style={styles.transactionTitle} numberOfLines={isExpanded ? undefined : 1}>
                 {item.title}
               </Text>
-              <Text
-                style={styles.transactionSub}
-                numberOfLines={isExpanded ? undefined : 1}
-                onTextLayout={(e) => {
-                  if (!isExpanded && e.nativeEvent.lines.length > 0) {
-                    const isTruncated = e.nativeEvent.lines.length > 1;
-                    if (isTruncated && !truncatedItems[item.id]?.sub) {
-                      setTruncatedItems((prev: any) => ({
-                        ...prev,
-                        [item.id]: { ...prev[item.id], sub: true },
-                      }));
-                    }
-                  }
-                }}
-              >
+              <Text style={styles.transactionSub} numberOfLines={isExpanded ? undefined : 1}>
                 {item.sub}
               </Text>
             </View>
@@ -154,10 +121,6 @@ export const TransactionRow = React.memo(function TransactionRow({
               !!item.notes) && (
               <View style={styles.expandedContent}>
                 {(item.amount.includes('M') || item.amount.includes('K') || item.amount.includes('B')) && (
-                  <View style={styles.detailDivider} />
-                )}
-
-                {(item.amount.includes('M') || item.amount.includes('K') || item.amount.includes('B')) && (
                   <View style={[styles.detailSectionRow, { marginBottom: horizontalScale(8) }]}>
                     <View style={styles.detailInfo}>
                       <Text style={styles.detailLabel}>EXACT AMOUNT</Text>
@@ -177,6 +140,15 @@ export const TransactionRow = React.memo(function TransactionRow({
                           { showSign: true, isConverted: item.currency === currency }
                         )}
                       </Text>
+                    </View>
+                  </View>
+                )}
+
+                {!!item.notes && (
+                  <View style={styles.detailSectionRow}>
+                    <View style={styles.detailInfo}>
+                      <Text style={styles.detailLabel}>NOTES</Text>
+                      <Text style={styles.detailValue}>{item.notes}</Text>
                     </View>
                   </View>
                 )}
