@@ -142,41 +142,29 @@ export const TransactionRow = React.memo(function TransactionRow({
           {isExpanded &&
             (item.amount.includes('M') ||
               item.amount.includes('K') ||
-              item.amount.includes('B') ||
-              !!item.notes) && (
+              item.amount.includes('B')) && (
               <View style={styles.expandedContent}>
-                {(item.amount.includes('M') || item.amount.includes('K') || item.amount.includes('B')) && (
-                  <View style={[styles.detailSectionRow, { marginBottom: horizontalScale(8) }]}>
-                    <View style={styles.detailInfo}>
-                      <Text style={styles.detailLabel}>EXACT AMOUNT</Text>
-                      <Text
-                        style={[styles.detailValueLarge, { color: item.type === 'income' ? '#10b981' : '#eb5656' }]}
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                      >
-                        {format(
-                          item.currency === currency
-                            ? item.type === 'income'
-                              ? item.rawAmount
-                              : -item.rawAmount
-                            : item.type === 'income'
-                            ? item.amountUSD
-                            : -item.amountUSD,
-                          { showSign: true, isConverted: item.currency === currency }
-                        )}
-                      </Text>
-                    </View>
+                <View style={styles.detailSectionRow}>
+                  <View style={styles.detailInfo}>
+                    <Text style={styles.detailLabel}>EXACT AMOUNT</Text>
+                    <Text
+                      style={[styles.detailValueLarge, { color: item.type === 'income' ? '#10b981' : '#eb5656' }]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      {format(
+                        item.currency === currency
+                          ? item.type === 'income'
+                            ? item.rawAmount
+                            : -item.rawAmount
+                          : item.type === 'income'
+                          ? item.amountUSD
+                          : -item.amountUSD,
+                        { showSign: true, isConverted: item.currency === currency }
+                      )}
+                    </Text>
                   </View>
-                )}
-
-                {!!item.notes && (
-                  <View style={styles.detailSectionRow}>
-                    <View style={styles.detailInfo}>
-                      <Text style={styles.detailLabel}>NOTES</Text>
-                      <Text style={styles.detailValue}>{item.notes}</Text>
-                    </View>
-                  </View>
-                )}
+                </View>
               </View>
             )}
         </TouchableOpacity>
