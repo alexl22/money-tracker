@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import styles from '../../styles/history.styles';
 import { horizontalScale } from '../../utils/scaling';
 import { TransactionItem } from './types';
@@ -44,7 +44,8 @@ export const TransactionRow = React.memo(function TransactionRow({
 
   return (
     <Animated.View
-      entering={showAllHistory ? undefined : FadeInDown.delay(index * 40).springify().damping(15)}
+      entering={showAllHistory ? undefined : FadeInDown.delay(index * 60).springify().damping(15)}
+      layout={showAllHistory ? undefined : LinearTransition}
       key={item.id}
       style={{ marginBottom: horizontalScale(10) }}
     >
