@@ -3,7 +3,7 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import styles from '../../styles/history.styles';
-import { horizontalScale } from '../../utils/scaling';
+import { horizontalScale, moderateScale } from '../../utils/scaling';
 import { TransactionItem } from './types';
 
 const renderGhostActions = () => <View style={{ width: 80 }} />;
@@ -41,6 +41,7 @@ export const TransactionRow = React.memo(function TransactionRow({
   onLongPress,
 }: TransactionRowProps) {
   const rowRef = React.useRef<any>(null);
+  const isTruncatedRef = React.useRef(false);
 
   return (
     <Animated.View
@@ -72,13 +73,16 @@ export const TransactionRow = React.memo(function TransactionRow({
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => {
+            if (isExpanded) {
+              setExpandedId(null);
+              return;
+            }
+
             const isCompactAmount =
               item.amount.includes('M') || item.amount.includes('K') || item.amount.includes('B');
-            const isLong =
-              (item.title && item.title.length > 18) || (item.sub && item.sub.length > 25);
 
-            if (isCompactAmount || isLong || !!item.notes) {
-              setExpandedId(isExpanded ? null : item.id);
+            if (isCompactAmount || isTruncatedRef.current) {
+              setExpandedId(item.id);
             }
           }}
           onLongPress={onLongPress}
@@ -98,10 +102,30 @@ export const TransactionRow = React.memo(function TransactionRow({
               <item.icon color={item.type === 'income' ? '#10b981' : '#eb5656'} size={22} strokeWidth={2.5} />
             </View>
             <View style={styles.transactionInfo}>
-              <Text style={styles.transactionTitle} numberOfLines={isExpanded ? undefined : 1}>
+              <Text
+                style={styles.transactionTitle}
+                numberOfLines={isExpanded ? undefined : 1}
+                onTextLayout={(e) => {
+                  if (!isExpanded && e.nativeEvent.lines.length > 0) {
+                    if (e.nativeEvent.lines.length > 1 || e.nativeEvent.lines[0].width > moderateScale(150)) {
+                      isTruncatedRef.current = true;
+                    }
+                  }
+                }}
+              >
                 {item.title}
               </Text>
-              <Text style={styles.transactionSub} numberOfLines={isExpanded ? undefined : 1}>
+              <Text
+                style={styles.transactionSub}
+                numberOfLines={isExpanded ? undefined : 1}
+                onTextLayout={(e) => {
+                  if (!isExpanded && e.nativeEvent.lines.length > 0) {
+                    if (e.nativeEvent.lines.length > 1) {
+                      isTruncatedRef.current = true;
+                    }
+                  }
+                }}
+              >
                 {item.sub}
               </Text>
             </View>
