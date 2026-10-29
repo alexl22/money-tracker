@@ -1,0 +1,193 @@
+import { StyleSheet } from 'react-native';
+import { Colors } from '../constants/DesignSystem';
+import { horizontalScale, moderateScale } from '../utils/scaling';
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  scrollContent: {
+    paddingHorizontal: horizontalScale(24),
+    paddingTop: horizontalScale(20),
+  },
+  toggleContainer: {
+    height: horizontalScale(60),
+    backgroundColor: '#1C1D1F',
+    borderRadius: moderateScale(9999),
+    flexDirection: 'row',
+    padding: horizontalScale(6),
+    marginBottom: horizontalScale(32),
+    position: 'relative',
+    alignSelf: 'center',
+  },
+  activeHighlight: {
+    position: 'absolute',
+    top: horizontalScale(6),
+    left: horizontalScale(6),
+    height: horizontalScale(48),
+    backgroundColor: '#3b82f6',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: horizontalScale(4) },
+    shadowOpacity: 0.8,
+    shadowRadius: moderateScale(15),
+    elevation: 12,
+    borderRadius: moderateScale(9999),
+  },
+  toggleTab: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  toggleText: {
+    fontSize: moderateScale(14),
+    color: 'rgba(255,255,255,0.4)',
+    fontFamily: 'Manrope_700Bold',
+  },
+  toggleTextActive: {
+    color: '#FFFFFF',
+  },
+  dateSelectorContainer: {
+    alignItems: 'center',
+    marginBottom: horizontalScale(24),
+  },
+  dateSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1C1D1F',
+    paddingVertical: horizontalScale(14),
+    borderRadius: moderateScale(24),
+    width: '75%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: horizontalScale(4) },
+    shadowOpacity: 0.1,
+    shadowRadius: moderateScale(10),
+    elevation: 4,
+    position: 'relative',
+  },
+  calendarIconContainer: {
+    position: 'absolute',
+    left: horizontalScale(16),
+    width: horizontalScale(32),
+    height: horizontalScale(32),
+    borderRadius: moderateScale(8),
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chevronIconContainer: {
+    position: 'absolute',
+    right: horizontalScale(16),
+    width: horizontalScale(32),
+    height: horizontalScale(32),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dateSelectorText: {
+    fontSize: moderateScale(15),
+    letterSpacing: 1.2,
+    color: '#FFFFFF',
+    fontFamily: 'Manrope_700Bold',
+    textTransform: 'uppercase',
+    paddingHorizontal: horizontalScale(40),
+    textAlign: 'center',
+  },
+  summaryContainer: {
+    gap: horizontalScale(16),
+  },
+  largeCard: {
+    backgroundColor: '#1C1D1F',
+    borderRadius: moderateScale(28),
+    padding: horizontalScale(18),
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    marginBottom: horizontalScale(4),
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: horizontalScale(8),
+  },
+  iconCircle: {
+    width: horizontalScale(38),
+    height: horizontalScale(38),
+    borderRadius: moderateScale(19),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badge: {
+    paddingHorizontal: horizontalScale(10),
+    paddingVertical: horizontalScale(4),
+    borderRadius: moderateScale(10),
+  },
+  badgeText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: moderateScale(11),
+  },
+  cardLabel: {
+    fontSize: moderateScale(10),
+    color: 'rgba(255, 255, 255, 0.78)',
+    letterSpacing: 1.1,
+    marginBottom: horizontalScale(2),
+    textTransform: 'uppercase',
+    fontFamily: 'Manrope_700Bold',
+  },
+  cardAmount: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: moderateScale(20),
+    letterSpacing: -0.5,
+  },
+  footerLabel: {
+    fontSize: moderateScale(13),
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontFamily: 'Inter_500Medium',
+  },
+  footerValue: {
+    fontSize: moderateScale(16),
+    fontFamily: 'Manrope_700Bold',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: horizontalScale(4),
+  },
+  statColumn: {
+    flex: 1,
+  },
+  vDivider: {
+    width: 1,
+    height: horizontalScale(36),
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginHorizontal: horizontalScale(12),
+  },
+  totalBalanceCard: {
+    backgroundColor: '#1C1D1F',
+    borderRadius: moderateScale(22),
+    padding: horizontalScale(10),
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+  },
+  totalBalanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: horizontalScale(4),
+    gap: horizontalScale(8),
+  },
+  totalBalanceLabel: {
+    fontSize: moderateScale(9),
+    color: '#ffffffc7',
+    opacity: 0.8,
+    letterSpacing: 2,
+    fontFamily: 'Manrope_700Bold',
+  },
+  totalBalanceAmount: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: moderateScale(20),
+    letterSpacing: -0.5,
+  },
+});
+
+export default styles;

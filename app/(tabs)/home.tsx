@@ -1,52 +1,24 @@
-import { doc, onSnapshot } from '@react-native-firebase/firestore';
-import { Calendar, ChevronDown, Receipt, Wallet } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Calendar, ChevronDown } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   LinearTransition,
-  runOnJS,
-  useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming
 } from 'react-native-reanimated';
 import { DatePicker } from '../../components/DatePicker';
+import { HomeSummaryCards } from '../../components/home/HomeSummaryCards';
+import { useHomeMetrics } from '../../components/home/useHomeMetrics';
 import { InsightsCarousel } from '../../components/InsightsCarousel';
 import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
-import { Colors } from '../../constants/DesignSystem';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
 import { useTransactions } from '../../context/TransactionsContext';
-import { auth, db } from '../../firebaseConfig';
-import { horizontalScale, moderateScale } from '../../utils/scaling';
-import { computeDisplayFromStats, MonthlyStatsDoc } from '../../utils/statsManager';
-
-const AnimatedAmount = ({ value, format, style, options = {} }: { value: number, format: any, style?: any, options?: any }) => {
-  const [displayValue, setDisplayValue] = useState(value);
-  const animatedValue = useSharedValue(value);
-
-  useEffect(() => {
-    animatedValue.value = withTiming(value, { duration: 400 });
-  }, [value]);
-
-  useAnimatedReaction(
-    () => animatedValue.value,
-    (current, previous) => {
-      if (current !== previous) {
-        runOnJS(setDisplayValue)(current);
-      }
-    }
-  );
-
-  return (
-    <Text style={style} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
-      {format(displayValue, options)}
-    </Text>
-  );
-};
+import styles from '../../styles/home.styles';
+import { horizontalScale } from '../../utils/scaling';
 
 export default function DashboardScreen() {
   const { width: SCREEN_WIDTH } = useWindowDimensions();
@@ -64,6 +36,7 @@ export default function DashboardScreen() {
     if (mode === 'range') targetX = tabWidth * 2;
     translateX.value = withSpring(targetX, { damping: 30, stiffness: 400, mass: 0.5 });
   };
+
   const { currency, format, rates } = useCurrency();
   const { tabBarOffset } = useTabBar();
   const lastScrollY = useSharedValue(0);
@@ -95,23 +68,6 @@ export default function DashboardScreen() {
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth().toString());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [isPickerVisible, setIsPickerVisible] = useState(false);
-  const [monthlyStatsDoc, setMonthlyStatsDoc] = useState<MonthlyStatsDoc | null>(null);
-
-  useEffect(() => {
-    if (viewMode !== 'month' || !auth.currentUser) return;
-    const mKey = `${selectedYear}-${String(parseInt(selectedMonth, 10) + 1).padStart(2, '0')}`;
-    const monthlyRef = doc(db, 'users', auth.currentUser.uid, 'monthlyStats', mKey);
-    const unsub = onSnapshot(monthlyRef, (snap) => {
-      if (snap && snap.exists()) {
-        setMonthlyStatsDoc(snap.data() as MonthlyStatsDoc);
-      } else {
-        setMonthlyStatsDoc(null);
-      }
-    }, (err) => {
-      console.warn("Home monthlyStats listener error:", err);
-    });
-    return () => unsub();
-  }, [viewMode, selectedMonth, selectedYear]);
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(currentDate.getDate() - 7);
@@ -119,114 +75,13 @@ export default function DashboardScreen() {
   const [rangeEnd, setRangeEnd] = useState(currentDate);
   const [isRangePickerVisible, setIsRangePickerVisible] = useState(false);
 
-  const { totalIncome, totalExpenses, averageIncome, averageExpenses } = React.useMemo(() => {
-    // 1. FAST PATH FOR TOTAL MODE: Use userStats directly without iterating transactions
-    if (viewMode === 'total' && userStats && userStats.statsCalibrated && (userStats.totalTransactionsCount || 0) > 0) {
-      const display = computeDisplayFromStats(userStats, currency, rates);
-      const earliestDate = (userStats.firstTransactionDate || userStats.firstIncomeDate)
-        ? new Date(userStats.firstTransactionDate || userStats.firstIncomeDate!)
-        : new Date();
-      const now = new Date();
-      const startYear = earliestDate.getFullYear();
-      const startMonth = earliestDate.getMonth();
-      const currentYearLocal = now.getFullYear();
-      const currentMonthLocal = now.getMonth();
-      const monthsDiff = Math.max(1, (currentYearLocal - startYear) * 12 + (currentMonthLocal - startMonth) + 1);
-
-      return {
-        totalIncome: display.income,
-        totalExpenses: display.expense,
-        averageIncome: display.income / monthsDiff,
-        averageExpenses: display.expense / monthsDiff
-      };
-    }
-
-    // 2. FAST PATH FOR MONTH MODE: Use monthlyStatsDoc directly
-    if (viewMode === 'month' && monthlyStatsDoc) {
-      const display = computeDisplayFromStats(monthlyStatsDoc, currency, rates);
-      const daysInSelectedMonth = new Date(selectedYear, parseInt(selectedMonth, 10) + 1, 0).getDate();
-      return {
-        totalIncome: display.income,
-        totalExpenses: display.expense,
-        averageIncome: display.income / daysInSelectedMonth,
-        averageExpenses: display.expense / daysInSelectedMonth
-      };
-    }
-
-    // 3. Fallback or RANGE mode: calculate from rawTransactions
-    let currentTotalIncome = 0;
-    let currentTotalExpenses = 0;
-    let earliestDate = new Date();
-    let hasTransactions = false;
-
-    rawTransactions.forEach((t: any) => {
-      let transactionDate: Date;
-
-      const rawDate = t.date || t.createdAt;
-      if (rawDate && typeof rawDate.toDate === 'function') {
-        transactionDate = rawDate.toDate();
-      } else if (rawDate instanceof Date) {
-        transactionDate = rawDate;
-      } else if (rawDate && typeof rawDate.seconds === 'number') {
-        transactionDate = new Date(rawDate.seconds * 1000);
-      } else if (rawDate) {
-        transactionDate = new Date(rawDate);
-      } else {
-        transactionDate = new Date();
-      }
-
-      if (!hasTransactions || transactionDate < earliestDate) {
-        earliestDate = transactionDate;
-        hasTransactions = true;
-      }
-
-      const matchesFilter = viewMode === 'total' ||
-        (viewMode === 'month' && transactionDate.getMonth().toString() === selectedMonth && transactionDate.getFullYear() === selectedYear) ||
-        (viewMode === 'range' && transactionDate >= rangeStart && transactionDate <= rangeEnd);
-
-      const valueToSum = (t.currency === currency)
-        ? t.amount
-        : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
-
-      if (matchesFilter) {
-        if (t.type === 'income') {
-          currentTotalIncome += valueToSum;
-        } else {
-          currentTotalExpenses += valueToSum;
-        }
-      }
-    });
-
-    let computedAvgIncome = 0;
-    let computedAvgExpenses = 0;
-
-    if (viewMode === 'month') {
-      const daysInSelectedMonth = new Date(selectedYear, parseInt(selectedMonth, 10) + 1, 0).getDate();
-      computedAvgIncome = currentTotalIncome / daysInSelectedMonth;
-      computedAvgExpenses = currentTotalExpenses / daysInSelectedMonth;
-    } else if (viewMode === 'range') {
-      const diffTime = Math.abs(rangeEnd.getTime() - rangeStart.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      computedAvgIncome = currentTotalIncome / diffDays;
-      computedAvgExpenses = currentTotalExpenses / diffDays;
-    } else {
-      const now = new Date();
-      const startYear = earliestDate.getFullYear();
-      const startMonth = earliestDate.getMonth();
-      const currentYearLocal = now.getFullYear();
-      const currentMonthLocal = now.getMonth();
-      const monthsDiff = hasTransactions ? (currentYearLocal - startYear) * 12 + (currentMonthLocal - startMonth) + 1 : 1;
-      computedAvgIncome = currentTotalIncome / monthsDiff;
-      computedAvgExpenses = currentTotalExpenses / monthsDiff;
-    }
-
-    return {
-      totalIncome: currentTotalIncome,
-      totalExpenses: currentTotalExpenses,
-      averageIncome: computedAvgIncome,
-      averageExpenses: computedAvgExpenses
-    };
-  }, [rawTransactions, userStats, monthlyStatsDoc, viewMode, selectedMonth, selectedYear, rangeStart, rangeEnd, currency, rates]);
+  const { totalIncome, totalExpenses, averageIncome, averageExpenses } = useHomeMetrics({
+    viewMode,
+    selectedMonth,
+    selectedYear,
+    rangeStart,
+    rangeEnd,
+  });
 
   return (
     <View style={styles.container}>
@@ -236,49 +91,27 @@ export default function DashboardScreen() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
       >
-
         <View style={[styles.toggleContainer, { width: toggleWidth }]}>
           <Animated.View style={[styles.activeHighlight, { width: tabWidth }, animatedToggleStyle]} />
-          <Pressable
-            style={styles.toggleTab}
-            onPress={() => toggleView('total')}
-          >
-            <Text style={[styles.toggleText, viewMode === 'total' && styles.toggleTextActive]}>
-              TOTAL
-            </Text>
+          <Pressable style={styles.toggleTab} onPress={() => toggleView('total')}>
+            <Text style={[styles.toggleText, viewMode === 'total' && styles.toggleTextActive]}>TOTAL</Text>
           </Pressable>
-          <Pressable
-            style={styles.toggleTab}
-            onPress={() => toggleView('month')}
-          >
-            <Text style={[styles.toggleText, viewMode === 'month' && styles.toggleTextActive]}>
-              MONTH
-            </Text>
+          <Pressable style={styles.toggleTab} onPress={() => toggleView('month')}>
+            <Text style={[styles.toggleText, viewMode === 'month' && styles.toggleTextActive]}>MONTH</Text>
           </Pressable>
-          <Pressable
-            style={styles.toggleTab}
-            onPress={() => toggleView('range')}
-          >
-            <Text style={[styles.toggleText, viewMode === 'range' && styles.toggleTextActive]}>
-              RANGE
-            </Text>
+          <Pressable style={styles.toggleTab} onPress={() => toggleView('range')}>
+            <Text style={[styles.toggleText, viewMode === 'range' && styles.toggleTextActive]}>RANGE</Text>
           </Pressable>
         </View>
 
         {viewMode === 'month' && (
           <View style={styles.dateSelectorContainer}>
-            <Pressable
-              style={styles.dateSelector}
-              onPress={() => setIsPickerVisible(true)}
-            >
+            <Pressable style={styles.dateSelector} onPress={() => setIsPickerVisible(true)}>
               <View style={styles.calendarIconContainer}>
                 <Calendar color="#3b82f6" size={20} fill="rgba(59, 130, 246, 0.1)" strokeWidth={2.5} />
               </View>
-              <Text style={styles.dateSelectorText}
-                numberOfLines={1}
-                adjustsFontSizeToFit={true}
-              >
-                {LUNI.find(l => l.value === selectedMonth)?.label} {selectedYear}
+              <Text style={styles.dateSelectorText} numberOfLines={1} adjustsFontSizeToFit={true}>
+                {LUNI.find((l) => l.value === selectedMonth)?.label} {selectedYear}
               </Text>
               <View style={styles.chevronIconContainer}>
                 <ChevronDown color="#3b82f6" size={18} strokeWidth={2.5} />
@@ -289,19 +122,13 @@ export default function DashboardScreen() {
 
         {viewMode === 'range' && (
           <View style={styles.dateSelectorContainer}>
-            <Pressable
-              style={styles.dateSelector}
-              onPress={() => setIsRangePickerVisible(true)}
-            >
+            <Pressable style={styles.dateSelector} onPress={() => setIsRangePickerVisible(true)}>
               <View style={styles.calendarIconContainer}>
                 <Calendar color="#3b82f6" size={20} fill="rgba(59, 130, 246, 0.1)" strokeWidth={2.5} />
               </View>
-              <Text
-                style={styles.dateSelectorText}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
-                {rangeStart.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} — {rangeEnd.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+              <Text style={styles.dateSelectorText} numberOfLines={1} adjustsFontSizeToFit>
+                {rangeStart.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} —{' '}
+                {rangeEnd.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
               </Text>
               <View style={styles.chevronIconContainer}>
                 <ChevronDown color="#3b82f6" size={18} strokeWidth={2.5} />
@@ -311,101 +138,15 @@ export default function DashboardScreen() {
         )}
 
         <Animated.View style={styles.summaryContainer} layout={LinearTransition}>
-          <View>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => showAlert('Total Income Details', `Total: ${format(totalIncome, { isConverted: true })}\n${viewMode === 'month' ? 'Daily' : 'Monthly'}: ${format(averageIncome, { isConverted: true })}`, 'info')}
-              style={styles.largeCard}
-            >
-              <View style={styles.cardHeader}>
-                <View style={[styles.iconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                  <Wallet color="#10b981" size={22} strokeWidth={2.5} />
-                </View>
-              </View>
-
-              <View style={styles.statsRow}>
-                <View style={styles.statColumn}>
-                  <Text style={styles.cardLabel}>TOTAL INCOME</Text>
-                  <AnimatedAmount
-                    value={totalIncome}
-                    format={format}
-                    style={[styles.cardAmount, { color: '#10b981' }]}
-                    options={{ compact: true, isConverted: true }}
-                  />
-                </View>
-
-                <View style={styles.vDivider} />
-
-                <View style={styles.statColumn}>
-                  <Text style={styles.footerLabel}>{viewMode === 'total' ? 'Monthly' : 'Daily'}</Text>
-                  <AnimatedAmount
-                    value={averageIncome}
-                    format={format}
-                    style={[styles.footerValue, { color: '#10b981' }]}
-                    options={{ compact: true, isConverted: true }}
-                  />
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          <View>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => showAlert('Total Expenses Details', `Total: ${format(totalExpenses, { isConverted: true })}\n${viewMode === 'month' ? 'Daily' : 'Monthly'}: ${format(averageExpenses, { isConverted: true })}`, 'info')}
-              style={styles.largeCard}
-            >
-              <View style={styles.cardHeader}>
-                <View style={[styles.iconCircle, { backgroundColor: 'rgba(235, 86, 86, 0.1)' }]}>
-                  <Receipt color="#eb5656" size={22} strokeWidth={2.5} />
-                </View>
-              </View>
-
-              <View style={styles.statsRow}>
-                <View style={styles.statColumn}>
-                  <Text style={styles.cardLabel}>TOTAL EXPENSES</Text>
-                  <AnimatedAmount
-                    value={totalExpenses}
-                    format={format}
-                    style={[styles.cardAmount, { color: '#eb5656' }]}
-                    options={{ compact: true, isConverted: true }}
-                  />
-                </View>
-
-                <View style={styles.vDivider} />
-
-                <View style={styles.statColumn}>
-                  <Text style={styles.footerLabel}>{viewMode === 'total' ? 'Monthly' : 'Daily'}</Text>
-                  <AnimatedAmount
-                    value={averageExpenses}
-                    format={format}
-                    style={[styles.footerValue, { color: '#eb5656' }]}
-                    options={{ compact: true, isConverted: true }}
-                  />
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          <View>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => showAlert(viewMode === 'total' ? 'Total Profit Details' : 'Period Profit Details', `Period Profit: ${format(totalIncome - totalExpenses, { isConverted: true, showSign: true })}`, 'info')}
-              style={styles.totalBalanceCard}
-            >
-              <View style={styles.totalBalanceHeader}>
-                <Text style={[styles.totalBalanceLabel, { color: '#ffffffc7', opacity: 0.8 }]}>
-                  {viewMode === 'total' ? 'TOTAL PROFIT' : 'PERIOD PROFIT'}
-                </Text>
-              </View>
-              <AnimatedAmount
-                value={totalIncome - totalExpenses}
-                format={format}
-                style={[styles.totalBalanceAmount, { color: (totalIncome - totalExpenses) >= 0 ? '#10b981' : '#eb5656' }]}
-                options={{ compact: true, isConverted: true, showSign: true }}
-              />
-            </TouchableOpacity>
-          </View>
+          <HomeSummaryCards
+            totalIncome={totalIncome}
+            totalExpenses={totalExpenses}
+            averageIncome={averageIncome}
+            averageExpenses={averageExpenses}
+            viewMode={viewMode}
+            format={format}
+            showAlert={showAlert}
+          />
 
           {viewMode === 'total' && (
             <InsightsCarousel
@@ -433,7 +174,7 @@ export default function DashboardScreen() {
         onClose={() => setIsRangePickerVisible(false)}
         initialStartDate={rangeStart}
         initialDeadline={rangeEnd}
-        title={"SELECT RANGE"}
+        title={'SELECT RANGE'}
         onSave={(start, end) => {
           setRangeStart(start);
           setRangeEnd(end);
@@ -442,191 +183,3 @@ export default function DashboardScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  scrollContent: {
-    paddingHorizontal: horizontalScale(24),
-    paddingTop: horizontalScale(20),
-  },
-  toggleContainer: {
-    height: horizontalScale(60),
-    backgroundColor: '#1C1D1F',
-    borderRadius: moderateScale(9999),
-    flexDirection: 'row',
-    padding: horizontalScale(6),
-    marginBottom: horizontalScale(32),
-    position: 'relative',
-    alignSelf: 'center',
-  },
-  activeHighlight: {
-    position: 'absolute',
-    top: horizontalScale(6),
-    left: horizontalScale(6),
-    height: horizontalScale(48),
-    backgroundColor: '#3b82f6',
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: horizontalScale(4) },
-    shadowOpacity: 0.8,
-    shadowRadius: moderateScale(15),
-    elevation: 12,
-    borderRadius: moderateScale(9999),
-  },
-  toggleTab: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  toggleText: {
-    fontSize: moderateScale(14),
-    color: 'rgba(255,255,255,0.4)',
-    fontFamily: 'Manrope_700Bold',
-  },
-  toggleTextActive: {
-    color: '#FFFFFF',
-  },
-  dateSelectorContainer: {
-    alignItems: 'center',
-    marginBottom: horizontalScale(24),
-  },
-  dateSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1C1D1F',
-    paddingVertical: horizontalScale(14),
-    borderRadius: moderateScale(24),
-    width: '75%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: horizontalScale(4) },
-    shadowOpacity: 0.1,
-    shadowRadius: moderateScale(10),
-    elevation: 4,
-    position: 'relative',
-  },
-  calendarIconContainer: {
-    position: 'absolute',
-    left: horizontalScale(16),
-    width: horizontalScale(32),
-    height: horizontalScale(32),
-    borderRadius: moderateScale(8),
-    backgroundColor: 'rgba(59, 130, 246, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  chevronIconContainer: {
-    position: 'absolute',
-    right: horizontalScale(16),
-    width: horizontalScale(32),
-    height: horizontalScale(32),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dateSelectorText: {
-    fontSize: moderateScale(15),
-    letterSpacing: 1.2,
-    color: '#FFFFFF',
-    fontFamily: 'Manrope_700Bold',
-    textTransform: 'uppercase',
-    paddingHorizontal: horizontalScale(40),
-    textAlign: 'center',
-  },
-  summaryContainer: {
-    gap: horizontalScale(16),
-  },
-  largeCard: {
-    backgroundColor: '#1C1D1F',
-    borderRadius: moderateScale(28),
-    padding: horizontalScale(18),
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    marginBottom: horizontalScale(4),
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: horizontalScale(8),
-  },
-  iconCircle: {
-    width: horizontalScale(38),
-    height: horizontalScale(38),
-    borderRadius: moderateScale(19),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badge: {
-    paddingHorizontal: horizontalScale(10),
-    paddingVertical: horizontalScale(4),
-    borderRadius: moderateScale(10),
-  },
-  badgeText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: moderateScale(11),
-  },
-  cardLabel: {
-    fontSize: moderateScale(10),
-    color: 'rgba(255, 255, 255, 0.78)',
-    letterSpacing: 1.1,
-    marginBottom: horizontalScale(2),
-    textTransform: 'uppercase',
-    fontFamily: 'Manrope_700Bold',
-  },
-  cardAmount: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: moderateScale(20),
-    letterSpacing: -0.5,
-  },
-  footerLabel: {
-    fontSize: moderateScale(13),
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontFamily: 'Inter_500Medium',
-  },
-  footerValue: {
-    fontSize: moderateScale(16),
-    fontFamily: 'Manrope_700Bold',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: horizontalScale(4),
-  },
-  statColumn: {
-    flex: 1,
-  },
-  vDivider: {
-    width: 1,
-    height: horizontalScale(36),
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    marginHorizontal: horizontalScale(12),
-  },
-  totalBalanceCard: {
-    backgroundColor: '#1C1D1F',
-    borderRadius: moderateScale(22),
-    padding: horizontalScale(10),
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-  },
-  totalBalanceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: horizontalScale(4),
-    gap: horizontalScale(8),
-  },
-  totalBalanceLabel: {
-    fontSize: moderateScale(9),
-    color: '#ffffffc7',
-    opacity: 0.8,
-    letterSpacing: 2,
-    fontFamily: 'Manrope_700Bold',
-  },
-  totalBalanceAmount: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: moderateScale(20),
-    letterSpacing: -0.5,
-  },
-});
