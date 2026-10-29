@@ -1,9 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot, query, where } from '@react-native-firebase/firestore';
+import { collection, doc, getDocFromCache, onSnapshot, query, where } from '@react-native-firebase/firestore';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { auth, db, onAuthChanged } from '../firebaseConfig';
-// ---------------------------------------------------------------------------------------------------------------------
-import { syncUserStats } from '../utils/syncStats';
-// ---------------------------------------------------------------------------------------------------------------------
+import { calibrateUserStats, recomputeAndSaveInsights, UserStatsDoc } from '../utils/statsManager';
 
 export interface Transaction {
   id: string;
@@ -22,11 +20,14 @@ export interface Transaction {
 
 interface TransactionsContextType {
   transactions: Transaction[];
+  userStats: UserStatsDoc | null;
   loading: boolean;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   isSearching: boolean;
   setIsSearching: (searching: boolean) => void;
+  loadAllTransactions: () => Promise<Transaction[]>;
+  isAllTransactionsLoaded: boolean;
 }
 
 const TransactionsContext = createContext<TransactionsContextType | undefined>(undefined);
@@ -38,7 +39,7 @@ export const useTransactions = () => {
 };
 
 // Helper function to parse Firestore timestamps or other date formats into a compatible Date object
-const parseCompatibleDate = (rawDate: any): Date => {
+export const parseCompatibleDate = (rawDate: any): Date => {
   let dateObj: Date;
   if (rawDate && typeof rawDate.toDate === 'function') {
     dateObj = rawDate.toDate();
@@ -64,92 +65,235 @@ const parseCompatibleDate = (rawDate: any): Date => {
 
 export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [userStats, setUserStats] = useState<UserStatsDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [isAllTransactionsLoaded, setIsAllTransactionsLoaded] = useState(false);
 
-  // ---------------------------------------------------------------------------------------------------------------------  
+  const userStatsRef = useRef<UserStatsDoc | null>(null);
+  const transactionsRef = useRef<Transaction[]>([]);
+  const userStatsLoadedRef = useRef(false);
   const hasSyncedStats = useRef(false);
-  // ---------------------------------------------------------------------------------------------------------------------  
+  const hasCheckedWeeklyRefresh = useRef(false);
+  const unsubscribeSnapshotRef = useRef<(() => void) | null>(null);
+  const isLoadingTransactionsRef = useRef(false);
+  const currentUserRef = useRef<any>(null);
+
+
+
+  const loadAllTransactions = useCallback(async (): Promise<Transaction[]> => {
+    const user = currentUserRef.current || auth.currentUser;
+    if (!user) return [];
+    if (isAllTransactionsLoaded && transactionsRef.current.length > 0) {
+      return transactionsRef.current;
+    }
+    if (isLoadingTransactionsRef.current) {
+      return transactionsRef.current;
+    }
+
+    isLoadingTransactionsRef.current = true;
+    const q = query(
+      collection(db, 'transactions'),
+      where('userId', '==', user.uid)
+    );
+
+    return new Promise<Transaction[]>((resolve) => {
+      let isFirstCall = true;
+      if (!unsubscribeSnapshotRef.current) {
+        unsubscribeSnapshotRef.current = onSnapshot(q, (snapshot) => {
+          isLoadingTransactionsRef.current = false;
+          if (!snapshot) {
+            setTransactions([]);
+            transactionsRef.current = [];
+            if (isFirstCall) {
+              isFirstCall = false;
+              resolve([]);
+            }
+            return;
+          }
+
+          const rawList = snapshot.docs.map((doc) => {
+            const data = doc.data({ serverTimestamps: 'estimate' });
+            const rawDate = data.date || data.createdAt;
+            let compatibleDate = parseCompatibleDate(rawDate);
+
+            if (data.dateString && typeof data.dateString === 'string') {
+              const parts = data.dateString.split('-');
+              if (parts.length === 3) {
+                const y = parseInt(parts[0], 10);
+                const m = parseInt(parts[1], 10) - 1;
+                const d = parseInt(parts[2], 10);
+                compatibleDate = new Date(y, m, d, compatibleDate.getHours(), compatibleDate.getMinutes(), compatibleDate.getSeconds());
+              }
+            }
+
+            return {
+              id: doc.id,
+              ...data,
+              date: compatibleDate,
+              createdAt: compatibleDate,
+              dateString: data.dateString,
+            } as Transaction;
+          });
+
+          // Sort descending by date
+          rawList.sort((a, b) => (b.date?.getTime() || b.createdAt.getTime()) - (a.date?.getTime() || a.createdAt.getTime()));
+
+          transactionsRef.current = rawList;
+          setTransactions(rawList);
+          setIsAllTransactionsLoaded(true);
+
+          if (isFirstCall) {
+            isFirstCall = false;
+            resolve(rawList);
+          }
+
+          // Zero-read insights refresh: if 7 days passed and we already downloaded transactions for search/history
+          if (!hasCheckedWeeklyRefresh.current && user?.uid) {
+            const lastCalc = userStatsRef.current?.insights?.lastCalculatedAt
+              ? new Date(userStatsRef.current.insights.lastCalculatedAt).getTime()
+              : 0;
+            if (Date.now() - lastCalc > 7 * 24 * 60 * 60 * 1000) {
+              hasCheckedWeeklyRefresh.current = true;
+              recomputeAndSaveInsights(user.uid, rawList).catch((err) => {
+                console.error('[TransactionsContext] Zero-read weekly insights refresh error:', err);
+              });
+            }
+          }
+        }, (error) => {
+          isLoadingTransactionsRef.current = false;
+          console.error("Transactions Context On-Demand Snapshot Error:", error);
+          if (isFirstCall) {
+            isFirstCall = false;
+            resolve([]);
+          }
+        });
+      } else {
+        isLoadingTransactionsRef.current = false;
+        resolve(transactionsRef.current);
+      }
+    });
+  }, [isAllTransactionsLoaded]);
+
+  // Load all transactions on-demand when searching is initiated
+  useEffect(() => {
+    if (isSearching || (searchQuery && searchQuery.trim().length > 0)) {
+      loadAllTransactions();
+    }
+  }, [isSearching, searchQuery, loadAllTransactions]);
 
   useEffect(() => {
-    let unsubscribeSnapshot: (() => void) | null = null;
+    let unsubscribeUserStats: (() => void) | null = null;
 
-    // Listen to Auth State Changes
-    const unsubscribeAuth = onAuthChanged((user: any) => {
-      // Clean up previous snapshot listener if it exists (e.g. on user log out/switch)
-      if (unsubscribeSnapshot) {
-        unsubscribeSnapshot();
-        unsubscribeSnapshot = null;
+    const checkAutoCalibration = (currentStats: UserStatsDoc | null, uid: string) => {
+      if (!userStatsLoadedRef.current || !uid) return;
+
+      // 1. Initial calibration if missing or uncalibrated
+      if (
+        !hasSyncedStats.current &&
+        (!currentStats || !currentStats.statsCalibrated || !currentStats.insights || !currentStats.lastTransactionDate)
+      ) {
+        hasSyncedStats.current = true;
+        calibrateUserStats(uid).then((success) => {
+          if (!success) hasSyncedStats.current = false;
+        });
+        return;
       }
-    
+
+      // 2. Weekly auto-refresh (once every 7 days)
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+      const lastCalc = currentStats?.insights?.lastCalculatedAt
+        ? new Date(currentStats.insights.lastCalculatedAt).getTime()
+        : 0;
+      const isExpired = Date.now() - lastCalc > SEVEN_DAYS_MS;
+
+      if (isExpired && !hasCheckedWeeklyRefresh.current && (currentStats?.totalTransactionsCount || 0) > 0) {
+        hasCheckedWeeklyRefresh.current = true;
+        recomputeAndSaveInsights(
+          uid,
+          transactionsRef.current.length > 0 ? transactionsRef.current : undefined
+        ).catch((err) => {
+          console.error('[TransactionsContext] Weekly insights recomputation error:', err);
+        });
+      }
+    };
+
+    const handleUser = (user: any) => {
+      // 1. If already active for this exact user, keep the live listener & data intact
+      if (user?.uid && currentUserRef.current?.uid === user.uid && unsubscribeUserStats) {
+        currentUserRef.current = user;
+        return;
+      }
+
+      // 2. Clean previous listeners & reset user-specific refs
+      if (unsubscribeSnapshotRef.current) {
+        unsubscribeSnapshotRef.current();
+        unsubscribeSnapshotRef.current = null;
+      }
+      if (unsubscribeUserStats) {
+        unsubscribeUserStats();
+        unsubscribeUserStats = null;
+      }
+
+      currentUserRef.current = user;
       hasSyncedStats.current = false;
-      if (!user) {
+      hasCheckedWeeklyRefresh.current = false;
+      userStatsLoadedRef.current = false;
+      userStatsRef.current = null;
+      transactionsRef.current = [];
+      setIsAllTransactionsLoaded(false);
+
+      if (!user?.uid) {
         setTransactions([]);
+        setUserStats(null);
         setLoading(false);
         return;
       }
 
-      setLoading(true);
-      const q = query(
-        collection(db, 'transactions'),
-        where('userId', '==', user.uid)
-      );
-
-      unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
-        if (!snapshot) {
-          setTransactions([]);
-          setLoading(false);
-          return;
-        }
-
-        const rawList = snapshot.docs.map((doc) => {
-          const data = doc.data({ serverTimestamps: 'estimate' });
-          const rawDate = data.date || data.createdAt;
-          let compatibleDate = parseCompatibleDate(rawDate);
-
-          // If dateString is stored, anchor the Date object to that calendar day so it never shifts
-          if (data.dateString && typeof data.dateString === 'string') {
-            const parts = data.dateString.split('-');
-            if (parts.length === 3) {
-              const y = parseInt(parts[0], 10);
-              const m = parseInt(parts[1], 10) - 1;
-              const d = parseInt(parts[2], 10);
-              compatibleDate = new Date(y, m, d, compatibleDate.getHours(), compatibleDate.getMinutes(), compatibleDate.getSeconds());
-            }
+      // 3. Subscribe to Firestore (immediate 0ms disk cache read + live snapshot)
+      const userRef = doc(db, 'users', user.uid);
+      getDocFromCache(userRef).then((snap) => {
+        if (snap && snap.exists() && !userStatsLoadedRef.current) {
+          const data = snap.data() as UserStatsDoc;
+          if (data && !userStatsRef.current) {
+            userStatsRef.current = data;
+            setUserStats(data);
+            setLoading(false);
           }
-
-          return {
-            id: doc.id,
-            ...data,
-            date: compatibleDate,
-            createdAt: compatibleDate,
-            dateString: data.dateString,
-          } as Transaction;
-        });
-
-        // Sort descending by date
-        rawList.sort((a, b) => (b.date?.getTime() || b.createdAt.getTime()) - (a.date?.getTime() || a.createdAt.getTime()));
-
-        setTransactions(rawList);
-        setLoading(false);
-
-        // Run the biweekly stats sync check exactly once per login session -------------------------------------------
-        if (!hasSyncedStats.current) {
-          hasSyncedStats.current = true;
-          syncUserStats(user.uid, rawList);
         }
-        // ----------------------------------------------------------------------------------------------------------------
-      }, (error) => {
-        console.error("Transactions Context Firestore Error:", error);
+      }).catch(() => {});
+
+      unsubscribeUserStats = onSnapshot(userRef, { includeMetadataChanges: true }, (userSnap) => {
+        userStatsLoadedRef.current = true;
+        const data = (userSnap && userSnap.exists() ? userSnap.data() : null) as UserStatsDoc | null;
+        userStatsRef.current = data;
+        setUserStats(data);
+        setLoading(false);
+        checkAutoCalibration(data, user.uid);
+      }, (err) => {
+        console.error("UserStats Context Snapshot Error:", err);
         setLoading(false);
       });
-    });
+    };
+
+    // Fast path: start immediately if auth.currentUser is already in native memory
+    if (auth.currentUser?.uid) {
+      handleUser(auth.currentUser);
+    }
+
+    // Auth listener: handles login/logout/token updates
+    const unsubscribeAuth = onAuthChanged(handleUser);
 
     return () => {
       unsubscribeAuth();
-      if (unsubscribeSnapshot) {
-        unsubscribeSnapshot();
+      if (unsubscribeSnapshotRef.current) {
+        unsubscribeSnapshotRef.current();
+        unsubscribeSnapshotRef.current = null;
+      }
+      if (unsubscribeUserStats) {
+        unsubscribeUserStats();
+        unsubscribeUserStats = null;
       }
     };
   }, []);
@@ -157,11 +301,14 @@ export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ 
   return (
     <TransactionsContext.Provider value={{
       transactions,
+      userStats,
       loading,
       searchQuery,
       setSearchQuery,
       isSearching,
-      setIsSearching
+      setIsSearching,
+      loadAllTransactions,
+      isAllTransactionsLoaded,
     }}>
       {children}
     </TransactionsContext.Provider>

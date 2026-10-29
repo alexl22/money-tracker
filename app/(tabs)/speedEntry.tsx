@@ -7,6 +7,7 @@ import { useAlert } from "../../context/AlertContext";
 import { useCurrency } from "../../context/CurrencyContext";
 import { useTransactions } from "../../context/TransactionsContext";
 import { auth, db } from "../../firebaseConfig";
+import { onTransactionCreated } from "../../utils/statsManager";
 
 interface TransactionModalProps {
     isVisible: boolean;
@@ -20,7 +21,7 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
     const [isSaving, setIsSaving] = useState(false);
     const { showAlert } = useAlert();
     const { currency, convertToBase, format } = useCurrency();
-    const { transactions } = useTransactions();
+    const { transactions, userStats } = useTransactions();
     const handleSave = async (amount: string, resetModal: () => void) => {
         const user = auth.currentUser;
         if (!user) {
@@ -47,13 +48,16 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
         setIsSaving(true);
         try {
             // Check transaction count and total amount limits locally from cached state to make saves instant
-            if (transactions.length >= 50000) {
+            const totalCount = userStats?.totalTransactionsCount ?? transactions.length;
+            if (totalCount >= 50000) {
                 showAlert("Limit Reached", "You have reached the maximum limit of 50,000 transactions. Please contact support or delete old data.", "alert");
                 setIsSaving(false);
                 return;
             }
 
-            const currentTotalLocal = transactions.reduce((acc, t) => acc + (t.amount || 0), 0);
+            const currentTotalLocal = userStats
+                ? (userStats.totalIncomeUSD + userStats.totalExpenseUSD)
+                : transactions.reduce((acc, t) => acc + (t.amount || 0), 0);
             const newAmount = parseFloat(amount);
 
             if (currentTotalLocal + newAmount > 10000000000) {
@@ -86,6 +90,8 @@ export function TransactionModal({ isVisible, onClose }: TransactionModalProps) 
                 .catch(error => {
                     console.error("Delayed Save Error!", error);
                 });
+
+            onTransactionCreated(transactionData);
 
             setTimeout(() => {
                 setTransactionType(null);

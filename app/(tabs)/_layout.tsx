@@ -33,7 +33,6 @@ export default function TabLayout() {
   const [isWelcomeVisible, setIsWelcomeVisible] = useState(false);
   const { searchQuery, setSearchQuery, isSearching, setIsSearching } = useTransactions();
 
-
   useEffect(() => {
     const checkFirstTime = async () => {
       const hasSeen = await AsyncStorage.getItem('hasSeenGuide');
@@ -52,6 +51,7 @@ export default function TabLayout() {
       hideSub.remove();
     };
   }, []);
+
   useEffect(() => {
     const fetchUserName = async (u: any) => {
       if (u) {
@@ -64,7 +64,7 @@ export default function TabLayout() {
             }
           }
         } catch (error) {
-          console.error("Error fetching name:", error);
+          console.error("Error fetching user data:", error);
         }
       }
     };

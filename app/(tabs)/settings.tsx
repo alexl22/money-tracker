@@ -19,6 +19,7 @@ import styles from '../../styles/settings.styles';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { checkNotificationPermission, requestNotificationPermission, updateNotification } from '../../utils/notifications';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
+import { resetUserStats } from '../../utils/statsManager';
 
 export default function SettingsScreen() {
   const { currency, setCurrency, availableCurrencies, format, rates } = useCurrency();
@@ -283,6 +284,8 @@ export default function SettingsScreen() {
             chunk.forEach(d => batch.delete(d.ref));
             await batch.commit();
           }
+
+          await resetUserStats(user.uid);
 
           showAlert("Success", "All transactions have been deleted.", "success");
         } catch (error) {
@@ -715,7 +718,7 @@ export default function SettingsScreen() {
         </View>
 
         <Text style={styles.versionText}>
-          v1.0.3
+          v1.1.0
         </Text>
 
         <View style={{ height: 120 }} />

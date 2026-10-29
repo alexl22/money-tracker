@@ -1,3 +1,4 @@
+import { doc, onSnapshot } from '@react-native-firebase/firestore';
 import { Calendar, ChevronDown, Receipt, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
@@ -19,7 +20,9 @@ import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
 import { useTransactions } from '../../context/TransactionsContext';
+import { auth, db } from '../../firebaseConfig';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
+import { computeDisplayFromStats, MonthlyStatsDoc } from '../../utils/statsManager';
 
 const AnimatedAmount = ({ value, format, style, options = {} }: { value: number, format: any, style?: any, options?: any }) => {
   const [displayValue, setDisplayValue] = useState(value);
@@ -85,13 +88,30 @@ export default function DashboardScreen() {
     transform: [{ translateX: translateX.value }],
   }));
 
-  const { transactions: rawTransactions } = useTransactions();
+  const { transactions: rawTransactions, userStats } = useTransactions();
   const { showAlert } = useAlert();
 
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth().toString());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [isPickerVisible, setIsPickerVisible] = useState(false);
+  const [monthlyStatsDoc, setMonthlyStatsDoc] = useState<MonthlyStatsDoc | null>(null);
+
+  useEffect(() => {
+    if (viewMode !== 'month' || !auth.currentUser) return;
+    const mKey = `${selectedYear}-${String(parseInt(selectedMonth, 10) + 1).padStart(2, '0')}`;
+    const monthlyRef = doc(db, 'users', auth.currentUser.uid, 'monthlyStats', mKey);
+    const unsub = onSnapshot(monthlyRef, (snap) => {
+      if (snap && snap.exists()) {
+        setMonthlyStatsDoc(snap.data() as MonthlyStatsDoc);
+      } else {
+        setMonthlyStatsDoc(null);
+      }
+    }, (err) => {
+      console.warn("Home monthlyStats listener error:", err);
+    });
+    return () => unsub();
+  }, [viewMode, selectedMonth, selectedYear]);
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(currentDate.getDate() - 7);
@@ -100,6 +120,40 @@ export default function DashboardScreen() {
   const [isRangePickerVisible, setIsRangePickerVisible] = useState(false);
 
   const { totalIncome, totalExpenses, averageIncome, averageExpenses } = React.useMemo(() => {
+    // 1. FAST PATH FOR TOTAL MODE: Use userStats directly without iterating transactions
+    if (viewMode === 'total' && userStats && userStats.statsCalibrated && (userStats.totalTransactionsCount || 0) > 0) {
+      const display = computeDisplayFromStats(userStats, currency, rates);
+      const earliestDate = (userStats.firstTransactionDate || userStats.firstIncomeDate)
+        ? new Date(userStats.firstTransactionDate || userStats.firstIncomeDate!)
+        : new Date();
+      const now = new Date();
+      const startYear = earliestDate.getFullYear();
+      const startMonth = earliestDate.getMonth();
+      const currentYearLocal = now.getFullYear();
+      const currentMonthLocal = now.getMonth();
+      const monthsDiff = Math.max(1, (currentYearLocal - startYear) * 12 + (currentMonthLocal - startMonth) + 1);
+
+      return {
+        totalIncome: display.income,
+        totalExpenses: display.expense,
+        averageIncome: display.income / monthsDiff,
+        averageExpenses: display.expense / monthsDiff
+      };
+    }
+
+    // 2. FAST PATH FOR MONTH MODE: Use monthlyStatsDoc directly
+    if (viewMode === 'month' && monthlyStatsDoc) {
+      const display = computeDisplayFromStats(monthlyStatsDoc, currency, rates);
+      const daysInSelectedMonth = new Date(selectedYear, parseInt(selectedMonth, 10) + 1, 0).getDate();
+      return {
+        totalIncome: display.income,
+        totalExpenses: display.expense,
+        averageIncome: display.income / daysInSelectedMonth,
+        averageExpenses: display.expense / daysInSelectedMonth
+      };
+    }
+
+    // 3. Fallback or RANGE mode: calculate from rawTransactions
     let currentTotalIncome = 0;
     let currentTotalExpenses = 0;
     let earliestDate = new Date();
@@ -147,7 +201,7 @@ export default function DashboardScreen() {
     let computedAvgExpenses = 0;
 
     if (viewMode === 'month') {
-      const daysInSelectedMonth = new Date(selectedYear, parseInt(selectedMonth) + 1, 0).getDate();
+      const daysInSelectedMonth = new Date(selectedYear, parseInt(selectedMonth, 10) + 1, 0).getDate();
       computedAvgIncome = currentTotalIncome / daysInSelectedMonth;
       computedAvgExpenses = currentTotalExpenses / daysInSelectedMonth;
     } else if (viewMode === 'range') {
@@ -172,7 +226,7 @@ export default function DashboardScreen() {
       averageIncome: computedAvgIncome,
       averageExpenses: computedAvgExpenses
     };
-  }, [rawTransactions, viewMode, selectedMonth, selectedYear, rangeStart, rangeEnd, currency, rates]);
+  }, [rawTransactions, userStats, monthlyStatsDoc, viewMode, selectedMonth, selectedYear, rangeStart, rangeEnd, currency, rates]);
 
   return (
     <View style={styles.container}>
@@ -355,6 +409,7 @@ export default function DashboardScreen() {
 
           {viewMode === 'total' && (
             <InsightsCarousel
+              userStats={userStats}
               transactions={rawTransactions}
               currency={currency}
               rates={rates}

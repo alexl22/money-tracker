@@ -6,7 +6,7 @@ import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated'
 import Svg, { Circle, G } from 'react-native-svg';
 import { useAlert } from '../context/AlertContext';
 import { useCurrency } from '../context/CurrencyContext';
-import { useTransactions } from '../context/TransactionsContext';
+import { parseCompatibleDate, useTransactions } from '../context/TransactionsContext';
 import { auth, db } from '../firebaseConfig';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 import { DatePicker } from './DatePicker';
@@ -22,6 +22,9 @@ interface Goal {
   deadline: Date;
   userId: string;
   isAddCard?: boolean;
+  completedAt?: Date;
+  initialNetUSD?: number;
+  initialNetCalibrated?: boolean;
 }
 
 interface GoalsTabProps {
@@ -43,9 +46,79 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
   const flatListRef = useRef<FlatList>(null);
 
   const [goals, setGoals] = useState<Goal[]>(globalGoalsCache);
+  const [goalTransactions, setGoalTransactions] = useState<any[]>(globalTransactionsCache);
   const [activeIndex, setActiveIndex] = useState(0);
-  const { transactions: allTransactions } = useTransactions();
   const [editingTitle, setEditingTitle] = useState("");
+
+  const isGoalActive = (g: Goal) => {
+    if (g.isAddCard || !g.startDate) return false;
+    if (!g.targetAmount || g.targetAmount <= 0) return false;
+    if (g.completedAt) return false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadline = new Date(g.deadline);
+    deadline.setHours(0, 0, 0, 0);
+
+    return deadline >= today;
+  };
+
+  const goalsNeedingTransactions = goals.filter((g) => {
+    if (g.isAddCard || !g.startDate) return false;
+    if (isGoalActive(g)) return true;
+    if (!g.initialNetCalibrated) return true;
+    return false;
+  });
+
+  const earliestDateString = goalsNeedingTransactions.length > 0
+    ? (() => {
+        const d = new Date(Math.min(...goalsNeedingTransactions.map((g) => g.startDate.getTime())));
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      })()
+    : null;
+
+  useEffect(() => {
+    if (!auth.currentUser || !earliestDateString) {
+      if (!earliestDateString) {
+        setGoalTransactions([]);
+        globalTransactionsCache = [];
+      }
+      return;
+    }
+
+    const q = query(
+      collection(db, 'transactions'),
+      where('userId', '==', auth.currentUser.uid),
+      where('dateString', '>=', earliestDateString)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (!snapshot) {
+          setGoalTransactions([]);
+          globalTransactionsCache = [];
+          return;
+        }
+        const list = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          const rawDate = data.date || data.createdAt;
+          return {
+            id: docSnap.id,
+            ...data,
+            date: parseCompatibleDate(rawDate),
+          };
+        });
+        globalTransactionsCache = list;
+        setGoalTransactions(list);
+      },
+      (error) => {
+        console.warn('[GoalsTab] Filtered transactions subscription error:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [auth.currentUser?.uid, earliestDateString]);
 
   const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [isTargetModalVisible, setIsTargetModalVisible] = useState(false);
@@ -54,8 +127,11 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
   const lastSyncedId = useRef<string | null>(null);
 
   const { convertToBase, currency, format, rates } = useCurrency();
+  const { userStats } = useTransactions();
   const { showAlert } = useAlert();
   const user = auth.currentUser;
+
+  const currentNetUSD = (userStats?.totalIncomeUSD || 0) - (userStats?.totalExpenseUSD || 0);
 
   const currentGoal = goals[activeIndex] || null;
 
@@ -86,7 +162,10 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
           ...data,
           startDate: parseDate(data.startDate),
           deadline: parseDate(data.deadline),
-          createdAt: data.createdAt
+          completedAt: data.completedAt ? parseDate(data.completedAt) : undefined,
+          createdAt: data.createdAt,
+          initialNetUSD: data.initialNetUSD,
+          initialNetCalibrated: data.initialNetCalibrated,
         } as Goal;
       });
 
@@ -100,6 +179,70 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
     }, (error) => console.error("Goals Snapshot Error:", error));
     return () => unsubscribe();
   }, [user]);
+
+  const markedCompletedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!user || goals.length === 0 || goalTransactions.length === 0) return;
+
+    goals.forEach((goal) => {
+      if (goal.completedAt && goal.id) {
+        markedCompletedRef.current.add(goal.id);
+        return;
+      }
+
+      if (
+        goal.isAddCard ||
+        !goal.id ||
+        markedCompletedRef.current.has(goal.id) ||
+        !goal.targetAmount ||
+        goal.targetAmount <= 0
+      ) {
+        return;
+      }
+
+      const gTarget = goal.currency === currency
+        ? goal.targetAmount
+        : ((goal.targetAmountUSD || (goal.targetAmount / (rates?.[goal.currency] || 1))) * (rates?.[currency] || 1));
+
+      let profit = 0;
+      goalTransactions.forEach((t) => {
+        const amount = (t.currency === currency)
+          ? t.amount
+          : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
+        const date = t.date || t.createdAt || new Date();
+        if (date >= goal.startDate) {
+          if (t.type === 'income') profit += amount;
+          else if (t.type === 'expense') profit -= amount;
+        }
+      });
+
+      if (profit >= gTarget && gTarget > 0) {
+        markedCompletedRef.current.add(goal.id);
+        const updates: any = {
+          completedAt: serverTimestamp(),
+        };
+        if (!goal.initialNetCalibrated) {
+          const profitUSD = currency === 'USD' ? profit : profit / (rates?.[currency] || 1);
+          updates.initialNetUSD = Math.round((currentNetUSD - profitUSD) * 100) / 100;
+          updates.initialNetCalibrated = true;
+        }
+        updateDoc(doc(db, "goals", goal.id), updates).catch((err) => {
+          markedCompletedRef.current.delete(goal.id);
+          console.warn('[GoalsTab] Error marking goal completedAt:', err);
+        });
+      } else if (profit < gTarget && goal.completedAt) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const deadline = new Date(goal.deadline);
+        deadline.setHours(0, 0, 0, 0);
+        if (deadline >= today) {
+          markedCompletedRef.current.delete(goal.id);
+          updateDoc(doc(db, "goals", goal.id), { completedAt: null }).catch(() => {});
+        }
+      }
+    });
+  }, [user, goals, goalTransactions, currency, rates]);
 
 
 
@@ -129,12 +272,32 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
       showAlert("Invalid Date", "You cannot set a deadline in the past.", "alert");
       return;
     }
-    if (currentGoal) updateDoc(doc(db, "goals", currentGoal.id), { startDate: s, deadline: e });
+    if (currentGoal) {
+      const isStartDateChanged = s.getTime() !== currentGoal.startDate.getTime();
+      const updates: any = {
+        startDate: s,
+        deadline: e,
+        completedAt: null,
+      };
+      if (isStartDateChanged) {
+        updates.initialNetCalibrated = false;
+      }
+      updateDoc(doc(db, "goals", currentGoal.id), updates);
+    }
   };
   const handleUpdateTarget = (a: number) => {
     if (currentGoal) {
       setLastSavedId(currentGoal.id);
-      updateDoc(doc(db, "goals", currentGoal.id), { targetAmount: a, targetAmountUSD: convertToBase(a), currency: currency });
+      const updates: any = {
+        targetAmount: a,
+        targetAmountUSD: convertToBase(a),
+        currency: currency,
+        completedAt: null,
+      };
+      if (currentGoal.initialNetUSD === undefined) {
+        updates.initialNetUSD = Math.round(currentNetUSD * 100) / 100;
+      }
+      updateDoc(doc(db, "goals", currentGoal.id), updates);
       onTargetUpdated?.();
       setTimeout(() => setLastSavedId(null), 2000);
     }
@@ -154,7 +317,16 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
     const e = new Date(); e.setDate(e.getDate() + 30);
     setIsAddingGoal(true);
     addDoc(collection(db, "goals"), {
-      userId: user.uid, title: "", targetAmount: 0, targetAmountUSD: 0, currency: currency, startDate: s, deadline: e, createdAt: serverTimestamp()
+      userId: user.uid,
+      title: "",
+      targetAmount: 0,
+      targetAmountUSD: 0,
+      currency: currency,
+      startDate: s,
+      deadline: e,
+      initialNetUSD: Math.round(currentNetUSD * 100) / 100,
+      initialNetCalibrated: true,
+      createdAt: serverTimestamp()
     }).finally(() => setIsAddingGoal(false));
   };
   const handleDeleteAll = async () => {
@@ -209,22 +381,38 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
     let todayProfit = 0;
     const nowDay = new Date(); nowDay.setHours(0, 0, 0, 0);
 
-    allTransactions.forEach(t => {
-      const amount = (t.currency === currency) ? t.amount : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
-      const date = t.date || t.createdAt || new Date();
-      if (date >= item.startDate) {
-        if (t.type === 'income') totalProfit += amount;
-        else if (t.type === 'expense') totalProfit -= amount;
-        if (date >= nowDay) {
-          if (t.type === 'income') todayProfit += amount;
-          else if (t.type === 'expense') todayProfit -= amount;
+    const isThisGoalActive = isGoalActive(item);
+
+    if (isThisGoalActive || !item.initialNetCalibrated) {
+      goalTransactions.forEach(t => {
+        const amount = (t.currency === currency) ? t.amount : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
+        const date = t.date || t.createdAt || new Date();
+        if (date >= item.startDate) {
+          if (t.type === 'income') totalProfit += amount;
+          else if (t.type === 'expense') totalProfit -= amount;
+          if (date >= nowDay) {
+            if (t.type === 'income') todayProfit += amount;
+            else if (t.type === 'expense') todayProfit -= amount;
+          }
         }
+      });
+
+      if (item.id && !item.initialNetCalibrated && goalTransactions.length > 0 && user) {
+        const profitUSD = currency === 'USD' ? totalProfit : totalProfit / (rates?.[currency] || 1);
+        const calibratedInitialNetUSD = Math.round((currentNetUSD - profitUSD) * 100) / 100;
+        updateDoc(doc(db, "goals", item.id), {
+          initialNetUSD: calibratedInitialNetUSD,
+          initialNetCalibrated: true,
+        }).catch((err) => console.warn('[GoalsTab] Calibration save error:', err));
       }
-    });
+    } else {
+      const initialNet = item.initialNetUSD !== undefined ? item.initialNetUSD : 0;
+      const profitUSD = currentNetUSD - initialNet;
+      totalProfit = profitUSD * (rates?.[currency] || 1);
+      todayProfit = 0;
+    }
 
     const iTarget = item.currency === currency ? item.targetAmount : ((item.targetAmountUSD || (item.targetAmount / (rates?.[item.currency] || 1))) * (rates?.[currency] || 1));
-    const iProgress = iTarget > 0 ? Math.max(0, Math.min(100, (totalProfit / iTarget) * 100)) : 0;
-    const iOffset = circumference - (circumference * iProgress / 100);
     const iIsTargetSet = item.targetAmount > 0;
     const iIsGoalReached = iIsTargetSet && iTarget > 0 && totalProfit >= iTarget;
 
@@ -232,6 +420,17 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
     const todayAtMidnight = new Date(); todayAtMidnight.setHours(0, 0, 0, 0);
     const todayForCounting = new Date(); todayForCounting.setHours(0, 0, 0, 0);
     const deadlineForCounting = new Date(item.deadline); deadlineForCounting.setHours(0, 0, 0, 0);
+
+    const isDeadlinePassed = deadlineForCounting < todayAtMidnight;
+    const isGoalAccomplished = (iIsTargetSet && iTarget > 0 && totalProfit >= iTarget) || Boolean(item.completedAt);
+
+    const rawProgress = iTarget > 0 ? Math.max(0, Math.min(100, (totalProfit / iTarget) * 100)) : 0;
+    const iProgress = isGoalAccomplished ? 100 : rawProgress;
+    const iOffset = circumference - (circumference * iProgress / 100);
+
+    const completionDate = item.completedAt ? new Date(item.completedAt) : todayForCounting;
+    completionDate.setHours(0, 0, 0, 0);
+    const daysAhead = Math.max(0, Math.floor((deadlineForCounting.getTime() - completionDate.getTime()) / (1000 * 60 * 60 * 24)));
 
     const iTotalGoalDays = Math.max(1, Math.floor((deadlineForCounting.getTime() - item.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
     const iDaysLeft = Math.max(0, Math.floor((deadlineForCounting.getTime() - todayForCounting.getTime()) / (1000 * 60 * 60 * 24)) + 1);
@@ -266,7 +465,18 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
 
     const iStatusMsg = (() => {
       if (iIsUpcoming) return `Goal starts in ${formatDays(iDaysUntilStart)}. Get ready!`;
-      if (totalProfit >= iTarget) return "Congratulations! Goal Accomplished!";
+      if (isGoalAccomplished) {
+        if (daysAhead > 0) {
+          return `Goal Accomplished! Reached ${formatDays(daysAhead, false)} ahead of deadline.`;
+        }
+        if (daysAhead === 0 && deadlineForCounting >= completionDate) {
+          return "Goal Accomplished right on schedule!";
+        }
+        return "Goal Accomplished successfully!";
+      }
+      if (iDaysLeft <= 0) {
+        return "Deadline reached. Target not achieved.";
+      }
       if (iIsOnTrack) return "Perfectly on track! You'll reach target exactly on the deadline.";
       if (iIsAhead) return `Ahead of schedule! Estimated ${formatDays(iDaysUntilTarget)} until reached (${formatDays(iDaysDiff)} early).`;
       if (iDaysUntilTarget === Infinity) return "Behind schedule. Please increase your daily profit to see completion forecast.";
@@ -274,6 +484,8 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
     })();
 
     const isJustUpdated = lastSavedId === item.id;
+    const isGoalFinished = isGoalAccomplished || iDaysLeft <= 0;
+    const displayTotalAchieved = (isGoalAccomplished && totalProfit < iTarget) ? iTarget : totalProfit;
 
     return (
       <View style={{ width: ITEM_WIDTH }}>
@@ -303,11 +515,21 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
             layout={LinearTransition}
             style={styles.motivationalText}
           >
-            <Text style={{ color: localColors.white, fontWeight: 'bold' }}>{iIsUpcoming ? "Get ready for your goal!" : (totalProfit >= iTarget ? "Goal Accomplished!" : "You're nearly there!")}</Text>{"\n"}
-            {totalProfit >= iTarget ? (
-              <Text style={{ color: 'rgba(255,255,255,0.4)' }}>Exceeded target by <Text style={{ color: '#6ee591', fontWeight: 'bold' }}>{format(Math.abs(totalProfit - iTarget), { isConverted: true })}</Text></Text>
+            <Text style={{ color: localColors.white, fontWeight: 'bold' }}>
+              {iIsUpcoming ? "Get ready for your goal!" : (isGoalAccomplished ? "Goal Accomplished!" : "You're nearly there!")}
+            </Text>{"\n"}
+            {isGoalAccomplished ? (
+              <Text style={{ color: 'rgba(255,255,255,0.4)' }}>
+                {totalProfit >= iTarget ? (
+                  <>Exceeded target by <Text style={{ color: '#6ee591', fontWeight: 'bold' }}>{format(Math.abs(totalProfit - iTarget), { isConverted: true })}</Text></>
+                ) : (
+                  <Text style={{ color: '#6ee591', fontWeight: 'bold' }}>Target reached successfully!</Text>
+                )}
+              </Text>
             ) : (
-              <Text style={{ color: 'rgba(255,255,255,0.4)' }}>Only <Text style={{ color: '#67E8F9', fontWeight: 'bold' }}>{format(iTarget - totalProfit, { isConverted: true })}</Text> left to reach target.</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.4)' }}>
+                Only <Text style={{ color: '#67E8F9', fontWeight: 'bold' }}>{format(iTarget - totalProfit, { isConverted: true })}</Text> left to reach target.
+              </Text>
             )}
           </Animated.Text>
         )}
@@ -324,17 +546,17 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
             }}
             activeOpacity={0.7}
           >
-            <View style={[styles.goalStatusCard, iIsGoalReached && { borderColor: 'rgba(110, 229, 145, 0.2)', borderWidth: 2 }]}>
-              <Text style={[styles.statusLabel, iIsGoalReached && { color: '#6ee591' }, (iIsTargetSet && iIsUpcoming) && { color: '#67E8F9' }]}>
-                {iIsGoalReached ? 'GOAL COMPLETED' : (iIsTargetSet && iIsUpcoming ? 'UPCOMING GOAL' : 'FINAL COUNTDOWN')}
+            <View style={[styles.goalStatusCard, isGoalAccomplished && { borderColor: 'rgba(110, 229, 145, 0.2)', borderWidth: 2 }]}>
+              <Text style={[styles.statusLabel, isGoalAccomplished && { color: '#6ee591' }, (iIsTargetSet && iIsUpcoming) && { color: '#67E8F9' }]}>
+                {isGoalAccomplished ? 'GOAL COMPLETED' : (iIsTargetSet && iIsUpcoming ? 'UPCOMING GOAL' : 'FINAL COUNTDOWN')}
               </Text>
               <Text style={styles.statusValue}>
-                {iIsTargetSet ? (iIsGoalReached ? 'Target Reached!' : (iIsUpcoming ? `Starts in ${formatDays(iDaysUntilStart, true)}` : `${formatDays(iDaysLeft, true)} Left`)) : 'Select dates'}
+                {iIsTargetSet ? (isGoalAccomplished ? 'Target Reached!' : (iIsUpcoming ? `Starts in ${formatDays(iDaysUntilStart, true)}` : `${formatDays(iDaysLeft, true)} Left`)) : 'Select dates'}
               </Text>
               {iIsTargetSet && (
                 <Text style={styles.periodLabel}>{item.startDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - {item.deadline.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</Text>
               )}
-              <View style={styles.goalStatusIconContainer}><View style={styles.goalStatusIconCircle}>{iIsGoalReached ? <Trophy color="#6ee591" size={28} /> : <Calendar color="#67E8F9" size={24} />}</View></View>
+              <View style={styles.goalStatusIconContainer}><View style={styles.goalStatusIconCircle}>{isGoalAccomplished ? <Trophy color="#6ee591" size={28} /> : <Calendar color="#67E8F9" size={24} />}</View></View>
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -344,36 +566,74 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
             entering={isJustUpdated ? FadeInDown.delay(300).springify() : undefined}
             layout={LinearTransition}
           >
-            <TouchableOpacity onPress={() => showAlert("Performance", `Today: ${format(todayProfit, { isConverted: true })}\nTarget: ${format(iDailyTarget, { isConverted: true })}`, "info")}>
-              <View style={styles.performanceCard}>
-                <View style={styles.perfHeader}>
-                  <View style={{ flex: 1.4 }}>
-                    <Text style={styles.perfLabel} numberOfLines={1} adjustsFontSizeToFit>TODAY'S PERFORMANCE</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
-                      <Text style={[styles.perfValue, { color: todayProfit < 0 ? '#ff4d4d' : '#6ee591', flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                        {format(todayProfit, { compact: true, threshold: 10000, isConverted: true })}
+            {isGoalFinished ? (
+              // FINAL RESULTS CARD (pentru obiective atinse sau expirate)
+              <TouchableOpacity onPress={() => showAlert("Goal Results", `Total Achieved: ${format(displayTotalAchieved, { isConverted: true })}\nTarget: ${format(iTarget, { isConverted: true })}\nStatus: ${iStatusMsg}`, "info")}>
+                <View style={[styles.performanceCard, isGoalAccomplished && { borderColor: 'rgba(110, 229, 145, 0.3)' }]}>
+                  <View style={styles.perfHeader}>
+                    <View style={{ flex: 1.4 }}>
+                      <Text style={[styles.perfLabel, isGoalAccomplished && { color: '#6ee591' }]} numberOfLines={1} adjustsFontSizeToFit>
+                        {isGoalAccomplished ? 'TARGET ACHIEVED' : 'TOTAL ACHIEVED'}
                       </Text>
-                      {todayProfit < 0 ? <TrendingDown color="#ff4d4d" size={16} style={{ marginLeft: 4, flexShrink: 0 }} /> : <TrendingUp color="#6ee591" size={16} style={{ marginLeft: 4, flexShrink: 0 }} />}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+                        <Text style={[styles.perfValue, { color: (isGoalAccomplished || totalProfit >= 0) ? '#6ee591' : '#ff4d4d', flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                          {format(displayTotalAchieved, { compact: true, threshold: 10000, isConverted: true })}
+                        </Text>
+                        {isGoalAccomplished && <Trophy color="#6ee591" size={18} style={{ marginLeft: 6, flexShrink: 0 }} />}
+                      </View>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', flex: 0.9, marginLeft: 10 }}>
+                      <Text style={styles.perfTargetLabel} numberOfLines={1} adjustsFontSizeToFit>
+                        {isGoalAccomplished ? (totalProfit >= iTarget ? 'EXCEEDED BY' : 'STATUS') : 'SHORTFALL'}
+                      </Text>
+                      <Text style={[styles.perfTargetValue, { color: isGoalAccomplished ? '#6ee591' : '#ff4d4d', flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                        {isGoalAccomplished
+                          ? (totalProfit >= iTarget
+                            ? `+${format(Math.abs(totalProfit - iTarget), { compact: true, threshold: 10000, isConverted: true })}`
+                            : 'COMPLETED')
+                          : `-${format(Math.abs(iTarget - totalProfit), { compact: true, threshold: 10000, isConverted: true })}`}
+                      </Text>
                     </View>
                   </View>
-                  <View style={{ alignItems: 'flex-end', flex: 0.9, marginLeft: 10 }}>
-                    <Text style={styles.perfTargetLabel} numberOfLines={1} adjustsFontSizeToFit>DAILY TARGET</Text>
-                    <Text style={[styles.perfTargetValue, { flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                      {iDaysLeft > 0 ? format(iDailyTarget, { compact: true, threshold: 10000, isConverted: true }) : '--'}
-                    </Text>
+                  <View style={[styles.perfStatusBox, { backgroundColor: isGoalAccomplished ? 'rgba(110, 229, 145, 0.08)' : 'rgba(255, 77, 77, 0.1)', borderLeftColor: isGoalAccomplished ? '#6ee591' : '#ff4d4d' }]}>
+                    <View style={styles.perfStatusContent}>
+                      <Text style={[styles.perfStatusText, isGoalAccomplished ? { color: '#6ee591' } : { color: '#ff4d4d' }]}>{iStatusMsg}</Text>
+                    </View>
                   </View>
                 </View>
-                <View style={[styles.perfStatusBox, { backgroundColor: iIsGoalReached ? 'rgba(110, 229, 145, 0.08)' : (iIsUpcoming ? 'rgba(103, 232, 249, 0.08)' : (iIsAhead ? 'rgba(110, 229, 145, 0.05)' : 'rgba(255, 77, 77, 0.1)')), borderLeftColor: iIsGoalReached ? '#6ee591' : (iIsUpcoming ? '#67E8F9' : (iIsAhead ? '#6ee591' : '#ff4d4d')) }]}>
-                  <View style={styles.perfStatusContent}>
-                    <Text style={[styles.perfStatusText, (!iIsAhead && !iIsGoalReached && !iIsUpcoming) && { color: '#ff4d4d' }, iIsUpcoming && { color: '#67E8F9' }]}>{iStatusMsg}</Text>
+              </TouchableOpacity>
+            ) : (
+              // ACTIVE TODAY'S PERFORMANCE CARD (când obiectivul este în desfășurare)
+              <TouchableOpacity onPress={() => showAlert("Performance", `Today: ${format(todayProfit, { isConverted: true })}\nTarget: ${format(iDailyTarget, { isConverted: true })}`, "info")}>
+                <View style={styles.performanceCard}>
+                  <View style={styles.perfHeader}>
+                    <View style={{ flex: 1.4 }}>
+                      <Text style={styles.perfLabel} numberOfLines={1} adjustsFontSizeToFit>TODAY'S PERFORMANCE</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+                        <Text style={[styles.perfValue, { color: todayProfit < 0 ? '#ff4d4d' : '#6ee591', flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                          {format(todayProfit, { compact: true, threshold: 10000, isConverted: true })}
+                        </Text>
+                        {todayProfit < 0 ? <TrendingDown color="#ff4d4d" size={16} style={{ marginLeft: 4, flexShrink: 0 }} /> : <TrendingUp color="#6ee591" size={16} style={{ marginLeft: 4, flexShrink: 0 }} />}
+                      </View>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', flex: 0.9, marginLeft: 10 }}>
+                      <Text style={styles.perfTargetLabel} numberOfLines={1} adjustsFontSizeToFit>DAILY TARGET</Text>
+                      <Text style={[styles.perfTargetValue, { flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                        {iDaysLeft > 0 ? format(iDailyTarget, { compact: true, threshold: 10000, isConverted: true }) : '--'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.perfStatusBox, { backgroundColor: iIsUpcoming ? 'rgba(103, 232, 249, 0.08)' : (iIsAhead ? 'rgba(110, 229, 145, 0.05)' : 'rgba(255, 77, 77, 0.1)'), borderLeftColor: iIsUpcoming ? '#67E8F9' : (iIsAhead ? '#6ee591' : '#ff4d4d') }]}>
+                    <View style={styles.perfStatusContent}>
+                      <Text style={[styles.perfStatusText, (!iIsAhead && !iIsUpcoming) && { color: '#ff4d4d' }, iIsUpcoming && { color: '#67E8F9' }]}>{iStatusMsg}</Text>
+                    </View>
                   </View>
                 </View>
-
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            )}
           </Animated.View>
         )}
-        {iIsTargetSet && (
+        {iIsTargetSet && !isGoalFinished && (
           <Text style={styles.forecastCaption}>
             *Estimated based on daily average since goal start
           </Text>

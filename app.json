@@ -2,7 +2,7 @@
   "expo": {
     "name": "Money Tracker: Daily Finance",
     "slug": "money-tracker",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "moneytracker",
@@ -23,7 +23,7 @@
     },
     "android": {
       "package": "com.alex.moneytracker",
-      "versionCode": 2,
+      "versionCode": 3,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "SCHEDULE_EXACT_ALARM",
@@ -75,7 +75,11 @@
             "modularHeaders": true
           },
           "android": {
-            "kotlinVersion": "1.9.25"
+            "kotlinVersion": "1.9.25",
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0",
+            "enableProguardInReleaseBuilds": true
           }
         }
       ]

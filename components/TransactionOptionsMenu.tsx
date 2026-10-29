@@ -22,6 +22,7 @@ import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useAlert } from '../context/AlertContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebaseConfig';
+import { onTransactionUpdated } from '../utils/statsManager';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 
 const { width, height: screenHeight } = Dimensions.get('screen');
@@ -154,6 +155,12 @@ export default function TransactionOptionsMenu({
       updateDoc(transactionRef, updatedData).catch((error) => {
         console.error('Delayed Update Error:', error);
       });
+
+      const newTx = {
+        ...transaction,
+        ...updatedData,
+      };
+      onTransactionUpdated(transaction, newTx);
 
       onClose();
       setTimeout(() => {

@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import * as NavigationBar from "expo-navigation-bar";
 import { Delete, Pencil, X } from "lucide-react-native";
-import React, { ReactNode, useEffect, useState } from "react";
+import React, { ReactNode, useEffect, useRef, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -38,7 +38,10 @@ export function FinanceModalBase({
   const [modalStep, setModalStep] = useState<1 | 2>(1);
   const [amount, setAmount] = useState("0");
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isEditingDecimals, setIsEditingDecimals] = useState(false);
+
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const { getSymbol } = useCurrency();
 
@@ -53,12 +56,18 @@ export function FinanceModalBase({
   }, [isVisible]);
 
   useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", () =>
-      setKeyboardVisible(true)
-    );
-    const hide = Keyboard.addListener("keyboardDidHide", () =>
-      setKeyboardVisible(false)
-    );
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const show = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      setKeyboardVisible(true);
+    });
+    const hide = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+      setKeyboardVisible(false);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    });
 
     return () => {
       show.remove();
@@ -124,6 +133,10 @@ export function FinanceModalBase({
   );
 
   const resetModal = () => {
+    Keyboard.dismiss();
+    scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    setKeyboardVisible(false);
+    setKeyboardHeight(0);
     onClose();
     setTimeout(() => {
       setModalStep(1);
@@ -153,7 +166,11 @@ export function FinanceModalBase({
           keyboardVerticalOffset={0}
         >
           <ScrollView
-            contentContainerStyle={styles.scrollContainer}
+            ref={scrollViewRef}
+            contentContainerStyle={[
+              styles.scrollContainer,
+              isKeyboardVisible && { paddingBottom: (keyboardHeight || horizontalScale(300)) + horizontalScale(40) }
+            ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
@@ -164,7 +181,8 @@ export function FinanceModalBase({
               <View style={[
                 styles.modalPositioner,
                 modalStep === 2 && styles.modalPositionerStep2,
-                (modalStep === 2 && marginTopStep2) ? { marginTop: marginTopStep2 as any } : null
+                (modalStep === 2 && marginTopStep2) ? { marginTop: marginTopStep2 as any } : null,
+                (modalStep === 2 && isKeyboardVisible) ? styles.modalPositionerKeyboard : null,
               ]}>
                 <Pressable style={styles.modalContent} onPress={Keyboard.dismiss}>
                   {modalStep === 1 ? (
@@ -300,6 +318,9 @@ export const styles = StyleSheet.create({
   },
   modalPositionerStep2: {
     marginTop: horizontalScale(110),
+  },
+  modalPositionerKeyboard: {
+    marginTop: -horizontalScale(35),
   },
   modalContent: {
     backgroundColor: "#1C1D21",

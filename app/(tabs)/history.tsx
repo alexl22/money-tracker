@@ -1,4 +1,4 @@
-import { deleteDoc, doc } from '@react-native-firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, query, where } from '@react-native-firebase/firestore';
 import { useFocusEffect } from '@react-navigation/native';
 import { ArrowUpDown, Calendar, CalendarDays, ChevronDown, ShoppingBag, SlidersHorizontal, Wallet, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -10,13 +10,15 @@ import MonthYearPicker, { LUNI } from '../../components/MonthYearPicker';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
-import { useTransactions } from '../../context/TransactionsContext';
+import { parseCompatibleDate, useTransactions } from '../../context/TransactionsContext';
 import { auth, db } from '../../firebaseConfig';
+import { computeDisplayFromStats, MonthlyStatsDoc, onTransactionDeleted } from '../../utils/statsManager';
 import styles from '../../styles/history.styles';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import TransactionOptionsMenu from '../../components/TransactionOptionsMenu';
+import { TransactionSkeletonList } from '../../components/TransactionSkeleton';
 
 const AnimatedSectionList = Animated.createAnimatedComponent(SectionList);
 const renderGhostActions = () => <View style={{ width: 80 }} />;
@@ -36,6 +38,7 @@ interface TransactionItem {
   date?: Date;
   dateString?: string;
   createdAt?: Date;
+  userId?: string;
 }
 
 interface TransactionGroup {
@@ -86,7 +89,7 @@ const TransactionRow = React.memo(({
             'Delete Transaction',
             'Are you sure you want to delete this transaction?',
             'alert',
-            () => { handleDeleteTransaction(item.id, item.title) },
+            () => { handleDeleteTransaction(item) },
             true,
             false
           );
@@ -214,13 +217,17 @@ function getWeeksOfMonth(year: number, month: number) {
 }
 
 export default function HistoryScreen() {
-  const { transactions: allRawTransactions, searchQuery, setSearchQuery, isSearching, setIsSearching } = useTransactions();
+  const { transactions: allRawTransactions, userStats, searchQuery, setSearchQuery, isSearching, setIsSearching, loadAllTransactions } = useTransactions();
   const { search } = useLocalSearchParams<{ search?: string }>();
   const router = useRouter();
 
+  const [monthTransactions, setMonthTransactions] = useState<RawTransaction[]>([]);
   const [optionsMenuTransaction, setOptionsMenuTransaction] = useState<any | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
-
+  const [monthlyStatsDoc, setMonthlyStatsDoc] = useState<MonthlyStatsDoc | null>(null);
+  const [displayLimit, setDisplayLimit] = useState(25);
+  const [isLoadingAll, setIsLoadingAll] = useState(false);
+  const [isMonthLoading, setIsMonthLoading] = useState(false);
 
   const isSearchingShared = useSharedValue(search === 'true' || isSearching);
   const shouldAnimate = useSharedValue(true);
@@ -309,6 +316,99 @@ export default function HistoryScreen() {
     }
   }, [selectedMonth, selectedYear]);
 
+  useEffect(() => {
+    setDisplayLimit(25);
+  }, [showAllHistory, filterMode, sortOrder, selectedMonth, selectedYear, isCustomRangeActive]);
+
+
+
+  // Load all transactions on-demand only when user is searching or viewing All History
+  useEffect(() => {
+    if (showAllHistory || isSearching || (searchQuery && searchQuery.trim().length > 0)) {
+      loadAllTransactions();
+    }
+  }, [showAllHistory, isSearching, searchQuery, loadAllTransactions]);
+
+  useEffect(() => {
+    if (!user) {
+      setMonthlyStatsDoc(null);
+      return;
+    }
+    const docId = `${selectedYear}-${String(Number(selectedMonth) + 1).padStart(2, '0')}`;
+    const monthlyRef = doc(db, 'users', user.uid, 'monthlyStats', docId);
+    const unsub = onSnapshot(monthlyRef, (snap) => {
+      if (snap && snap.exists()) {
+        setMonthlyStatsDoc(snap.data() as MonthlyStatsDoc);
+      } else {
+        setMonthlyStatsDoc(null);
+      }
+    }, (err) => {
+      console.error("History monthly stats snapshot error:", err);
+    });
+    return () => unsub();
+  }, [user, selectedMonth, selectedYear]);
+
+  // Variant 1: Query transactions ONLY for the selected month
+  useEffect(() => {
+    if (!user || showAllHistory || isSearching || (searchQuery && searchQuery.trim().length > 0)) {
+      setMonthTransactions([]);
+      setIsMonthLoading(false);
+      return;
+    }
+    setIsMonthLoading(true);
+    const docId = `${selectedYear}-${String(Number(selectedMonth) + 1).padStart(2, '0')}`;
+    const startStr = `${docId}-01`;
+    const endStr = `${docId}-31`;
+
+    const q = query(
+      collection(db, 'transactions'),
+      where('userId', '==', user.uid),
+      where('dateString', '>=', startStr),
+      where('dateString', '<=', endStr)
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      setIsMonthLoading(false);
+      if (!snapshot) {
+        setMonthTransactions([]);
+        return;
+      }
+      const list: RawTransaction[] = snapshot.docs.map((d) => {
+        const data = d.data({ serverTimestamps: 'estimate' });
+        const rawDate = data.date || data.createdAt;
+        let compatibleDate = parseCompatibleDate(rawDate);
+
+        if (data.dateString && typeof data.dateString === 'string') {
+          const parts = data.dateString.split('-');
+          if (parts.length === 3) {
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10) - 1;
+            const d = parseInt(parts[2], 10);
+            compatibleDate = new Date(y, m, d, compatibleDate.getHours(), compatibleDate.getMinutes(), compatibleDate.getSeconds());
+          }
+        }
+
+        return {
+          id: d.id,
+          ...data,
+          date: compatibleDate,
+          createdAt: compatibleDate,
+          dateString: data.dateString,
+        } as RawTransaction;
+      });
+
+      list.sort((a, b) => (b.date?.getTime() || b.createdAt.getTime()) - (a.date?.getTime() || a.createdAt.getTime()));
+      setMonthTransactions(list);
+    }, (err) => {
+      setIsMonthLoading(false);
+      console.error('[History] Month transactions snapshot error:', err);
+      // Fallback: If month query fails (e.g. index building), load all transactions so screen is not blank
+      loadAllTransactions();
+    });
+
+    return () => unsub();
+  }, [user, selectedMonth, selectedYear, showAllHistory, isSearching, searchQuery, loadAllTransactions]);
+
   const historyData = React.useMemo(() => {
     if (!user) return {
       transactions: [],
@@ -327,25 +427,30 @@ export default function HistoryScreen() {
       endOfMonth = customRange.end;
     }
 
+    const hasMonthlyStats = !showAllHistory && !searchQuery && !!monthlyStatsDoc;
+    const hasAllStats = showAllHistory && !isCustomRangeActive && !searchQuery && !!userStats && !!userStats.statsCalibrated;
+
     let grossIncome = 0;
     let grossExpense = 0;
 
-    const monthList = allRawTransactions.filter((t: RawTransaction) => {
+    if (hasMonthlyStats) {
+      const mDisp = computeDisplayFromStats(monthlyStatsDoc!, currency, rates);
+      grossIncome = mDisp.income;
+      grossExpense = mDisp.expense;
+    } else if (hasAllStats) {
+      const allDisp = computeDisplayFromStats(userStats!, currency, rates);
+      grossIncome = allDisp.income;
+      grossExpense = allDisp.expense;
+    }
+
+    const activeTransactionsList = (showAllHistory || isSearching || (searchQuery && searchQuery.trim().length > 0) || monthTransactions.length === 0)
+      ? (allRawTransactions.length > 0 ? allRawTransactions : monthTransactions)
+      : monthTransactions;
+
+    const monthList = activeTransactionsList.filter((t: RawTransaction) => {
       if (showAllHistory && !isCustomRangeActive) return true;
       return t.createdAt >= startOfMonth && t.createdAt <= endOfMonth;
     });
-
-    monthList.forEach((t) => {
-      const valToSum = (t.currency === currency)
-        ? t.amount
-        : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
-      if (t.type === "income") grossIncome += valToSum;
-      else grossExpense += valToSum;
-    });
-
-    let weekBalance = 0;
-    const grouped: TransactionGroup[] = [];
-    const dayTotals: Record<string, number> = {};
 
     const weekFilteredList = monthList.filter(t => {
       const filterMatch = filterMode === 'all' || t.type === filterMode;
@@ -359,6 +464,30 @@ export default function HistoryScreen() {
       const dateMatch = txDate >= currentWeek.start.getTime() && txDate <= currentWeek.end.getTime();
       return dateMatch && filterMatch && searchMatch;
     });
+
+    if (searchQuery) {
+      grossIncome = 0;
+      grossExpense = 0;
+      weekFilteredList.forEach((t) => {
+        const valToSum = (t.currency === currency)
+          ? t.amount
+          : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
+        if (t.type === "income") grossIncome += valToSum;
+        else grossExpense += valToSum;
+      });
+    } else if (!hasMonthlyStats && !hasAllStats) {
+      monthList.forEach((t) => {
+        const valToSum = (t.currency === currency)
+          ? t.amount
+          : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
+        if (t.type === "income") grossIncome += valToSum;
+        else grossExpense += valToSum;
+      });
+    }
+
+    let weekBalance = 0;
+    const grouped: TransactionGroup[] = [];
+    const dayTotals: Record<string, number> = {};
 
     weekFilteredList.forEach((t) => {
       const dateLabel = t.createdAt.toDateString() === new Date().toDateString() ? "Today" :
@@ -401,7 +530,9 @@ export default function HistoryScreen() {
         notes: t.notes,
         time: timeStr,
         date: t.date,
-        createdAt: t.createdAt
+        createdAt: t.createdAt,
+        dateString: t.dateString,
+        userId: t.userId || user?.uid
       });
 
       const valForTotal = (t.currency === currency)
@@ -409,7 +540,6 @@ export default function HistoryScreen() {
         : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
       const signedVal = t.type === 'income' ? valForTotal : -valForTotal;
       dayTotals[fullDate] += signedVal;
-      weekBalance += signedVal;
     });
 
     grouped.forEach(g => {
@@ -423,9 +553,56 @@ export default function HistoryScreen() {
     });
 
     const weeksStatus: Record<number, boolean> = {};
-    weeks.forEach((w, i) => {
-      weeksStatus[i] = monthList.some(t => t.createdAt.getTime() >= w.start.getTime() && t.createdAt.getTime() <= w.end.getTime());
-    });
+    if (hasMonthlyStats && monthlyStatsDoc?.weeks) {
+      weeks.forEach((_, i) => {
+        const key = String(i) as '0' | '1' | '2' | '3';
+        const wCount = monthlyStatsDoc.weeks?.[key]?.count || 0;
+        weeksStatus[i] = wCount > 0;
+      });
+    } else {
+      weeks.forEach((w, i) => {
+        weeksStatus[i] = monthList.some(t => t.createdAt.getTime() >= w.start.getTime() && t.createdAt.getTime() <= w.end.getTime());
+      });
+    }
+
+    const selectedKey = String(selectedWeekIndex) as '0' | '1' | '2' | '3';
+    if (searchQuery) {
+      if (filterMode === 'all') weekBalance = grossIncome - grossExpense;
+      else if (filterMode === 'income') weekBalance = grossIncome;
+      else if (filterMode === 'expense') weekBalance = -grossExpense;
+    } else if (showAllHistory) {
+      if (filterMode === 'all') weekBalance = grossIncome - grossExpense;
+      else if (filterMode === 'income') weekBalance = grossIncome;
+      else if (filterMode === 'expense') weekBalance = -grossExpense;
+    } else if (hasMonthlyStats && monthlyStatsDoc?.weeks?.[selectedKey] && !searchQuery && filterMode === 'all') {
+      const wStats = monthlyStatsDoc.weeks[selectedKey];
+      const wDisp = computeDisplayFromStats(wStats, currency, rates);
+      weekBalance = wDisp.income - wDisp.expense;
+    } else {
+      let currentWeekBalance = 0;
+      weekFilteredList.forEach((t) => {
+        const val = (t.currency === currency)
+          ? t.amount
+          : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
+        if (filterMode === 'all') {
+          currentWeekBalance += (t.type === 'income' ? val : -val);
+        } else if (filterMode === 'income' && t.type === 'income') {
+          currentWeekBalance += val;
+        } else if (filterMode === 'expense' && t.type === 'expense') {
+          currentWeekBalance -= val;
+        }
+      });
+      weekBalance = currentWeekBalance;
+    }
+
+    let totalCount = weekFilteredList.length;
+    if (!searchQuery) {
+      if (hasMonthlyStats && filterMode === 'all') {
+        totalCount = monthlyStatsDoc?.weeks?.[selectedKey]?.count ?? weekFilteredList.length;
+      } else if (hasAllStats && filterMode === 'all') {
+        totalCount = userStats?.totalTransactionsCount ?? weekFilteredList.length;
+      }
+    }
 
     if (showAllHistory && sortOrder !== 'none') {
       const allItems: any[] = [];
@@ -433,32 +610,55 @@ export default function HistoryScreen() {
       allItems.sort((a, b) => {
         return sortOrder === 'amount-desc' ? b.amountUSD - a.amountUSD : a.amountUSD - b.amountUSD;
       });
+      const pagedItems = allItems.slice(0, displayLimit);
       return {
         transactions: [{
           date: sortOrder === 'amount-desc' ? 'HIGHEST TRANSACTIONS' : 'LOWEST TRANSACTIONS',
           fullDate: 'ALL TIME',
           dailyTotal: '',
-          data: allItems
+          data: pagedItems
         }],
         monthIncome: grossIncome,
         monthExpense: grossExpense,
         monthProfit: grossIncome - grossExpense,
         weekIncome: weekBalance,
         weeksWithData: weeksStatus,
-        txCount: weekFilteredList.length
+        txCount: totalCount
       };
     }
 
+    let finalGrouped = grouped;
+    if (showAllHistory) {
+      let count = 0;
+      const paginatedGroups: TransactionGroup[] = [];
+      for (const g of grouped) {
+        if (count >= displayLimit) break;
+        const remaining = displayLimit - count;
+        if (g.data.length <= remaining) {
+          paginatedGroups.push(g);
+          count += g.data.length;
+        } else {
+          paginatedGroups.push({
+            ...g,
+            data: g.data.slice(0, remaining)
+          });
+          count += remaining;
+          break;
+        }
+      }
+      finalGrouped = paginatedGroups;
+    }
+
     return {
-      transactions: grouped,
+      transactions: finalGrouped,
       monthIncome: grossIncome,
       monthExpense: grossExpense,
       monthProfit: grossIncome - grossExpense,
       weekIncome: weekBalance,
       weeksWithData: weeksStatus,
-      txCount: weekFilteredList.length
+      txCount: totalCount
     };
-  }, [allRawTransactions, selectedMonth, selectedYear, selectedWeekIndex, filterMode, sortOrder, currency, user, showAllHistory, isCustomRangeActive, customRange, format, searchQuery]);
+  }, [allRawTransactions, monthTransactions, userStats, monthlyStatsDoc, displayLimit, selectedMonth, selectedYear, selectedWeekIndex, filterMode, sortOrder, currency, rates, user, showAllHistory, isCustomRangeActive, customRange, format, searchQuery, isSearching]);
 
   const {
     transactions,
@@ -504,13 +704,29 @@ export default function HistoryScreen() {
     },
   });
 
-  const handleDeleteTransaction = (transactionId: string, title: string) => {
+  const handleDeleteTransaction = (transaction: any) => {
     try {
-      deleteDoc(doc(db, "transactions", transactionId))
+      const txId = typeof transaction === 'string' ? transaction : transaction?.id;
+      if (!txId) return;
+
+      const rawTx = typeof transaction === 'object' && transaction !== null
+        ? transaction
+        : allRawTransactions.find(t => t.id === txId);
+
+      deleteDoc(doc(db, "transactions", txId))
         .catch(err => {
           console.error("History Delete Error", err);
           showAlert('Error', 'We could not delete the transaction. Please try again.', 'alert');
         });
+
+      if (rawTx) {
+        onTransactionDeleted({
+          ...rawTx,
+          userId: rawTx.userId || user?.uid,
+          rawAmount: rawTx.rawAmount ?? rawTx.amount,
+          amountUSD: rawTx.amountUSD ?? rawTx.rawAmount ?? rawTx.amount,
+        });
+      }
     } catch (error) {
       console.error("Error deleting transaction: ", error);
       showAlert('Error', 'An unexpected error occurred.', 'alert');
@@ -528,6 +744,12 @@ export default function HistoryScreen() {
         stickySectionHeadersEnabled={false}
         initialNumToRender={7}
         windowSize={5}
+        onEndReached={() => {
+          if (showAllHistory) {
+            setDisplayLimit(prev => prev + 25);
+          }
+        }}
+        onEndReachedThreshold={0.5}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: horizontalScale(100) }]}
         ListHeaderComponent={
           <View onLayout={(e) => {
@@ -551,9 +773,20 @@ export default function HistoryScreen() {
 
                 <TouchableOpacity
                   style={[styles.historyTogglePart, showAllHistory && styles.historyTogglePartActive]}
-                  onPress={() => {
-                    setShowAllHistory(!showAllHistory);
+                  onPress={async () => {
+                    const nextVal = !showAllHistory;
+                    setShowAllHistory(nextVal);
                     setIsCustomRangeActive(false);
+                    if (nextVal) {
+                      if (allRawTransactions.length === 0) {
+                        setIsLoadingAll(true);
+                      }
+                      try {
+                        await loadAllTransactions();
+                      } finally {
+                        setIsLoadingAll(false);
+                      }
+                    }
                   }}
                 >
                   <Text style={[styles.historyToggleText, showAllHistory && styles.historyToggleTextActive]}>ALL</Text>
@@ -865,15 +1098,19 @@ export default function HistoryScreen() {
           />
         )}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Wallet size={48} color="rgba(255,255,255,0.1)" strokeWidth={1} />
-            <Text style={styles.emptyStateTitle}>
-              {showAllHistory ? "No transactions found" : `Nothing found for Week ${weeks[selectedWeekIndex]?.label}`}
-            </Text>
-            <Text style={styles.emptyStateText}>
-              {showAllHistory ? "Adjust your filters or add a new transaction." : "Try selecting another week or add a new transaction."}
-            </Text>
-          </View>
+          (showAllHistory && isLoadingAll) || (!showAllHistory && isMonthLoading && monthTransactions.length === 0) ? (
+            <TransactionSkeletonList count={5} />
+          ) : (
+            <View style={styles.emptyState}>
+              <Wallet size={48} color="rgba(255,255,255,0.1)" strokeWidth={1} />
+              <Text style={styles.emptyStateTitle}>
+                {showAllHistory ? "No transactions found" : `Nothing found for Week ${weeks[selectedWeekIndex]?.label}`}
+              </Text>
+              <Text style={styles.emptyStateText}>
+                {showAllHistory ? "Adjust your filters or add a new transaction." : "Try selecting another week or add a new transaction."}
+              </Text>
+            </View>
+          )
         }
       />
       <MonthYearPicker
@@ -918,7 +1155,7 @@ export default function HistoryScreen() {
             'Delete Transaction',
             'Are you sure you want to delete this transaction?',
             'alert',
-            () => { handleDeleteTransaction(item.id, item.title) },
+            () => { handleDeleteTransaction(item) },
             true,
             false
           );
