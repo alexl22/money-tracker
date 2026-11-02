@@ -2,26 +2,25 @@ import { Colors } from '@/constants/DesignSystem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged } from '@react-native-firebase/auth';
 import { doc, getDoc } from '@react-native-firebase/firestore';
-import { BlurView } from 'expo-blur';
-import { Tabs, useRouter, usePathname } from 'expo-router';
+import { Tabs, usePathname, useRouter } from 'expo-router';
 import {
   Goal,
   History, LayoutGrid, LogOut,
-  Plus, Search, Settings, User, X
+  Search, Settings, User, X
 } from 'lucide-react-native';
-import React, { useEffect, useState, useRef } from 'react';
-import { Dimensions, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, View, AppState } from 'react-native';
-import Animated, { FadeInDown, FadeInUp, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CustomTabBar } from '../../components/navigation/CustomTabBar';
+import { TransactionModal } from '../../components/transactions/TransactionModal(+)';
 import { WelcomeGuide } from '../../components/WelcomeGuide';
 import { useAlert } from '../../context/AlertContext';
-import { TabBarProvider, useTabBar } from '../../context/TabBarContext';
+import { TabBarProvider } from '../../context/TabBarContext';
 import { useTransactions } from '../../context/TransactionsContext';
 import { auth, db, signOutUser } from '../../firebaseConfig';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
-import { TransactionModal } from './speedEntry';
 
-const { width } = Dimensions.get('window');
 
 export default function TabLayout() {
   const router = useRouter();
@@ -29,7 +28,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const [userName, setUserName] = useState(auth.currentUser?.email?.split('@')[0] || 'User');
   const { showAlert } = useAlert();
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
   const [isWelcomeVisible, setIsWelcomeVisible] = useState(false);
   const { searchQuery, setSearchQuery, isSearching, setIsSearching } = useTransactions();
 
@@ -43,14 +42,7 @@ export default function TabLayout() {
     checkFirstTime();
   }, []);
 
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
+
 
   useEffect(() => {
     const fetchUserName = async (u: any) => {
@@ -90,135 +82,17 @@ export default function TabLayout() {
 
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  const CustomTabBar = ({ state, descriptors, navigation }: any) => {
-    const navBarWidth = width * 0.95;
-    const padding = horizontalScale(10);
-    const innerWidth = navBarWidth - padding;
-    const tabWidth = innerWidth / 5;
-
-    const indicatorWidth = tabWidth - horizontalScale(4);
-    const indicatorHeight = horizontalScale(50);
-    const centerOffset = (tabWidth - indicatorWidth) / 2 + padding / 2;
-
-    const translateX = useSharedValue(state.index * tabWidth + centerOffset);
-
-    useEffect(() => {
-      const isSpeedEntry = state.routes[state.index].name === 'speedEntry';
-      if (!isSpeedEntry) {
-        translateX.value = withSpring(state.index * tabWidth + centerOffset, {
-          stiffness: 400,
-          damping: 30,
-          mass: 0.5,
-        });
-      }
-    }, [state.index]);
-
-    const animatedIndicatorStyle = useAnimatedStyle(() => ({
-      transform: [{ translateX: translateX.value }],
-    }));
-
-    const { tabBarOffset } = useTabBar();
-
-    // Reset tab bar offset to 0 (visible) whenever the active screen or tab index changes
-    useEffect(() => {
-      tabBarOffset.value = 0;
-    }, [pathname, state.index]);
-
-    // Reset tab bar offset to 0 when the app returns from background to foreground
-    useEffect(() => {
-      const subscription = AppState.addEventListener('change', (nextAppState) => {
-        if (nextAppState === 'active') {
-          tabBarOffset.value = 0;
-        }
-      });
-      return () => {
-        subscription.remove();
-      };
-    }, []);
-
-    if (isKeyboardVisible) return null;
-
-    const animatedContainerStyle = useAnimatedStyle(() => ({
-      transform: [{ translateY: withTiming(tabBarOffset.value, { duration: 300 }) }],
-      opacity: withTiming(tabBarOffset.value > 0 ? 0 : 1, { duration: 300 }),
-    }));
-
-    return (
-      <Animated.View style={[
-        styles.tabBarContainer,
-        animatedContainerStyle,
-        { bottom: 5 + Math.max(insets.bottom, horizontalScale(10)) }
-      ]}>
-        <View style={styles.tabBarCapsule}>
-          <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
-
-          <Animated.View style={[
-            styles.tabIndicator,
-            { width: indicatorWidth, height: indicatorHeight, borderRadius: indicatorHeight / 2 },
-            animatedIndicatorStyle
-          ]} />
-
-          {state.routes.map((route: any, index: number) => {
-            const { options } = descriptors[route.key];
-            const isFocused = state.index === index;
-
-            const onPress = () => {
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(route.name);
-              }
-            };
-
-
-            if (route.name === 'speedEntry') {
-              return (
-                <View key={route.key} style={{ width: tabWidth, alignItems: 'center', justifyContent: 'center' }}>
-                  <TouchableOpacity
-                    onPress={() => setIsModalVisible(true)}
-                    style={styles.customAddButton}
-                  >
-                    <Plus color="#FFFFFF" size={moderateScale(24)} strokeWidth={3} />
-                  </TouchableOpacity>
-                </View>
-              );
-            }
-
-            return (
-              <TouchableOpacity
-                key={route.key}
-                onPress={onPress}
-                activeOpacity={0.7}
-                style={{ width: tabWidth, alignItems: 'center', justifyContent: 'center', height: '100%' }}
-              >
-                {options.tabBarIcon && options.tabBarIcon({
-                  color: isFocused ? '#3b82f6' : 'rgba(255, 255, 255, 0.5)',
-                  focused: isFocused,
-                  size: moderateScale(24)
-                })}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </Animated.View>
-    );
-  };
-
   return (
     <TabBarProvider>
       <View style={{ flex: 1 }}>
         <Tabs
-          tabBar={(props) => <CustomTabBar {...props} />}
+          tabBar={(props) => <CustomTabBar {...props} onAddPress={() => setIsModalVisible(true)} />}
           screenOptions={{
             headerShown: true,
             header: () => (
               <View style={[styles.customHeader, { paddingTop: Math.max(insets.top, horizontalScale(15)) }]}>
                 {isSearching ? (
-                  <Animated.View 
+                  <Animated.View
                     entering={FadeInDown.springify().stiffness(450).damping(38).mass(0.8)}
                     style={styles.searchHeaderContainer}
                   >
@@ -338,58 +212,7 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
 
-  tabBarContainer: {
-    position: 'absolute',
-    bottom: horizontalScale(25),
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabBarCapsule: {
-    flexDirection: 'row',
-    width: width * 0.95,
-    height: horizontalScale(70),
-    borderRadius: moderateScale(35),
-    backgroundColor: 'rgba(28, 29, 31, 0.8)',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    paddingHorizontal: horizontalScale(5),
-  },
-  tabIndicator: {
-    position: 'absolute',
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
-  },
-  customAddButton: {
-    width: horizontalScale(63),
-    height: horizontalScale(63),
-    borderRadius: moderateScale(40),
-    backgroundColor: '#3b82f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: horizontalScale(8) },
-    shadowOpacity: 0.5,
-    shadowRadius: moderateScale(12),
-    elevation: 12,
-  },
-  centerButtonContainer: {
-    top: horizontalScale(-10),
-    justifyContent: 'center',
-    alignItems: 'center',
-    flex: 1,
-  },
-  centerButton: {
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: horizontalScale(8) },
-    shadowOpacity: 0.5,
-    shadowRadius: moderateScale(12),
-    elevation: 10,
-  },
+
   customHeader: {
     height: horizontalScale(80),
     flexDirection: 'row',

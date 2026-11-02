@@ -1,31 +1,18 @@
 import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch } from '@react-native-firebase/firestore';
-import { Calendar, Plus, TrendingDown, TrendingUp, Trophy } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
-import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
-import Svg, { Circle, G } from 'react-native-svg';
+import { FlatList, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useAlert } from '../context/AlertContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { parseCompatibleDate, useTransactions } from '../context/TransactionsContext';
 import { auth, db } from '../firebaseConfig';
+import { styles } from '../styles/goals.styles';
+import { computeGoalMetrics, isGoalActive } from '../utils/goalMetrics';
 import { horizontalScale, moderateScale } from '../utils/scaling';
 import { DatePicker } from './DatePicker';
+import { AddGoalCard } from './goals/AddGoalCard';
+import { GoalCardItem } from './goals/GoalCardItem';
+import { Goal } from './goals/types';
 import { TargetInputModal } from './TargetInputModal';
-
-interface Goal {
-  id: string;
-  title: string;
-  targetAmount: number;
-  targetAmountUSD: number;
-  currency: string;
-  startDate: Date;
-  deadline: Date;
-  userId: string;
-  isAddCard?: boolean;
-  completedAt?: Date;
-  initialNetUSD?: number;
-  initialNetCalibrated?: boolean;
-}
 
 interface GoalsTabProps {
   localColors: {
@@ -49,19 +36,6 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
   const [goalTransactions, setGoalTransactions] = useState<any[]>(globalTransactionsCache);
   const [activeIndex, setActiveIndex] = useState(0);
   const [editingTitle, setEditingTitle] = useState("");
-
-  const isGoalActive = (g: Goal) => {
-    if (g.isAddCard || !g.startDate) return false;
-    if (!g.targetAmount || g.targetAmount <= 0) return false;
-    if (g.completedAt) return false;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const deadline = new Date(g.deadline);
-    deadline.setHours(0, 0, 0, 0);
-
-    return deadline >= today;
-  };
 
   const goalsNeedingTransactions = goals.filter((g) => {
     if (g.isAddCard || !g.startDate) return false;
@@ -356,290 +330,47 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
   const renderGoalItem = ({ item }: { item: Goal }) => {
     if (item.isAddCard) {
       return (
-        <View style={{ width: ITEM_WIDTH, alignItems: 'center' }}>
-          <View style={styles.ringContainer}>
-            <Svg width={230} height={230} viewBox="0 0 220 220">
-              <G rotation="-90" origin="110, 110">
-                <Circle cx="110" cy="110" r={radius} stroke="rgba(255,255,255,0.05)" strokeWidth={strokeWidth} fill="none" />
-                <Circle cx="110" cy="110" r={radius - 15} stroke="rgba(103, 232, 249, 0.2)" strokeWidth={2} strokeDasharray="6, 8" fill="none" />
-              </G>
-            </Svg>
-            <TouchableOpacity style={styles.ringCenterText} onPress={handleAddNewGoal} activeOpacity={0.6}>
-              <Plus color="#67E8F9" size={42} strokeWidth={2} />
-              <Text style={[styles.ringGoalLabel, { marginTop: 15, color: '#67E8F9' }]}>ADD GOAL</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={[styles.motivationalText, { opacity: 0.6 }]}>
-            <Text style={{ color: localColors.white, fontWeight: 'bold' }}>New Ambition?</Text>{"\n"}
-            <Text style={{ fontSize: 12 }}>"The best way to predict the future is to create it."</Text>
-          </Text>
-        </View>
+        <AddGoalCard
+          itemWidth={ITEM_WIDTH}
+          radius={radius}
+          strokeWidth={strokeWidth}
+          onAddNewGoal={handleAddNewGoal}
+          whiteColor={localColors.white}
+        />
       );
     }
 
-    let totalProfit = 0;
-    let todayProfit = 0;
-    const nowDay = new Date(); nowDay.setHours(0, 0, 0, 0);
+    const metrics = computeGoalMetrics({
+      item,
+      goalTransactions,
+      currentNetUSD,
+      currency,
+      rates,
+      circumference,
+    });
 
-    const isThisGoalActive = isGoalActive(item);
-
-    if (isThisGoalActive || !item.initialNetCalibrated) {
-      goalTransactions.forEach(t => {
-        const amount = (t.currency === currency) ? t.amount : ((t.amountUSD || (t.amount / (rates?.[t.currency] || 1))) * (rates?.[currency] || 1));
-        const date = t.date || t.createdAt || new Date();
-        if (date >= item.startDate) {
-          if (t.type === 'income') totalProfit += amount;
-          else if (t.type === 'expense') totalProfit -= amount;
-          if (date >= nowDay) {
-            if (t.type === 'income') todayProfit += amount;
-            else if (t.type === 'expense') todayProfit -= amount;
-          }
-        }
-      });
-
-      if (item.id && !item.initialNetCalibrated && goalTransactions.length > 0 && user) {
-        const profitUSD = currency === 'USD' ? totalProfit : totalProfit / (rates?.[currency] || 1);
-        const calibratedInitialNetUSD = Math.round((currentNetUSD - profitUSD) * 100) / 100;
-        updateDoc(doc(db, "goals", item.id), {
-          initialNetUSD: calibratedInitialNetUSD,
-          initialNetCalibrated: true,
-        }).catch((err) => console.warn('[GoalsTab] Calibration save error:', err));
-      }
-    } else {
-      const initialNet = item.initialNetUSD !== undefined ? item.initialNetUSD : 0;
-      const profitUSD = currentNetUSD - initialNet;
-      totalProfit = profitUSD * (rates?.[currency] || 1);
-      todayProfit = 0;
+    if (metrics.shouldCalibrateInitialNet && item.id && user) {
+      updateDoc(doc(db, "goals", item.id), {
+        initialNetUSD: metrics.calibratedInitialNetUSD,
+        initialNetCalibrated: true,
+      }).catch((err) => console.warn('[GoalsTab] Calibration save error:', err));
     }
 
-    const iTarget = item.currency === currency ? item.targetAmount : ((item.targetAmountUSD || (item.targetAmount / (rates?.[item.currency] || 1))) * (rates?.[currency] || 1));
-    const iIsTargetSet = item.targetAmount > 0;
-    const iIsGoalReached = iIsTargetSet && iTarget > 0 && totalProfit >= iTarget;
-
-    const now = new Date();
-    const todayAtMidnight = new Date(); todayAtMidnight.setHours(0, 0, 0, 0);
-    const todayForCounting = new Date(); todayForCounting.setHours(0, 0, 0, 0);
-    const deadlineForCounting = new Date(item.deadline); deadlineForCounting.setHours(0, 0, 0, 0);
-
-    const isDeadlinePassed = deadlineForCounting < todayAtMidnight;
-    const isGoalAccomplished = (iIsTargetSet && iTarget > 0 && totalProfit >= iTarget) || Boolean(item.completedAt);
-
-    const rawProgress = iTarget > 0 ? Math.max(0, Math.min(100, (totalProfit / iTarget) * 100)) : 0;
-    const iProgress = isGoalAccomplished ? 100 : rawProgress;
-    const iOffset = circumference - (circumference * iProgress / 100);
-
-    const completionDate = item.completedAt ? new Date(item.completedAt) : todayForCounting;
-    completionDate.setHours(0, 0, 0, 0);
-    const daysAhead = Math.max(0, Math.floor((deadlineForCounting.getTime() - completionDate.getTime()) / (1000 * 60 * 60 * 24)));
-
-    const iTotalGoalDays = Math.max(1, Math.floor((deadlineForCounting.getTime() - item.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-    const iDaysLeft = Math.max(0, Math.floor((deadlineForCounting.getTime() - todayForCounting.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-
-    const iIsUpcoming = item.startDate > todayAtMidnight;
-    const iDaysUntilStart = iIsUpcoming ? Math.max(1, Math.floor((item.startDate.getTime() - todayAtMidnight.getTime()) / (1000 * 60 * 60 * 24))) : 0;
-
-    const iStartTime = item.startDate.getTime();
-    const iElapsedDays = Math.max(1, Math.floor((now.getTime() - iStartTime) / (1000 * 60 * 60 * 24)) + 1);
-    const iCurrentPace = totalProfit / iElapsedDays;
-
-    const iRemaining = Math.max(0, iTarget - totalProfit);
-    const iDaysUntilTarget = iCurrentPace > 0 ? Math.ceil(iRemaining / iCurrentPace) : Infinity;
-
-    const iDailyTarget = iIsUpcoming ? iTarget / iTotalGoalDays : (iDaysLeft > 0 ? iRemaining / iDaysLeft : 0);
-
-    const iIsAhead = iCurrentPace > 0 && iDaysUntilTarget < iDaysLeft;
-    const iIsOnTrack = iCurrentPace > 0 && iDaysUntilTarget === iDaysLeft;
-    const iDaysDiff = Math.abs(Math.round(iDaysLeft - iDaysUntilTarget));
-
-    const formatDays = (days: number, isShort: boolean = false) => {
-      if (days === Infinity) return isShort ? "∞" : "Infinity";
-      if (days <= 100) return `${days}${isShort ? 'd' : (days === 1 ? ' day' : ' days')}`;
-      if (days <= 365) {
-        const months = Math.floor(days / 30.44);
-        return `${months}${isShort ? 'mo' : (months === 1 ? ' month' : ' months')}`;
-      }
-      const years = (days / 365.25).toFixed(1);
-      const yearsDisplay = years.endsWith('.0') ? years.slice(0, -2) : years;
-      return `${yearsDisplay}${isShort ? 'y' : (yearsDisplay === '1' ? ' year' : ' years')}`;
-    };
-
-    const iStatusMsg = (() => {
-      if (iIsUpcoming) return `Goal starts in ${formatDays(iDaysUntilStart)}. Get ready!`;
-      if (isGoalAccomplished) {
-        if (daysAhead > 0) {
-          return `Goal Accomplished! Reached ${formatDays(daysAhead, false)} ahead of deadline.`;
-        }
-        if (daysAhead === 0 && deadlineForCounting >= completionDate) {
-          return "Goal Accomplished right on schedule!";
-        }
-        return "Goal Accomplished successfully!";
-      }
-      if (iDaysLeft <= 0) {
-        return "Deadline reached. Target not achieved.";
-      }
-      if (iIsOnTrack) return "Perfectly on track! You'll reach target exactly on the deadline.";
-      if (iIsAhead) return `Ahead of schedule! Estimated ${formatDays(iDaysUntilTarget)} until reached (${formatDays(iDaysDiff)} early).`;
-      if (iDaysUntilTarget === Infinity) return "Behind schedule. Please increase your daily profit to see completion forecast.";
-      return `Behind schedule. Estimated ${formatDays(iDaysUntilTarget)} until reached (${formatDays(iDaysDiff)} late).`;
-    })();
-
-    const isJustUpdated = lastSavedId === item.id;
-    const isGoalFinished = isGoalAccomplished || iDaysLeft <= 0;
-    const displayTotalAchieved = (isGoalAccomplished && totalProfit < iTarget) ? iTarget : totalProfit;
-
     return (
-      <View style={{ width: ITEM_WIDTH }}>
-        <View style={styles.ringContainer}>
-          <Svg width={230} height={230} viewBox="0 0 220 220">
-            <G rotation="-90" origin="110, 110">
-              <Circle cx="110" cy="110" r={radius} stroke="rgba(255,255,255,0.05)" strokeWidth={strokeWidth} fill="none" />
-              <Circle cx="110" cy="110" r={radius} stroke="#67E8F9" strokeWidth={strokeWidth + 20} strokeDasharray={circumference} strokeDashoffset={iOffset} strokeLinecap="round" fill="none" opacity={0.03} />
-              <Circle cx="110" cy="110" r={radius} stroke="#67E8F9" strokeWidth={strokeWidth + 14} strokeDasharray={circumference} strokeDashoffset={iOffset} strokeLinecap="round" fill="none" opacity={0.05} />
-              <Circle cx="110" cy="110" r={radius} stroke="#67E8F9" strokeWidth={strokeWidth + 8} strokeDasharray={circumference} strokeDashoffset={iOffset} strokeLinecap="round" fill="none" opacity={0.1} />
-              <Circle cx="110" cy="110" r={radius} stroke="#67E8F9" strokeWidth={strokeWidth} strokeDasharray={circumference} strokeDashoffset={iOffset} strokeLinecap="round" fill="none" />
-            </G>
-          </Svg>
-          <TouchableOpacity
-            style={styles.ringCenterText}
-            onPress={() => setIsTargetModalVisible(true)}
-          >
-            <Text style={styles.ringGoalLabel}>TARGET</Text>
-            <Text style={{ ...styles.ringGoalValue, fontSize: iIsTargetSet ? 28 : 26 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>{iIsTargetSet ? format(Math.round(iTarget), { compact: true, isConverted: true }).replace(/\.00$/, '') : "SET TARGET"}</Text>
-            {iIsTargetSet && <Text style={styles.ringPercent}>{Math.round(iProgress)}%</Text>}
-          </TouchableOpacity>
-        </View>
-
-        {iIsTargetSet && (
-          <Animated.Text
-            entering={isJustUpdated ? FadeInDown.delay(100).springify() : undefined}
-            layout={LinearTransition}
-            style={styles.motivationalText}
-          >
-            <Text style={{ color: localColors.white, fontWeight: 'bold' }}>
-              {iIsUpcoming ? "Get ready for your goal!" : (isGoalAccomplished ? "Goal Accomplished!" : "You're nearly there!")}
-            </Text>{"\n"}
-            {isGoalAccomplished ? (
-              <Text style={{ color: 'rgba(255,255,255,0.4)' }}>
-                {totalProfit >= iTarget ? (
-                  <>Exceeded target by <Text style={{ color: '#6ee591', fontWeight: 'bold' }}>{format(Math.abs(totalProfit - iTarget), { isConverted: true })}</Text></>
-                ) : (
-                  <Text style={{ color: '#6ee591', fontWeight: 'bold' }}>Target reached successfully!</Text>
-                )}
-              </Text>
-            ) : (
-              <Text style={{ color: 'rgba(255,255,255,0.4)' }}>
-                Only <Text style={{ color: '#67E8F9', fontWeight: 'bold' }}>{format(iTarget - totalProfit, { isConverted: true })}</Text> left to reach target.
-              </Text>
-            )}
-          </Animated.Text>
-        )}
-
-        <Animated.View
-          entering={isJustUpdated ? FadeInDown.delay(200).springify() : undefined}
-          layout={LinearTransition}
-        >
-          <TouchableOpacity
-            style={styles.summaryRow}
-            onPress={() => {
-              if (iIsTargetSet) setIsPickerVisible(true);
-              else showAlert("Action Required", "Please set a target amount first by tapping the circle above.", "info");
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.goalStatusCard, isGoalAccomplished && { borderColor: 'rgba(110, 229, 145, 0.2)', borderWidth: 2 }]}>
-              <Text style={[styles.statusLabel, isGoalAccomplished && { color: '#6ee591' }, (iIsTargetSet && iIsUpcoming) && { color: '#67E8F9' }]}>
-                {isGoalAccomplished ? 'GOAL COMPLETED' : (iIsTargetSet && iIsUpcoming ? 'UPCOMING GOAL' : 'FINAL COUNTDOWN')}
-              </Text>
-              <Text style={styles.statusValue}>
-                {iIsTargetSet ? (isGoalAccomplished ? 'Target Reached!' : (iIsUpcoming ? `Starts in ${formatDays(iDaysUntilStart, true)}` : `${formatDays(iDaysLeft, true)} Left`)) : 'Select dates'}
-              </Text>
-              {iIsTargetSet && (
-                <Text style={styles.periodLabel}>{item.startDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - {item.deadline.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</Text>
-              )}
-              <View style={styles.goalStatusIconContainer}><View style={styles.goalStatusIconCircle}>{isGoalAccomplished ? <Trophy color="#6ee591" size={28} /> : <Calendar color="#67E8F9" size={24} />}</View></View>
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
-
-        {iIsTargetSet && (
-          <Animated.View
-            entering={isJustUpdated ? FadeInDown.delay(300).springify() : undefined}
-            layout={LinearTransition}
-          >
-            {isGoalFinished ? (
-              // FINAL RESULTS CARD (pentru obiective atinse sau expirate)
-              <TouchableOpacity onPress={() => showAlert("Goal Results", `Total Achieved: ${format(displayTotalAchieved, { isConverted: true })}\nTarget: ${format(iTarget, { isConverted: true })}\nStatus: ${iStatusMsg}`, "info")}>
-                <View style={[styles.performanceCard, isGoalAccomplished && { borderColor: 'rgba(110, 229, 145, 0.3)' }]}>
-                  <View style={styles.perfHeader}>
-                    <View style={{ flex: 1.4 }}>
-                      <Text style={[styles.perfLabel, isGoalAccomplished && { color: '#6ee591' }]} numberOfLines={1} adjustsFontSizeToFit>
-                        {isGoalAccomplished ? 'TARGET ACHIEVED' : 'TOTAL ACHIEVED'}
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
-                        <Text style={[styles.perfValue, { color: (isGoalAccomplished || totalProfit >= 0) ? '#6ee591' : '#ff4d4d', flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                          {format(displayTotalAchieved, { compact: true, threshold: 10000, isConverted: true })}
-                        </Text>
-                        {isGoalAccomplished && <Trophy color="#6ee591" size={18} style={{ marginLeft: 6, flexShrink: 0 }} />}
-                      </View>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', flex: 0.9, marginLeft: 10 }}>
-                      <Text style={styles.perfTargetLabel} numberOfLines={1} adjustsFontSizeToFit>
-                        {isGoalAccomplished ? (totalProfit >= iTarget ? 'EXCEEDED BY' : 'STATUS') : 'SHORTFALL'}
-                      </Text>
-                      <Text style={[styles.perfTargetValue, { color: isGoalAccomplished ? '#6ee591' : '#ff4d4d', flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                        {isGoalAccomplished
-                          ? (totalProfit >= iTarget
-                            ? `+${format(Math.abs(totalProfit - iTarget), { compact: true, threshold: 10000, isConverted: true })}`
-                            : 'COMPLETED')
-                          : `-${format(Math.abs(iTarget - totalProfit), { compact: true, threshold: 10000, isConverted: true })}`}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={[styles.perfStatusBox, { backgroundColor: isGoalAccomplished ? 'rgba(110, 229, 145, 0.08)' : 'rgba(255, 77, 77, 0.1)', borderLeftColor: isGoalAccomplished ? '#6ee591' : '#ff4d4d' }]}>
-                    <View style={styles.perfStatusContent}>
-                      <Text style={[styles.perfStatusText, isGoalAccomplished ? { color: '#6ee591' } : { color: '#ff4d4d' }]}>{iStatusMsg}</Text>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ) : (
-              // ACTIVE TODAY'S PERFORMANCE CARD (când obiectivul este în desfășurare)
-              <TouchableOpacity onPress={() => showAlert("Performance", `Today: ${format(todayProfit, { isConverted: true })}\nTarget: ${format(iDailyTarget, { isConverted: true })}`, "info")}>
-                <View style={styles.performanceCard}>
-                  <View style={styles.perfHeader}>
-                    <View style={{ flex: 1.4 }}>
-                      <Text style={styles.perfLabel} numberOfLines={1} adjustsFontSizeToFit>TODAY'S PERFORMANCE</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
-                        <Text style={[styles.perfValue, { color: todayProfit < 0 ? '#ff4d4d' : '#6ee591', flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                          {format(todayProfit, { compact: true, threshold: 10000, isConverted: true })}
-                        </Text>
-                        {todayProfit < 0 ? <TrendingDown color="#ff4d4d" size={16} style={{ marginLeft: 4, flexShrink: 0 }} /> : <TrendingUp color="#6ee591" size={16} style={{ marginLeft: 4, flexShrink: 0 }} />}
-                      </View>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', flex: 0.9, marginLeft: 10 }}>
-                      <Text style={styles.perfTargetLabel} numberOfLines={1} adjustsFontSizeToFit>DAILY TARGET</Text>
-                      <Text style={[styles.perfTargetValue, { flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                        {iDaysLeft > 0 ? format(iDailyTarget, { compact: true, threshold: 10000, isConverted: true }) : '--'}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={[styles.perfStatusBox, { backgroundColor: iIsUpcoming ? 'rgba(103, 232, 249, 0.08)' : (iIsAhead ? 'rgba(110, 229, 145, 0.05)' : 'rgba(255, 77, 77, 0.1)'), borderLeftColor: iIsUpcoming ? '#67E8F9' : (iIsAhead ? '#6ee591' : '#ff4d4d') }]}>
-                    <View style={styles.perfStatusContent}>
-                      <Text style={[styles.perfStatusText, (!iIsAhead && !iIsUpcoming) && { color: '#ff4d4d' }, iIsUpcoming && { color: '#67E8F9' }]}>{iStatusMsg}</Text>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            )}
-          </Animated.View>
-        )}
-        {iIsTargetSet && !isGoalFinished && (
-          <Text style={styles.forecastCaption}>
-            *Estimated based on daily average since goal start
-          </Text>
-        )}
-
-      </View>
+      <GoalCardItem
+        item={item}
+        itemWidth={ITEM_WIDTH}
+        radius={radius}
+        strokeWidth={strokeWidth}
+        circumference={circumference}
+        metrics={metrics}
+        isJustUpdated={lastSavedId === item.id}
+        whiteColor={localColors.white}
+        format={format}
+        onOpenTargetModal={() => setIsTargetModalVisible(true)}
+        onOpenPickerModal={() => setIsPickerVisible(true)}
+        showAlert={showAlert}
+      />
     );
   };
 
@@ -726,117 +457,3 @@ export function GoalsTab({ localColors, onScrollEnableChange, onTargetUpdated }:
   );
 }
 
-const styles = StyleSheet.create({
-  viewContainer: { flex: 1 },
-  headerRow: {
-    marginBottom: 10,
-    height: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative'
-  },
-  headerTitleContainer: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    height: 32,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    alignSelf: 'center',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative'
-  },
-  absoluteInput: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 20,
-    textAlign: 'center',
-    height: 32,
-    lineHeight: Math.round(moderateScale(13)) * 1.5
-  },
-  headerTitle: {
-    fontSize: Math.round(moderateScale(13)),
-    color: '#FFFFFF',
-    textAlign: 'center',
-    letterSpacing: 1.2,
-    fontFamily: 'Inter_700Bold',
-    padding: 0,
-    lineHeight: Math.round(moderateScale(13)) * 1.5
-  },
-  headerTitleStatic: {
-    fontSize: Math.round(moderateScale(13)),
-    color: 'rgba(255,255,255,0.4)',
-    textAlign: 'center',
-    letterSpacing: 1.2,
-    fontFamily: 'Inter_600SemiBold'
-  },
-  dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 15 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.1)' },
-  dotActive: { width: 16, backgroundColor: '#3b82f6ff' },
-  ringContainer: { alignItems: 'center', justifyContent: 'center', height: horizontalScale(230), position: 'relative' },
-  ringCenterText: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
-  ringGoalLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: 2, fontFamily: 'Inter_600SemiBold' },
-  ringGoalValue: { fontSize: 28, width: 165, textAlign: 'center', fontFamily: 'Manrope_800ExtraBold', color: '#FFFFFF' },
-  ringPercent: { color: '#67E8F9', fontSize: 16, fontFamily: 'Manrope_800ExtraBold' },
-  motivationalText: { textAlign: 'center', color: 'rgba(255,255,255,0.6)', marginBottom: 24, fontSize: 13, lineHeight: 20 },
-  summaryRow: { marginBottom: 24 },
-  goalStatusCard: { backgroundColor: 'rgba(28, 29, 31, 0.8)', borderRadius: 24, padding: 18, minHeight: 130, justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' },
-  deleteTextButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 32,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 77, 77, 0.12)',
-    backgroundColor: 'rgba(255, 77, 77, 0.04)',
-    alignSelf: 'center',
-    marginBottom: 10
-  },
-  deleteText: {
-    color: 'rgba(255, 77, 77, 0.5)',
-    fontSize: 11,
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 1.2,
-    marginLeft: 8
-  },
-  forecastCaption: {
-    fontSize: 12.5,
-    color: 'rgba(255,255,255,0.35)',
-    textAlign: 'center',
-    marginTop: 4,
-    fontStyle: 'italic',
-    fontFamily: 'Inter_500Medium',
-    paddingHorizontal: 20
-  },
-  statusLabel: {
-    fontSize: moderateScale(11),
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 1,
-    marginBottom: horizontalScale(4),
-    fontFamily: 'Inter_600SemiBold',
-  },
-  statusValue: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: moderateScale(20),
-    color: '#FFFFFF',
-  },
-  periodLabel: { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 8 },
-  goalStatusIconContainer: { position: 'absolute', right: -20, width: 140, alignItems: 'center' },
-  goalStatusIconCircle: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.03)', justifyContent: 'center', alignItems: 'center' },
-  performanceCard: { backgroundColor: 'rgba(28, 29, 31, 0.8)', borderRadius: 24, padding: 20, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  perfHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  perfLabel: { fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'Manrope_700Bold' },
-  perfValue: { fontFamily: 'Manrope_800ExtraBold', fontSize: 26 },
-  perfTargetLabel: { fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: 'Inter_600SemiBold' },
-  perfTargetValue: { fontFamily: 'Manrope_800ExtraBold', fontSize: 21, color: '#FFFFFF', marginTop: 4 },
-  perfStatusBox: { marginTop: 24, borderRadius: 16, borderLeftWidth: 4, overflow: 'hidden' },
-  perfStatusContent: { padding: 20 },
-  perfStatusText: { fontSize: 13, color: '#FFFFFF', lineHeight: 20, fontFamily: 'Inter_600SemiBold' },
-});

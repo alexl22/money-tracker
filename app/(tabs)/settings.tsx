@@ -1,37 +1,40 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged } from '@react-native-firebase/auth';
-import { collection, doc, getDoc, getDocs, orderBy, query, where, writeBatch } from '@react-native-firebase/firestore';
+import { doc, getDoc } from '@react-native-firebase/firestore';
 import { useFocusEffect } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as NavigationBar from 'expo-navigation-bar';
 import { router } from 'expo-router';
-import { Bell, Check, ChevronDown, ChevronsUpDown, Database, Download, Eye, EyeOff, HelpCircle, Lock, Mail, RefreshCcw, Search, Shield, Trash2, X } from 'lucide-react-native';
+import {
+  Bell, ChevronDown, ChevronsUpDown, Download,
+  HelpCircle, Mail, RefreshCcw
+} from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Linking, Modal, Platform, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import { generateAuditExport } from '../../components/settings/auditExportService';
+import { CurrencyPickerModal } from '../../components/settings/CurrencyPickerModal';
+import { DataManagementSection } from '../../components/settings/DataManagementSection';
+import { PasswordSection } from '../../components/settings/PasswordSection';
+import { clearAllUserLoans, clearAllUserTransactions, deleteAccountCascade } from '../../components/settings/userDataCleanup';
 import { TimePickerModal } from '../../components/TimePickerModal';
 import { WelcomeGuide } from '../../components/WelcomeGuide';
 import { useAlert } from '../../context/AlertContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useTabBar } from '../../context/TabBarContext';
-import { auth, db, deleteUserAccount as helperDeleteAccount, updateUserPassword as helperUpdatePassword } from '../../firebaseConfig';
+import { auth, db } from '../../firebaseConfig';
 import styles from '../../styles/settings.styles';
-import { exportToCSV, exportToPDF } from '../../utils/export';
 import { checkNotificationPermission, requestNotificationPermission, updateNotification } from '../../utils/notifications';
 import { horizontalScale, moderateScale } from '../../utils/scaling';
-import { resetUserStats } from '../../utils/statsManager';
 
 export default function SettingsScreen() {
   const { currency, setCurrency, availableCurrencies, format, rates } = useCurrency();
   const [isCurrencyPickerVisible, setIsCurrencyPickerVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [syncEnabled, setSyncEnabled] = useState(false);
   const [exportFormat, setExportFormat] = useState('PDF');
   const [syncTime, setSyncTime] = useState({ hours: 23, minutes: 0 });
   const [isTimePickerVisible, setIsTimePickerVisible] = useState(false);
   const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
   const [isDataExpanded, setIsDataExpanded] = useState(false);
-  const [showPasswords, setShowPasswords] = useState(false);
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [isExporting, setIsExporting] = useState(false);
@@ -39,23 +42,17 @@ export default function SettingsScreen() {
 
   const [tempHours, setTempHours] = useState(23);
   const [tempMinutes, setTempMinutes] = useState(0);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
 
   const { showAlert } = useAlert();
   const user = auth.currentUser;
 
-
   useFocusEffect(
     useCallback(() => {
-
       return () => {
         setIsSecurityExpanded(false);
         setIsDataExpanded(false);
         setIsCurrencyPickerVisible(false);
         setIsTimePickerVisible(false);
-        setNewPassword('');
-        setConfirmPassword('');
       };
     }, [])
   );
@@ -64,49 +61,17 @@ export default function SettingsScreen() {
 
     setIsExporting(true);
     try {
-      const q = query(
-        collection(db, 'transactions'),
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc')
-      );
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc: any) => {
-        const d = doc.data();
-        let finalDate: Date;
-        const rawDate = d.date || d.createdAt;
-
-        if (rawDate && typeof rawDate.toDate === 'function') {
-          finalDate = rawDate.toDate();
-        } else if (rawDate instanceof Date) {
-          finalDate = rawDate;
-        } else if (rawDate) {
-          finalDate = new Date(rawDate);
-        } else {
-          finalDate = new Date();
-        }
-
-        return {
-          id: doc.id,
-          title: d.title || 'Untitled',
-          amount: d.amount || 0,
-          currency: d.currency || currency,
-          amountUSD: d.amountUSD || 0,
-          type: d.type || 'expense',
-          notes: d.notes || '',
-          category: d.category || 'General',
-          createdAt: finalDate,
-        };
+      const { count } = await generateAuditExport({
+        userId: user.uid,
+        currency,
+        rates,
+        format,
+        exportFormat,
+        userName,
       });
 
-      if (data.length === 0) {
+      if (count === 0) {
         showAlert("No Data", "There are no transactions in your history to export.", "info");
-        return;
-      }
-
-      if (exportFormat === 'CSV') {
-        await exportToCSV(data, format, currency, rates);
-      } else {
-        await exportToPDF(data, format, currency, rates, userName);
       }
     } catch (error) {
       console.error("Export error:", error);
@@ -186,27 +151,7 @@ export default function SettingsScreen() {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
   };
 
-  const handleUpdatePassword = async () => {
-    if (newPassword !== confirmPassword) {
-      showAlert("Password Error", "Your passwords do not match. Please try again.", "alert");
-      return;
-    }
-    if (newPassword.length < 6) {
-      showAlert("Security Notice", "Your password must be at least 6 characters long for better protection.", "alert");
-      return;
-    }
-    if (auth.currentUser) {
-      try {
-        await helperUpdatePassword(newPassword);
-        showAlert("Updated Successfully", "Your security credentials have been successfully updated.", "success");
-        setNewPassword('');
-        setConfirmPassword('');
-      } catch (error: any) {
-        console.error(error);
-        showAlert("Update Failed", "We could not update your password. You may need to log in again.", "alert");
-      }
-    }
-  }
+
 
   const handleOpenTimePicker = () => {
     setTempHours(syncTime.hours);
@@ -236,12 +181,7 @@ export default function SettingsScreen() {
   const handleSelectCurrency = async (code: string) => {
     await setCurrency(code);
     setIsCurrencyPickerVisible(false);
-    setSearchQuery('');
   };
-
-  const filteredCurrencies = availableCurrencies.filter(c =>
-    c.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const handleSaveTime = async () => {
     const newTime = { hours: tempHours, minutes: tempMinutes };
@@ -267,26 +207,7 @@ export default function SettingsScreen() {
       "alert",
       async () => {
         try {
-          const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
-          const snapshot = await getDocs(q);
-
-          if (snapshot.empty) {
-            showAlert("Success", "All transactions have been deleted.", "success");
-            return;
-          }
-
-          const batchSize = 500;
-          const totalDocs = snapshot.docs.length;
-
-          for (let i = 0; i < totalDocs; i += batchSize) {
-            const batch = writeBatch(db);
-            const chunk = snapshot.docs.slice(i, i + batchSize);
-            chunk.forEach(d => batch.delete(d.ref));
-            await batch.commit();
-          }
-
-          await resetUserStats(user.uid);
-
+          await clearAllUserTransactions(user.uid);
           showAlert("Success", "All transactions have been deleted.", "success");
         } catch (error) {
           console.error("Clear transactions error:", error);
@@ -306,24 +227,7 @@ export default function SettingsScreen() {
       "alert",
       async () => {
         try {
-          const q = query(collection(db, 'loans'), where('userId', '==', user.uid));
-          const snapshot = await getDocs(q);
-
-          if (snapshot.empty) {
-            showAlert("Success", "All loans have been deleted.", "success");
-            return;
-          }
-
-          const batchSize = 500;
-          const totalDocs = snapshot.docs.length;
-
-          for (let i = 0; i < totalDocs; i += batchSize) {
-            const batch = writeBatch(db);
-            const chunk = snapshot.docs.slice(i, i + batchSize);
-            chunk.forEach(d => batch.delete(d.ref));
-            await batch.commit();
-          }
-
+          await clearAllUserLoans(user.uid);
           showAlert("Success", "All loans have been deleted.", "success");
         } catch (error) {
           console.error("Clear loans error:", error);
@@ -344,33 +248,7 @@ export default function SettingsScreen() {
       "alert",
       async () => {
         try {
-          const txSnapshot = await getDocs(query(collection(db, 'transactions'), where('userId', '==', user.uid)));
-          for (let i = 0; i < txSnapshot.docs.length; i += 500) {
-            const batch = writeBatch(db);
-            const chunk = txSnapshot.docs.slice(i, i + 500);
-            chunk.forEach(d => batch.delete(d.ref));
-            await batch.commit();
-          }
-
-          const lSnapshot = await getDocs(query(collection(db, 'loans'), where('userId', '==', user.uid)));
-          for (let i = 0; i < lSnapshot.docs.length; i += 500) {
-            const batch = writeBatch(db);
-            const chunk = lSnapshot.docs.slice(i, i + 500);
-            chunk.forEach(d => batch.delete(d.ref));
-            await batch.commit();
-          }
-
-          const gSnapshot = await getDocs(query(collection(db, 'goals'), where('userId', '==', user.uid)));
-          for (let i = 0; i < gSnapshot.docs.length; i += 500) {
-            const batch = writeBatch(db);
-            const chunk = gSnapshot.docs.slice(i, i + 500);
-            chunk.forEach(d => batch.delete(d.ref));
-            await batch.commit();
-          }
-
-          await writeBatch(db).delete(doc(db, "users", user.uid)).commit();
-
-          await helperDeleteAccount();
+          await deleteAccountCascade(user.uid);
           router.replace("/login");
         } catch (error: any) {
           console.error("Error deleting account:", error);
@@ -384,7 +262,7 @@ export default function SettingsScreen() {
       },
       true
     );
-  }
+  };
 
   return (
     <View style={styles.container}>
@@ -430,80 +308,11 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View
-          style={styles.securityWrapper}
-        >
-          <TouchableOpacity
-            style={[styles.actionCard, isSecurityExpanded && styles.actionCardExpanded]}
-            onPress={() => setIsSecurityExpanded(!isSecurityExpanded)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.actionCardLeft}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-                <Shield color="#3b82f6" size={20} />
-              </View>
-              <Text style={styles.actionCardTitle}>Password</Text>
-            </View>
-            <View style={{ transform: [{ rotate: isSecurityExpanded ? '180deg' : '0deg' }] }}>
-              <ChevronDown color="rgba(255,255,255,0.4)" size={20} />
-            </View>
-          </TouchableOpacity>
-
-          {isSecurityExpanded && (
-            <View
-              style={styles.securityDropdown}
-            >
-              <View style={styles.innerSectionGroup}>
-                <Text style={styles.innerSectionLabel}>NEW PASSWORD</Text>
-                <View style={styles.inputCard}>
-                  <View style={styles.inputIconCircle}>
-                    <Lock color="rgba(255,255,255,0.6)" size={16} />
-                  </View>
-                  <TextInput
-                    style={styles.innerTextInput}
-                    placeholder="Min. 6 characters"
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    placeholderTextColor="rgba(255,255,255,0.1)"
-                    secureTextEntry={!showPasswords}
-                  />
-                  <TouchableOpacity onPress={() => setShowPasswords(!showPasswords)}>
-                    {showPasswords ? <EyeOff color="#3b82f6" size={18} /> : <Eye color="rgba(255,255,255,0.3)" size={18} />}
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.innerSectionGroup}>
-                <Text style={styles.innerSectionLabel}>CONFIRM PASSWORD</Text>
-                <View style={styles.inputCard}>
-                  <View style={styles.inputIconCircle}>
-                    <Check color="rgba(255,255,255,0.6)" size={16} />
-                  </View>
-                  <TextInput
-                    style={styles.innerTextInput}
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    placeholder="Repeat new password"
-                    placeholderTextColor="rgba(255,255,255,0.1)"
-                    secureTextEntry={!showPasswords}
-                  />
-                </View>
-              </View>
-
-              <TouchableOpacity style={styles.updatePasswordBtn}
-                onPress={handleUpdatePassword}>
-                <LinearGradient
-                  colors={['#3b82f6', '#2563eb']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.updatePasswordGradient}
-                >
-                  <Text style={styles.updatePasswordBtnText}>Update Password</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+        <PasswordSection
+          isExpanded={isSecurityExpanded}
+          onToggle={() => setIsSecurityExpanded(!isSecurityExpanded)}
+          styles={styles}
+        />
 
         <View style={styles.softCard}>
           <View style={styles.cardHeader}>
@@ -628,57 +437,13 @@ export default function SettingsScreen() {
 
         </TouchableOpacity>
 
-        <View
-          style={styles.securityWrapper}
-        >
-          <TouchableOpacity
-            style={[styles.actionCard, isDataExpanded && styles.actionCardExpanded]}
-            onPress={() => setIsDataExpanded(!isDataExpanded)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.actionCardLeft}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(59, 130, 246, 0.08)' }]}>
-                <Database color="#3b82f6" size={20} />
-              </View>
-              <Text style={styles.actionCardTitle}>Data Management</Text>
-            </View>
-            <View style={{ transform: [{ rotate: isDataExpanded ? '180deg' : '0deg' }] }}>
-              <ChevronDown color="rgba(255,255,255,0.4)" size={20} />
-            </View>
-          </TouchableOpacity>
-
-          {isDataExpanded && (
-            <View
-              style={styles.securityDropdown}
-            >
-              <TouchableOpacity
-                style={[styles.actionCard, { marginTop: 0, height: horizontalScale(60), borderColor: 'rgba(239, 68, 68, 0.2)' }]}
-                onPress={handleClearTransactions}
-                activeOpacity={0.7}
-              >
-                <View style={styles.actionCardLeft}>
-                  <View style={[styles.iconCircle, { width: 36, height: 36, backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
-                    <Trash2 color="#ef4444" size={16} />
-                  </View>
-                  <Text style={[styles.actionCardTitle, { fontSize: moderateScale(14) }]}>Clear All Transactions</Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.actionCard, { marginTop: 0, marginBottom: 0, height: horizontalScale(60), borderColor: 'rgba(239, 68, 68, 0.2)' }]}
-                onPress={handleClearLoans}
-                activeOpacity={0.7}
-              >
-                <View style={styles.actionCardLeft}>
-                  <View style={[styles.iconCircle, { width: 36, height: 36, backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
-                    <Trash2 color="#ef4444" size={16} />
-                  </View>
-                  <Text style={[styles.actionCardTitle, { fontSize: moderateScale(14) }]}>Clear All Loans</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+        <DataManagementSection
+          isExpanded={isDataExpanded}
+          onToggle={() => setIsDataExpanded(!isDataExpanded)}
+          onClearTransactions={handleClearTransactions}
+          onClearLoans={handleClearLoans}
+          styles={styles}
+        />
 
         <TouchableOpacity
           style={styles.softCard}
@@ -725,75 +490,14 @@ export default function SettingsScreen() {
 
       </Animated.ScrollView>
 
-      <Modal
-        visible={isCurrencyPickerVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsCurrencyPickerVisible(false)}
-        statusBarTranslucent={true}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setIsCurrencyPickerVisible(false)}
-        >
-          <View style={[styles.timePickerContent, { height: '80%', borderTopLeftRadius: 36, borderTopRightRadius: 36 }]}>
-            <View style={styles.modalHandle} />
-
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalLabel}>SELECT PREFERENCE</Text>
-                <Text style={styles.modalTitleText}>Currency</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setIsCurrencyPickerVisible(false)}
-                style={styles.closeBtn}
-              >
-                <X color="rgba(255,255,255,0.4)" size={20} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.inputCard, { marginBottom: 20, height: 56, borderRadius: 16 }]}>
-              <Search color="#3b82f6" size={18} style={{ marginRight: 12 }} />
-              <TextInput
-                style={[styles.inputText, { fontSize: 14 }]}
-                placeholder="Search currency code..."
-                placeholderTextColor="rgba(255,255,255,0.2)"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoCapitalize="characters"
-              />
-            </View>
-
-            <FlatList
-              data={filteredCurrencies}
-              keyExtractor={(item) => item}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: horizontalScale(60) }}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.actionCard,
-                    { height: 64, marginBottom: 12, marginTop: 0 },
-                    currency === item && { borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.05)' }
-                  ]}
-                  onPress={() => handleSelectCurrency(item)}
-                >
-                  <View style={styles.actionCardLeft}>
-                    <View style={[styles.iconCircle, { width: 36, height: 36, backgroundColor: currency === item ? '#3b82f6' : 'rgba(255,255,255,0.05)' }]}>
-                      <Text style={{ color: currency === item ? '#fff' : 'rgba(255,255,255,0.6)', fontWeight: 'bold' }}>
-                        {item.substring(0, 1)}
-                      </Text>
-                    </View>
-                    <Text style={[styles.actionCardTitle, currency === item && { color: '#3b82f6' }]}>{item}</Text>
-                  </View>
-                  {currency === item && <Check color="#3b82f6" size={20} />}
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      <CurrencyPickerModal
+        isVisible={isCurrencyPickerVisible}
+        onClose={() => setIsCurrencyPickerVisible(false)}
+        currencies={availableCurrencies}
+        currentCurrency={currency}
+        onSelectCurrency={handleSelectCurrency}
+        styles={styles}
+      />
 
     </View>
   );
